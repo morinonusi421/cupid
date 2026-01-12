@@ -14,6 +14,8 @@
 ### ドメイン
 - **ドメイン名**: `cupid-linebot.click`
 - **取得場所**: AWS Route 53
+- **Aレコード**: `cupid-linebot.click` → `13.115.86.124`
+- **SSL証明書**: Let's Encrypt（2026-04-12まで有効、自動更新設定済み）
 
 ### AWS設定
 - **アカウントID**: 838890403187
@@ -37,6 +39,7 @@
 - **セキュリティグループID**: sg-0c8acd95cc0b039a8
   - SSH (TCP/22) from 0.0.0.0/0
   - HTTP (TCP/80) from 0.0.0.0/0
+  - HTTPS (TCP/443) from 0.0.0.0/0
 - **ストレージ**: 10 GB gp3 (3000 IOPS)
 - **起動日**: 2026-01-02
 
@@ -82,6 +85,12 @@
 - **EC2配置**: `/etc/nginx/conf.d/cupid.conf`へシンボリックリンク（`sudo ln -s ~/cupid/nginx/cupid.conf /etc/nginx/conf.d/cupid.conf`）
 - **設定変更後**: `git pull` → `sudo nginx -t` → `sudo systemctl reload nginx`
 
+### systemd（Goサーバー）
+- **サービス名**: `cupid.service`
+- **サービスファイル**: `systemd/cupid.service`（Git管理）
+- **EC2配置**: `/etc/systemd/system/cupid.service`へシンボリックリンク
+- **実行ファイル**: `~/cupid/cupid`（`go build -o cupid main.go`でビルド）
+
 ## 重要な注意事項
 
 - このリポジトリでは**morinonusi421**アカウントを使用
@@ -92,19 +101,8 @@
 
 - [x] Phase 0: 環境準備（ローカル）
 - [x] Phase 1: ドメイン取得（cupid-linebot.click）
-- [x] Phase 2: EC2基本セットアップ完了
-  - [x] EC2インスタンス作成
-  - [x] Elastic IP割り当て
-  - [x] SSH接続確認
-  - [x] OSアップグレード（2023.10）
-  - [x] タイムゾーン設定（JST）
-  - [x] 基本ツール確認
-- [ ] Phase 3: Hello World (HTTP)（進行中）
-  - [x] Goインストール（ARM64）- 1.25.5
-  - [x] EC2専用SSH鍵作成とGitHub登録
-  - [x] EC2でリポジトリclone
-  - [x] HTTPサーバー作成（ローカルで開発→EC2にpull）
-  - [x] 動作確認
+- [x] Phase 2: EC2基本セットアップ
+- [x] Phase 3: Hello World (HTTP)
 - [x] Phase 4: Nginx + リバースプロキシ
-- [ ] Phase 5: HTTPS化
+- [x] Phase 5: HTTPS化 + systemdサービス化
 - [ ] Phase 6: LINE Bot基本応答
