@@ -12,7 +12,7 @@ build:
 	go build -o cupid main.go
 
 deploy:
-	ssh cupid-bot "cd ~/cupid && git pull && go build -o cupid main.go && sudo systemctl restart cupid && sudo systemctl status cupid"
+	ssh cupid-bot "source ~/.bash_profile && cd ~/cupid && git pull && go build -o cupid main.go && sudo systemctl restart cupid && sudo systemctl status cupid"
 
 status:
 	ssh cupid-bot "sudo systemctl status cupid"
