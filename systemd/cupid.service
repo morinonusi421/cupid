@@ -1,0 +1,14 @@
+[Unit]
+Description=Cupid LINE Bot Server
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/home/ec2-user/cupid
+ExecStart=/home/ec2-user/cupid/cupid
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
