@@ -36,6 +36,7 @@
 - **ネットワークインターフェイスID**: eni-06c20b8172f868ca4
 - **セキュリティグループID**: sg-0c8acd95cc0b039a8
   - SSH (TCP/22) from 0.0.0.0/0
+  - HTTP (TCP/80) from 0.0.0.0/0
 - **ストレージ**: 10 GB gp3 (3000 IOPS)
 - **起動日**: 2026-01-02
 
@@ -76,6 +77,11 @@
 - **設定場所**: `~/.aws/credentials`, `~/.aws/config`
 - **自動切り替え**: `.envrc`でdirenv使用（cupidディレクトリ内で自動的にpersonalプロファイルを使用）
 
+### Nginx
+- **設定ファイル**: `nginx/cupid.conf`（Git管理）
+- **EC2配置**: `/etc/nginx/conf.d/cupid.conf`へシンボリックリンク（`sudo ln -s ~/cupid/nginx/cupid.conf /etc/nginx/conf.d/cupid.conf`）
+- **設定変更後**: `git pull` → `sudo nginx -t` → `sudo systemctl reload nginx`
+
 ## 重要な注意事項
 
 - このリポジトリでは**morinonusi421**アカウントを使用
@@ -97,8 +103,8 @@
   - [x] Goインストール（ARM64）- 1.25.5
   - [x] EC2専用SSH鍵作成とGitHub登録
   - [x] EC2でリポジトリclone
-  - [ ] HTTPサーバー作成（ローカルで開発→EC2にpull）
-  - [ ] 動作確認
-- [ ] Phase 4: Nginx + リバースプロキシ
+  - [x] HTTPサーバー作成（ローカルで開発→EC2にpull）
+  - [x] 動作確認
+- [x] Phase 4: Nginx + リバースプロキシ
 - [ ] Phase 5: HTTPS化
 - [ ] Phase 6: LINE Bot基本応答
