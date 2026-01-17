@@ -33,3 +33,15 @@ go.work.sum
 
 # build file
 cupid
+
+# SQLite databases
+*.db
+*.sqlite3
+
+# SQLite temporary/auxiliary files (絶対にGit管理してはいけない)
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
