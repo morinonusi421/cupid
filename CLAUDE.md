@@ -91,7 +91,14 @@
 - **EC2配置**: `/etc/systemd/system/cupid.service`へシンボリックリンク
 - **実行ファイル**: `~/cupid/cupid`（`go build -o cupid main.go`でビルド）
 
-## 重要な注意事項
+## 参考資料
+
+### LINE Bot開発
+- **LINE Bot SDK Go v8 (ローカルにcloneしてきた)**: `/Users/takahashi.hikaru/line-bot-sdk-go/`
+- **LINE Messaging API Reference**: https://developers.line.biz/en/docs/messaging-api/
+- **Webhook Events**: https://developers.line.biz/en/docs/messaging-api/receiving-messages/
+
+## 使用するgitアカウント
 
 - このリポジトリでは**morinonusi421**アカウントを使用
 - 他のリポジトリ（仕事用など）とは別のGitアカウント
