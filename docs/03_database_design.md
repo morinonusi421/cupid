@@ -18,9 +18,9 @@
 ```sql
 CREATE TABLE users (
   line_user_id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  birthday TEXT NOT NULL,
-  registration_step TEXT NOT NULL DEFAULT 'awaiting_name',
+  name TEXT NOT NULL DEFAULT '',
+  birthday TEXT NOT NULL DEFAULT '',
+  registration_step INTEGER NOT NULL DEFAULT 0,
   temp_crush_name TEXT,
   registered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -28,15 +28,9 @@ CREATE TABLE users (
 
 -- 名前と誕生日の組み合わせで検索するためのインデックス
 CREATE INDEX idx_users_name_birthday ON users(name, birthday);
-
--- 更新日時の自動更新用トリガー
-CREATE TRIGGER update_users_updated_at
-AFTER UPDATE ON users
-FOR EACH ROW
-BEGIN
-  UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE line_user_id = NEW.line_user_id;
-END;
 ```
+
+**注意**: `updated_at` の自動更新はSQLBoilerのAuto Timestamps機能を使用するため、トリガーは不要。
 
 #### フィールド説明
 | カラム名 | 型 | 制約 | 説明 |
@@ -44,23 +38,35 @@ END;
 | line_user_id | TEXT | PRIMARY KEY | LINE User ID（Uで始まる一意な文字列） |
 | name | TEXT | NOT NULL | ユーザーの名前（**ひらがな**で登録） |
 | birthday | TEXT | NOT NULL | 生年月日（YYYY-MM-DD形式の文字列） |
-| registration_step | TEXT | NOT NULL | 登録ステップ（後述） |
-| temp_crush_name | TEXT | NULL | 好きな人の名前を一時保存（`awaiting_crush_birthday`時に使用） |
+| registration_step | INTEGER | NOT NULL | 登録ステップ（後述、0〜3の整数） |
+| temp_crush_name | TEXT | NULL | 好きな人の名前を一時保存（ステップ3時に使用） |
 | registered_at | TEXT | NOT NULL | 登録日時（ISO8601形式） |
-| updated_at | TEXT | NOT NULL | 更新日時（ISO8601形式） |
+| updated_at | TEXT | NOT NULL | 更新日時（ISO8601形式、SQLBoilerが自動更新） |
 
 #### registration_stepの値と状態遷移
 
-| 状態 | 説明 | 次の入力 |
-|------|------|---------|
-| `awaiting_name` | 名前入力待ち | ユーザー自身の名前 |
-| `awaiting_birthday` | 生年月日入力待ち | ユーザー自身の生年月日 |
-| `completed` | 登録完了（好きな人の名前入力待ち） | 好きな人の名前 → `temp_crush_name`に保存 |
-| `awaiting_crush_birthday` | 好きな人の生年月日入力待ち | 好きな人の生年月日 → `likes`テーブルに登録 |
+`registration_step` はINTEGER型で、以下の値を取る：
+
+| 値 | 状態（Go定数） | 説明 | 次の入力 |
+|----|---------------|------|---------|
+| 0 | `StepAwaitingName` | 名前入力待ち | ユーザー自身の名前 |
+| 1 | `StepAwaitingBirthday` | 生年月日入力待ち | ユーザー自身の生年月日 |
+| 2 | `StepCompleted` | 登録完了（好きな人の名前入力待ち） | 好きな人の名前 → `temp_crush_name`に保存 |
+| 3 | `StepAwaitingCrushBirthday` | 好きな人の生年月日入力待ち | 好きな人の生年月日 → `likes`テーブルに登録 |
+
+**Go定数定義例**:
+```go
+const (
+    StepAwaitingName = 0
+    StepAwaitingBirthday = 1
+    StepCompleted = 2
+    StepAwaitingCrushBirthday = 3
+)
+```
 
 **状態遷移図**:
 ```
-[新規] → awaiting_name → awaiting_birthday → completed → awaiting_crush_birthday → completed
+[新規] → 0 (awaiting_name) → 1 (awaiting_birthday) → 2 (completed) → 3 (awaiting_crush_birthday) → 2 (completed)
 ```
 
 **注意**: `completed`状態は2つの意味を持つ、ね：
@@ -74,7 +80,7 @@ SELECT * FROM users WHERE line_user_id = 'U1234567890abcdef';
 
 -- ユーザー情報の更新（名前はひらがなで登録）
 UPDATE users
-SET name = 'しのざわひろ', registration_step = 'awaiting_birthday'
+SET name = 'しのざわひろ', registration_step = 1
 WHERE line_user_id = 'U1234567890abcdef';
 
 -- 名前と誕生日で検索（マッチング用）
@@ -201,10 +207,11 @@ db, _ := sql.Open("sqlite3", "cupid.db?_foreign_keys=on")
 -- SQLite: INTEGER PRIMARY KEY AUTOINCREMENT
 ```
 
-### 4. トリガー
+### 4. ORM（SQLBoiler）
 ```
-FOR EACH ROW は必須
-BEGIN ... END で囲む
+updated_at の自動更新: SQLBoilerのAuto Timestamps機能を使用
+→ トリガーは不要（アプリケーション層で処理）
+→ データベース層とアプリケーション層の責任分離
 ```
 
 ---
@@ -266,16 +273,16 @@ COMMIT;
 ```sql
 -- 1. 初回メッセージ（新規ユーザー）
 INSERT INTO users (line_user_id, name, registration_step)
-VALUES ('U1234567890abcdef', '', 'awaiting_name');
+VALUES ('U1234567890abcdef', '', 0);
 
 -- 2. 名前送信（ひらがなで登録）
 UPDATE users
-SET name = 'しのざわひろ', registration_step = 'awaiting_birthday'
+SET name = 'しのざわひろ', registration_step = 1
 WHERE line_user_id = 'U1234567890abcdef';
 
 -- 3. 生年月日送信
 UPDATE users
-SET birthday = '2009-12-21', registration_step = 'completed'
+SET birthday = '2009-12-21', registration_step = 2
 WHERE line_user_id = 'U1234567890abcdef';
 ```
 
@@ -284,7 +291,7 @@ WHERE line_user_id = 'U1234567890abcdef';
 -- 1. 好きな人の名前送信（temp_crush_nameに保存、ひらがなで）
 UPDATE users
 SET temp_crush_name = 'つきむらてまり',
-    registration_step = 'awaiting_crush_birthday'
+    registration_step = 3
 WHERE line_user_id = 'U1234567890abcdef';
 
 -- 2. 好きな人の生年月日送信
@@ -308,7 +315,7 @@ UPDATE likes SET matched = 1 WHERE from_user_id IN ('UA111...', 'UB222...');
 
 -- 2-4. 登録ステップを戻し、temp_crush_nameをクリア
 UPDATE users
-SET registration_step = 'completed',
+SET registration_step = 2,
     temp_crush_name = NULL
 WHERE line_user_id = 'U1234567890abcdef';
 
@@ -399,28 +406,23 @@ func RegisterLike(fromUserID, toName, toBirthday string) error {
 
 ## データベース初期化スクリプト
 
-### schema.sql
+### db/schema.sql
 ```sql
--- users テーブル
+-- ユーザーテーブル
+-- registration_step: 0=awaiting_name, 1=awaiting_birthday, 2=completed, 3=awaiting_crush_birthday
 CREATE TABLE IF NOT EXISTS users (
   line_user_id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  birthday TEXT NOT NULL,
-  registration_step TEXT NOT NULL DEFAULT 'awaiting_name',
+  name TEXT NOT NULL DEFAULT '',
+  birthday TEXT NOT NULL DEFAULT '',
+  registration_step INTEGER NOT NULL DEFAULT 0,
+  temp_crush_name TEXT,
   registered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_name_birthday ON users(name, birthday);
 
-CREATE TRIGGER IF NOT EXISTS update_users_updated_at
-AFTER UPDATE ON users
-FOR EACH ROW
-BEGIN
-  UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE line_user_id = NEW.line_user_id;
-END;
-
--- likes テーブル
+-- 好きな人の登録テーブル
 CREATE TABLE IF NOT EXISTS likes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   from_user_id TEXT NOT NULL,
@@ -442,10 +444,12 @@ PRAGMA foreign_keys = ON;
 PRAGMA journal_mode=WAL;
 ```
 
+**注意**: トリガーは削除。SQLBoilerのAuto Timestamps機能を使用。
+
 ### 実行方法
 ```bash
 # コマンドラインから
-sqlite3 cupid.db < schema.sql
+sqlite3 cupid.db < db/schema.sql
 
 # またはGoから
 db.Exec(schemaSQL)
@@ -607,13 +611,16 @@ cp cupid.db-shm cupid.db-shm.backup  # 存在する場合
 
 以下は、データベース初期化に使用する完全なschema.sql、ね。
 
+ファイルパス: `db/schema.sql`
+
 ```sql
 -- ユーザーテーブル
+-- registration_step: 0=awaiting_name, 1=awaiting_birthday, 2=completed, 3=awaiting_crush_birthday
 CREATE TABLE users (
   line_user_id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
   birthday TEXT NOT NULL DEFAULT '',
-  registration_step TEXT NOT NULL DEFAULT 'awaiting_name',
+  registration_step INTEGER NOT NULL DEFAULT 0,
   temp_crush_name TEXT,
   registered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -621,14 +628,6 @@ CREATE TABLE users (
 
 -- 名前と誕生日の組み合わせで検索するためのインデックス
 CREATE INDEX idx_users_name_birthday ON users(name, birthday);
-
--- 更新日時の自動更新用トリガー
-CREATE TRIGGER update_users_updated_at
-AFTER UPDATE ON users
-FOR EACH ROW
-BEGIN
-  UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE line_user_id = NEW.line_user_id;
-END;
 
 -- 好きな人の登録テーブル
 CREATE TABLE likes (
@@ -652,11 +651,13 @@ CREATE INDEX idx_likes_matched ON likes(matched);
 PRAGMA foreign_keys = ON;
 ```
 
+**注意**: `updated_at` の自動更新トリガーは削除。SQLBoilerのAuto Timestamps機能を使用する。
+
 ### 初期化コマンド
 
 ```bash
 # データベースファイルを作成してスキーマを適用
-sqlite3 ~/cupid/cupid.db < schema.sql
+sqlite3 ~/cupid/cupid.db < db/schema.sql
 
 # 確認
 sqlite3 ~/cupid/cupid.db "SELECT name FROM sqlite_master WHERE type='table';"
