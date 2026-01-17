@@ -1,0 +1,16 @@
+# SQLBoiler設定ファイル
+# 自動生成コード用（手書きコードは models/ ディレクトリに配置）
+
+# 出力先パッケージ名
+pkgname = "entities"
+
+# 出力先ディレクトリ
+output = "entities"
+
+# SQLite3 設定
+[sqlite3]
+  dbname = "cupid.db"
+
+  # 外部キー制約を有効化（重要）
+  # SQLiteはデフォルトで外部キー制約が無効なため
+  params = "_foreign_keys=on"
