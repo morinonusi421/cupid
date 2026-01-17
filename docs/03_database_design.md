@@ -4,9 +4,16 @@
 
 ### データベース情報
 - **エンジン**: SQLite 3
-- **ファイル**: `/home/ec2-user/cupid/cupid.db`
+- **ファイル**: `/home/ec2-user/cupid/cupid.db` (本番), `cupid.db` (開発)
 - **文字コード**: UTF-8
 - **特徴**: ファイルベース、サーバープロセス不要
+- **マイグレーション管理**: sql-migrate
+
+### マイグレーション
+- **ツール**: [sql-migrate](https://github.com/rubenv/sql-migrate)
+- **設定ファイル**: `dbconfig.yml`
+- **マイグレーションディレクトリ**: `db/migrations/`
+- **実行コマンド**: `sql-migrate up -env=development` (ローカル), `sql-migrate up -env=production` (EC2)
 
 ---
 
@@ -30,7 +37,7 @@ CREATE TABLE users (
 CREATE INDEX idx_users_name_birthday ON users(name, birthday);
 ```
 
-**注意**: `updated_at` の自動更新はSQLBoilerのAuto Timestamps機能を使用するため、トリガーは不要。
+**注意**: `updated_at` の自動更新は、SQLite + SQLBoilerの組み合わせではトリガーが必要。SQLiteの`DEFAULT CURRENT_TIMESTAMP`はINSERT時のみ適用され、UPDATE時は適用されないため。
 
 #### フィールド説明
 | カラム名 | 型 | 制約 | 説明 |
@@ -107,12 +114,6 @@ CREATE TABLE likes (
 
 -- マッチング検索用のインデックス
 CREATE INDEX idx_likes_to_name_birthday ON likes(to_name, to_birthday);
-
--- マッチング状態で絞り込むためのインデックス
-CREATE INDEX idx_likes_matched ON likes(matched);
-
--- 外部キー制約を有効化（SQLiteではデフォルト無効）
-PRAGMA foreign_keys = ON;
 ```
 
 #### フィールド説明
@@ -207,11 +208,16 @@ db, _ := sql.Open("sqlite3", "cupid.db?_foreign_keys=on")
 -- SQLite: INTEGER PRIMARY KEY AUTOINCREMENT
 ```
 
-### 4. ORM（SQLBoiler）
+### 4. トリガー（SQLite特有の要件）
 ```
-updated_at の自動更新: SQLBoilerのAuto Timestamps機能を使用
-→ トリガーは不要（アプリケーション層で処理）
-→ データベース層とアプリケーション層の責任分離
+updated_at の自動更新: SQLiteではトリガーが必要
+→ DEFAULT CURRENT_TIMESTAMP はINSERT時のみ適用
+→ UPDATE時は適用されない
+→ SQLBoilerのAuto Timestamp機能だけでは不十分
+→ トリガーでUPDATE時の自動更新を実現
+
+FOR EACH ROW は必須
+BEGIN ... END で囲む
 ```
 
 ---
@@ -404,56 +410,50 @@ func RegisterLike(fromUserID, toName, toBirthday string) error {
 
 ---
 
-## データベース初期化スクリプト
+## データベース初期化（マイグレーション）
 
-### db/schema.sql
-```sql
--- ユーザーテーブル
--- registration_step: 0=awaiting_name, 1=awaiting_birthday, 2=completed, 3=awaiting_crush_birthday
-CREATE TABLE IF NOT EXISTS users (
-  line_user_id TEXT PRIMARY KEY,
-  name TEXT NOT NULL DEFAULT '',
-  birthday TEXT NOT NULL DEFAULT '',
-  registration_step INTEGER NOT NULL DEFAULT 0,
-  temp_crush_name TEXT,
-  registered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+### sql-migrateによるマイグレーション
 
-CREATE INDEX IF NOT EXISTS idx_users_name_birthday ON users(name, birthday);
+マイグレーションファイルは `db/migrations/` ディレクトリに配置。
 
--- 好きな人の登録テーブル
-CREATE TABLE IF NOT EXISTS likes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  from_user_id TEXT NOT NULL,
-  to_name TEXT NOT NULL,
-  to_birthday TEXT NOT NULL,
-  matched INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (from_user_id) REFERENCES users(line_user_id),
-  UNIQUE(from_user_id)
-);
+**設定ファイル**: `dbconfig.yml`
+```yaml
+development:
+  dialect: sqlite3
+  datasource: cupid.db
+  dir: db/migrations
+  table: schema_migrations
 
-CREATE INDEX IF NOT EXISTS idx_likes_to_name_birthday ON likes(to_name, to_birthday);
-CREATE INDEX IF NOT EXISTS idx_likes_matched ON likes(matched);
-
--- 外部キー制約を有効化
-PRAGMA foreign_keys = ON;
-
--- WALモード（同時アクセス性能向上）
-PRAGMA journal_mode=WAL;
+production:
+  dialect: sqlite3
+  datasource: /home/ec2-user/cupid/cupid.db
+  dir: db/migrations
+  table: schema_migrations
 ```
 
-**注意**: トリガーは削除。SQLBoilerのAuto Timestamps機能を使用。
+### マイグレーション実行方法
 
-### 実行方法
 ```bash
-# コマンドラインから
-sqlite3 cupid.db < db/schema.sql
+# ローカル環境
+sql-migrate up -env=development
 
-# またはGoから
-db.Exec(schemaSQL)
+# 本番環境（EC2）
+sql-migrate up -env=production
+
+# ステータス確認
+sql-migrate status -env=development
+
+# ロールバック（最後の1つ）
+sql-migrate down -env=development
+
+# すべてロールバック
+sql-migrate down -limit=0 -env=development
 ```
+
+**注意**:
+- `updated_at` 自動更新トリガーを使用（SQLite + SQLBoilerの組み合わせで必要）。
+- 外部キー制約（`PRAGMA foreign_keys = ON`）はGoコード接続時に設定（`?_foreign_keys=on`）。
+- `idx_likes_matched` インデックスは削除（YAGNI原則、必要になってから追加）。
 
 ---
 
@@ -607,13 +607,14 @@ cp cupid.db-shm cupid.db-shm.backup  # 存在する場合
 
 ---
 
-## 完全なschema.sql
+## マイグレーションファイル
 
-以下は、データベース初期化に使用する完全なschema.sql、ね。
+以下は、データベース初期化に使用する初回マイグレーションファイル、ね。
 
-ファイルパス: `db/schema.sql`
+ファイルパス: `db/migrations/20260117000001-initial_schema.sql`
 
 ```sql
+-- +migrate Up
 -- ユーザーテーブル
 -- registration_step: 0=awaiting_name, 1=awaiting_birthday, 2=completed, 3=awaiting_crush_birthday
 CREATE TABLE users (
@@ -644,24 +645,40 @@ CREATE TABLE likes (
 -- マッチング検索用のインデックス
 CREATE INDEX idx_likes_to_name_birthday ON likes(to_name, to_birthday);
 
--- マッチング状態で絞り込むためのインデックス
-CREATE INDEX idx_likes_matched ON likes(matched);
+-- updated_at自動更新トリガー（SQLite + SQLBoilerの組み合わせで必要）
+CREATE TRIGGER update_users_updated_at
+AFTER UPDATE ON users
+FOR EACH ROW
+BEGIN
+  UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE line_user_id = NEW.line_user_id;
+END;
 
--- 外部キー制約を有効化（SQLiteではデフォルト無効）
-PRAGMA foreign_keys = ON;
+-- +migrate Down
+DROP TRIGGER IF EXISTS update_users_updated_at;
+DROP INDEX IF EXISTS idx_likes_to_name_birthday;
+DROP TABLE IF EXISTS likes;
+DROP INDEX IF EXISTS idx_users_name_birthday;
+DROP TABLE IF EXISTS users;
 ```
 
-**注意**: `updated_at` の自動更新トリガーは削除。SQLBoilerのAuto Timestamps機能を使用する。
+**注意**:
+- `updated_at` の自動更新トリガーは使用しない。SQLBoilerのAuto Timestamps機能を使用する。
+- 外部キー制約（`PRAGMA foreign_keys = ON`）は、Goコード接続時に設定する（接続文字列に `?_foreign_keys=on`）。
 
-### 初期化コマンド
+### マイグレーション実行コマンド
 
 ```bash
-# データベースファイルを作成してスキーマを適用
-sqlite3 ~/cupid/cupid.db < db/schema.sql
+# ローカル環境でマイグレーション実行
+sql-migrate up -env=development
 
-# 確認
-sqlite3 ~/cupid/cupid.db "SELECT name FROM sqlite_master WHERE type='table';"
-# 出力: users, likes
+# EC2本番環境でマイグレーション実行
+sql-migrate up -env=production
+
+# マイグレーション状態確認
+sql-migrate status -env=development
+
+# スキーマ確認
+sqlite3 cupid.db .schema
 ```
 
 ---
