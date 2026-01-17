@@ -105,4 +105,5 @@
 - [x] Phase 3: Hello World (HTTP)
 - [x] Phase 4: Nginx + リバースプロキシ
 - [x] Phase 5: HTTPS化 + systemdサービス化
-- [ ] Phase 6: LINE Bot基本応答
+- [x] Phase 6: LINE Bot基本応答（オウム返し）
+- [ ] Phase 7: ユーザー登録フローとDB実装

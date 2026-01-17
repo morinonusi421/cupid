@@ -24,13 +24,6 @@ func main() {
 		log.Fatal("LINE_CHANNEL_SECRET and LINE_CHANNEL_TOKEN must be set")
 	}
 
-	// 環境変数の確認（デバッグ用）
-	log.Printf("Channel Secret (first 10 chars): %s...", channelSecret[:10])
-	if len(channelToken) > 10 {
-		log.Printf("Channel Token (first 10 chars): %s...", channelToken[:10])
-	}
-	log.Printf("Channel Token length: %d", len(channelToken))
-
 	// LINE Messaging APIクライアントを作成
 	bot, err := messaging_api.NewMessagingApiAPI(channelToken)
 	if err != nil {
