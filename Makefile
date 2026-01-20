@@ -9,10 +9,10 @@ help:
 	@echo "  make restart - Restart service on EC2"
 
 build:
-	go build -o cupid main.go
+	go build -o cupid
 
 deploy:
-	ssh cupid-bot "source ~/.bash_profile && cd ~/cupid && git pull && go build -o cupid main.go && sudo systemctl restart cupid && sudo systemctl status cupid"
+	ssh cupid-bot "source ~/.bash_profile && cd ~/cupid && git pull && go build -o cupid && sudo systemctl restart cupid && sudo systemctl status cupid"
 
 status:
 	ssh cupid-bot "sudo systemctl status cupid"
