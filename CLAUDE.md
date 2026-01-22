@@ -40,6 +40,9 @@
   - SSH (TCP/22) from 0.0.0.0/0
   - HTTP (TCP/80) from 0.0.0.0/0
   - HTTPS (TCP/443) from 0.0.0.0/0
+- **メモリ**: 916 MiB
+- **スワップ**: 1 GB (`/swapfile`、`/etc/fstab`で永続化設定済み)
+  - 理由: modernc.org/sqliteのビルド時にメモリ不足を回避
 - **ストレージ**: 10 GB gp3 (3000 IOPS)
 - **起動日**: 2026-01-02
 
@@ -89,7 +92,7 @@
 - **サービス名**: `cupid.service`
 - **サービスファイル**: `systemd/cupid.service`（Git管理）
 - **EC2配置**: `/etc/systemd/system/cupid.service`へシンボリックリンク
-- **実行ファイル**: `~/cupid/cupid`（`go build -o cupid main.go`でビルド）
+- **実行ファイル**: `~/cupid/cupid`（`go build -o cupid`でビルド）
 
 ## 参考資料
 
