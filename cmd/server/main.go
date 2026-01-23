@@ -8,6 +8,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
+	"github.com/morinonusi421/cupid/pkg/database"
 )
 
 func main() {
@@ -35,7 +36,7 @@ func main() {
 	}
 
 	// データベース接続
-	db, err := initDB("cupid.db")
+	db, err := database.InitDB("cupid.db")
 	if err != nil {
 		log.Fatal(err)
 	}

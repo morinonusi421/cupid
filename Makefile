@@ -11,7 +11,7 @@ help:
 	@echo "  make restart  - Restart service on EC2"
 
 build:
-	go build -o cupid
+	go build -o cupid ./cmd/server
 
 test:
 	go test $$(go list ./... | grep -v /entities)
@@ -20,7 +20,7 @@ generate:
 	sqlboiler sqlite3 --no-auto-timestamps
 
 deploy:
-	ssh cupid-bot "source ~/.bash_profile && cd ~/cupid && git pull && go build -o cupid && sudo systemctl restart cupid && sudo systemctl status cupid"
+	ssh cupid-bot "source ~/.bash_profile && cd ~/cupid && git pull && go build -o cupid ./cmd/server && sudo systemctl restart cupid && sudo systemctl status cupid"
 
 status:
 	ssh cupid-bot "sudo systemctl status cupid"

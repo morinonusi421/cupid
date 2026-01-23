@@ -1,4 +1,4 @@
-package main
+package database
 
 import (
 	"os"
@@ -11,7 +11,7 @@ func TestInitDB(t *testing.T) {
 	defer os.Remove(testDBPath) // テスト終了後に削除
 
 	// データベース初期化
-	db, err := initDB(testDBPath)
+	db, err := InitDB(testDBPath)
 	if err != nil {
 		t.Fatalf("initDB failed: %v", err)
 	}

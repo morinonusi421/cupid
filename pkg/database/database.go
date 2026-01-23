@@ -1,4 +1,4 @@
-package main
+package database
 
 import (
 	"database/sql"
@@ -7,8 +7,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// initDB はデータベース接続を初期化する
-func initDB(dbPath string) (*sql.DB, error) {
+// InitDB はデータベース接続を初期化する
+func InitDB(dbPath string) (*sql.DB, error) {
 	// データベース接続
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
