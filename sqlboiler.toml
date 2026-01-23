@@ -7,6 +7,10 @@ pkgname = "entities"
 # 出力先ディレクトリ
 output = "entities"
 
+# タイムスタンプの自動設定を無効化
+# SQLiteではTEXT型で日時を保存するため、stringとして扱う
+no_auto_timestamps = true
+
 # SQLite3 設定
 [sqlite3]
   dbname = "cupid.db"

@@ -101,6 +101,17 @@
 - **LINE Messaging API Reference**: https://developers.line.biz/en/docs/messaging-api/
 - **Webhook Events**: https://developers.line.biz/en/docs/messaging-api/receiving-messages/
 
+### SQLBoiler
+- **設定ファイル**: `sqlboiler.toml`
+- **自動生成ディレクトリ**: `entities/`
+- **コマンド**: `make generate` でentitiesを再生成（`--no-auto-timestamps`フラグ付き）
+- **理由**: SQLite で created_at/updated_at を TEXT 型として保存しているため、time.Time として自動処理されると型エラーが発生する
+- **参考**: https://zenn.dev/da1chi/articles/806fa57b4eff3c
+- **テストについて**:
+  - sqlboilerが自動生成する `entities/` 配下のテストは実行しない
+  - 理由: sqlboiler-sqlite3のfKeyDestroyer正規表現にバグがあり、FOREIGN KEY削除時に構文エラーが発生する
+  - テスト実行は `make test` を使用（entitiesディレクトリを自動的に除外）
+
 ## 使用するgitアカウント
 
 - このリポジトリでは**morinonusi421**アカウントを使用

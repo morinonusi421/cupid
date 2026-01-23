@@ -548,10 +548,6 @@ func (o *SchemaMigration) Update(ctx context.Context, exec boil.ContextExecutor,
 			schemaMigrationAllColumns,
 			schemaMigrationPrimaryKeyColumns,
 		)
-
-		if !columns.IsWhitelist() {
-			wl = strmangle.SetComplement(wl, []string{"created_at"})
-		}
 		if len(wl) == 0 {
 			return 0, errors.New("entities: unable to update schema_migrations, could not build whitelist")
 		}
