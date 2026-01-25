@@ -48,3 +48,12 @@ cupid
 
 # Git worktrees
 .worktrees/
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Playwright
+tests/visual/screenshots/
+test-results/
+playwright-report/
