@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/morinonusi421/cupid/internal/service"
 )
@@ -20,30 +19,15 @@ func NewRegistrationAPIHandler(userService service.UserService) *RegistrationAPI
 }
 
 type RegisterRequest struct {
+	UserID   string `json:"user_id"`
 	Name     string `json:"name"`
 	Birthday string `json:"birthday"`
 }
 
 func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request) {
-	// Extract LIFF access token from Authorization header
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		log.Println("Missing or invalid Authorization header")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
-		return
-	}
-
-	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
-
-	// Verify LIFF access token
-	userID, err := h.userService.VerifyLIFFToken(accessToken)
-	if err != nil {
-		log.Printf("Failed to verify LIFF token: %v", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
-		return
-	}
+	// TODO: セキュリティ改善 - ワンタイムトークン方式に変更する
+	// 現在はリクエストボディに直接user_idを含めているが、なりすまし可能
+	// 将来的にはサーバー生成のワンタイムトークンを使用すべき
 
 	// Decode request body
 	var req RegisterRequest
@@ -54,15 +38,23 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Validate user_id
+	if req.UserID == "" {
+		log.Println("Missing user_id in request")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "user_id is required"})
+		return
+	}
+
 	// Save user data using userService
-	if err := h.userService.RegisterFromLIFF(r.Context(), userID, req.Name, req.Birthday); err != nil {
+	if err := h.userService.RegisterFromLIFF(r.Context(), req.UserID, req.Name, req.Birthday); err != nil {
 		log.Printf("Failed to register user: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "registration failed"})
 		return
 	}
 
-	log.Printf("Registration successful for user %s: name=%s, birthday=%s", userID, req.Name, req.Birthday)
+	log.Printf("Registration successful for user %s: name=%s, birthday=%s", req.UserID, req.Name, req.Birthday)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})

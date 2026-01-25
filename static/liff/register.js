@@ -1,5 +1,6 @@
-// LIFF ID（環境変数から設定する想定）
-const LIFF_ID = '2008809168-1A2B3C4D'; // TODO: 実際のLIFF IDに置き換える
+// TODO: セキュリティ改善 - ワンタイムトークン方式に変更する
+// 現在はURLパラメータに直接user_idを含めているが、なりすまし可能
+// 将来的にはサーバー生成のワンタイムトークンを使用すべき
 
 // DOM要素
 const form = document.getElementById('register-form');
@@ -9,30 +10,10 @@ const submitButton = document.getElementById('submit-button');
 const loading = document.getElementById('loading');
 const message = document.getElementById('message');
 
-// ページ読み込み時にLIFFを初期化
+// ページ読み込み時にフォーム設定
 window.addEventListener('load', () => {
-    initializeLiff();
+    setupForm();
 });
-
-/**
- * LIFFを初期化
- */
-function initializeLiff() {
-    liff.init({ liffId: LIFF_ID })
-        .then(() => {
-            // ログインチェック
-            if (!liff.isLoggedIn()) {
-                liff.login();
-            } else {
-                // フォーム送信イベントを設定
-                setupForm();
-            }
-        })
-        .catch((err) => {
-            console.error('LIFF initialization failed', err);
-            showMessage('LIFFの初期化に失敗しました。', 'error');
-        });
-}
 
 /**
  * フォーム送信イベントを設定
@@ -61,6 +42,14 @@ function setupForm() {
 }
 
 /**
+ * URLパラメータからuser_idを取得
+ */
+function getUserIdFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('user_id');
+}
+
+/**
  * ユーザー登録
  */
 async function registerUser(name, birthday) {
@@ -69,20 +58,19 @@ async function registerUser(name, birthday) {
         showLoading(true);
         submitButton.disabled = true;
 
-        // アクセストークン取得
-        const accessToken = liff.getAccessToken();
-        if (!accessToken) {
-            throw new Error('アクセストークンの取得に失敗しました。');
+        // URLパラメータからuser_idを取得
+        const userId = getUserIdFromURL();
+        if (!userId) {
+            throw new Error('ユーザーIDが見つかりません。URLが正しいか確認してください。');
         }
 
         // API呼び出し
         const response = await fetch('/api/register', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name, birthday })
+            body: JSON.stringify({ user_id: userId, name, birthday })
         });
 
         if (!response.ok) {
@@ -91,12 +79,7 @@ async function registerUser(name, birthday) {
         }
 
         // 成功
-        showMessage('登録が完了しました！', 'success');
-
-        // 1秒後にLIFFウィンドウを閉じる
-        setTimeout(() => {
-            liff.closeWindow();
-        }, 1000);
+        showMessage('登録が完了しました！LINEに戻って話しかけてね。', 'success');
 
     } catch (error) {
         console.error('Registration failed', error);

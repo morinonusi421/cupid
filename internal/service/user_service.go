@@ -126,14 +126,19 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 	}
 }
 
-// handleInitialMessage は初回メッセージを処理する（LIFF登録フォームの案内）
+// handleInitialMessage は初回メッセージを処理する（Web登録フォームの案内）
 func (s *userService) handleInitialMessage(ctx context.Context, user *model.User) (string, error) {
-	// LIFF URLが設定されている場合はLIFF登録を案内、設定されていない場合は従来の手動登録
+	// TODO: セキュリティ改善 - ワンタイムトークン方式に変更する
+	// 現在はURLパラメータに直接user_idを含めているが、なりすまし可能
+
+	// Web登録URLが設定されている場合は登録フォームを案内
 	if s.liffRegisterURL != "" {
-		return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", s.liffRegisterURL), nil
+		// URLにuser_idをクエリパラメータとして追加
+		registerURL := fmt.Sprintf("%s?user_id=%s", s.liffRegisterURL, user.LineID)
+		return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", registerURL), nil
 	}
 
-	// LIFF URLが設定されていない場合は、手動登録フロー
+	// 登録URLが設定されていない場合は、手動登録フロー
 	user.RegistrationStep = 1
 	if err := s.UpdateUser(ctx, user); err != nil {
 		return "", fmt.Errorf("failed to update user: %w", err)

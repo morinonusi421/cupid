@@ -51,16 +51,18 @@ func main() {
 	lineBotClient := linebot.NewClient(botAPI)
 	userRepo := repository.NewUserRepository(db)
 
-	// LIFF verifier (LINE_LIFF_CHANNEL_IDが設定されていない場合はnil)
+	// LIFF verifier (現在は未使用だが、インターフェース互換性のためnilで渡す)
+	// TODO: VerifyLIFFTokenメソッドをUserServiceインターフェースから削除したら、これも削除
 	var liffVerifier *liff.Verifier
 	if liffChannelID := os.Getenv("LINE_LIFF_CHANNEL_ID"); liffChannelID != "" {
 		liffVerifier = liff.NewVerifier(liffChannelID)
 	}
 
-	// LIFF registration URL (環境変数から取得)
-	liffRegisterURL := os.Getenv("LIFF_REGISTER_URL")
+	// Web registration URL (環境変数から取得)
+	// 例: https://cupid-linebot.click/liff/register.html
+	registerURL := os.Getenv("REGISTER_URL")
 
-	userService := service.NewUserService(userRepo, liffVerifier, liffRegisterURL)
+	userService := service.NewUserService(userRepo, liffVerifier, registerURL)
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
 
 	// Registration API handler

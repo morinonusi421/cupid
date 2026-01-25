@@ -54,13 +54,11 @@ func TestRegistrationAPI_Register_Success(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
 	handler := NewRegistrationAPIHandler(mockUserService)
 
-	// Mock VerifyLIFFToken to return a user ID
-	mockUserService.On("VerifyLIFFToken", "mock-liff-token").Return("U-test-user", nil)
-
 	// Mock RegisterFromLIFF to succeed
 	mockUserService.On("RegisterFromLIFF", mock.Anything, "U-test-user", "田中太郎", "2000-01-15").Return(nil)
 
 	reqBody := map[string]string{
+		"user_id":  "U-test-user",
 		"name":     "田中太郎",
 		"birthday": "2000-01-15",
 	}
@@ -68,7 +66,6 @@ func TestRegistrationAPI_Register_Success(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer mock-liff-token")
 
 	rr := httptest.NewRecorder()
 	handler.Register(rr, req)
