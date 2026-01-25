@@ -10,14 +10,12 @@ import (
 )
 
 type RegistrationAPIHandler struct {
-	messageService service.MessageService
-	userService    service.UserService
+	userService service.UserService
 }
 
-func NewRegistrationAPIHandler(messageService service.MessageService, userService service.UserService) *RegistrationAPIHandler {
+func NewRegistrationAPIHandler(userService service.UserService) *RegistrationAPIHandler {
 	return &RegistrationAPIHandler{
-		messageService: messageService,
-		userService:    userService,
+		userService: userService,
 	}
 }
 

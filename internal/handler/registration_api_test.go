@@ -13,15 +13,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type MockMessageServiceForAPI struct {
-	mock.Mock
-}
-
-func (m *MockMessageServiceForAPI) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
-	args := m.Called(ctx, userID, text)
-	return args.String(0), args.Error(1)
-}
-
 type MockUserServiceForAPI struct {
 	mock.Mock
 }
@@ -49,10 +40,14 @@ func (m *MockUserServiceForAPI) VerifyLIFFToken(accessToken string) (string, err
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
+	args := m.Called(ctx, userID, text)
+	return args.String(0), args.Error(1)
+}
+
 func TestRegistrationAPI_Register_Success(t *testing.T) {
-	mockMessageService := new(MockMessageServiceForAPI)
 	mockUserService := new(MockUserServiceForAPI)
-	handler := NewRegistrationAPIHandler(mockMessageService, mockUserService)
+	handler := NewRegistrationAPIHandler(mockUserService)
 
 	// Mock VerifyLIFFToken to return a user ID
 	mockUserService.On("VerifyLIFFToken", "mock-liff-token").Return("U-test-user", nil)

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
+	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -28,12 +29,35 @@ func (m *MockLineBotClient) ReplyMessage(request *messaging_api.ReplyMessageRequ
 	return args.Get(0).(*messaging_api.ReplyMessageResponse), args.Error(1)
 }
 
-// MockMessageService は service.MessageService の mock
-type MockMessageService struct {
+// MockUserService は service.UserService の mock (webhook_test用)
+type MockUserService struct {
 	mock.Mock
 }
 
-func (m *MockMessageService) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
+func (m *MockUserService) RegisterUser(ctx context.Context, lineID, displayName string) error {
+	args := m.Called(ctx, lineID, displayName)
+	return args.Error(0)
+}
+
+func (m *MockUserService) GetOrCreateUser(ctx context.Context, lineID, displayName string) (*model.User, error) {
+	args := m.Called(ctx, lineID, displayName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
+
+func (m *MockUserService) UpdateUser(ctx context.Context, user *model.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
+func (m *MockUserService) VerifyLIFFToken(accessToken string) (string, error) {
+	args := m.Called(accessToken)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockUserService) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
 	args := m.Called(ctx, userID, text)
 	return args.String(0), args.Error(1)
 }
@@ -49,8 +73,8 @@ func TestWebhookHandler_Handle_TextMessage(t *testing.T) {
 	// Setup
 	channelSecret := "test-channel-secret"
 	mockBot := new(MockLineBotClient)
-	mockMessageService := new(MockMessageService)
-	handler := NewWebhookHandler(channelSecret, mockBot, mockMessageService)
+	mockUserService := new(MockUserService)
+	handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
 
 	// テスト用のWebhookイベント（JSONフォーマット）
 	webhookBodyJSON := `{
@@ -83,7 +107,7 @@ func TestWebhookHandler_Handle_TextMessage(t *testing.T) {
 	req.Header.Set("X-Line-Signature", signature)
 
 	// Mock: ProcessTextMessage が呼ばれて返信テキストを返すことを期待
-	mockMessageService.On("ProcessTextMessage", mock.Anything, "U-test-user", "こんにちは").
+	mockUserService.On("ProcessTextMessage", mock.Anything, "U-test-user", "こんにちは").
 		Return("こんにちは", nil)
 
 	// Mock: ReplyMessage が呼ばれることを期待
@@ -99,15 +123,15 @@ func TestWebhookHandler_Handle_TextMessage(t *testing.T) {
 	// Assert
 	assert.Equal(t, http.StatusOK, rr.Code)
 	mockBot.AssertExpectations(t)
-	mockMessageService.AssertExpectations(t)
+	mockUserService.AssertExpectations(t)
 }
 
 func TestWebhookHandler_Handle_InvalidSignature(t *testing.T) {
 	// Setup
 	channelSecret := "test-channel-secret"
 	mockBot := new(MockLineBotClient)
-	mockMessageService := new(MockMessageService)
-	handler := NewWebhookHandler(channelSecret, mockBot, mockMessageService)
+	mockUserService := new(MockUserService)
+	handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
 
 	// 不正な署名でリクエスト
 	bodyBytes := []byte(`{"events":[]}`)
@@ -122,5 +146,5 @@ func TestWebhookHandler_Handle_InvalidSignature(t *testing.T) {
 	// Assert: 署名が不正なので BadRequest が返る
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 	mockBot.AssertNotCalled(t, "ReplyMessage")
-	mockMessageService.AssertNotCalled(t, "ProcessTextMessage")
+	mockUserService.AssertNotCalled(t, "ProcessTextMessage")
 }

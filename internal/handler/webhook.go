@@ -12,21 +12,21 @@ import (
 
 // WebhookHandler はLINE Webhookを処理するハンドラー
 type WebhookHandler struct {
-	channelSecret  string
-	bot            linebot.Client
-	messageService service.MessageService
+	channelSecret string
+	bot           linebot.Client
+	userService   service.UserService
 }
 
 // NewWebhookHandler は WebhookHandler の新しいインスタンスを作成する
 func NewWebhookHandler(
 	channelSecret string,
 	bot linebot.Client,
-	messageService service.MessageService,
+	userService service.UserService,
 ) *WebhookHandler {
 	return &WebhookHandler{
-		channelSecret:  channelSecret,
-		bot:            bot,
-		messageService: messageService,
+		channelSecret: channelSecret,
+		bot:           bot,
+		userService:   userService,
 	}
 }
 
@@ -57,8 +57,8 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 
-				// MessageServiceで処理
-				replyText, err := h.messageService.ProcessTextMessage(r.Context(), userID, message.Text)
+				// UserServiceで処理
+				replyText, err := h.userService.ProcessTextMessage(r.Context(), userID, message.Text)
 				if err != nil {
 					log.Printf("Failed to process message: %v", err)
 					replyText = "エラーが発生しました。もう一度試してください。"

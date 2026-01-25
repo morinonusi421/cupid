@@ -58,11 +58,10 @@ func main() {
 	}
 
 	userService := service.NewUserService(userRepo, liffVerifier)
-	messageService := service.NewMessageService(userService)
-	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, messageService)
+	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
 
 	// Registration API handler
-	registrationAPIHandler := handler.NewRegistrationAPIHandler(messageService, userService)
+	registrationAPIHandler := handler.NewRegistrationAPIHandler(userService)
 
 	// ヘルスチェック用エンドポイント
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
