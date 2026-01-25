@@ -47,9 +47,9 @@ reset-db:
 	@echo "⚠️  WARNING: This will delete cupid.db on EC2 and reset all data!"
 	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || (echo "Aborted." && exit 1)
 	@echo "Stopping service, removing DB, running migrations, restarting service..."
-	ssh cupid-bot "cd ~/cupid && sudo systemctl stop cupid && rm -f cupid.db && sql-migrate up && sudo systemctl start cupid && sleep 2 && sudo systemctl status cupid"
+	ssh cupid-bot "bash -l -c 'cd ~/cupid && sudo systemctl stop cupid && rm -f cupid.db && sql-migrate up -config=db/dbconfig.yml && sudo systemctl start cupid && sleep 2 && sudo systemctl status cupid'"
 	@echo "Checking database..."
-	ssh cupid-bot "cd ~/cupid && sqlite3 cupid.db '.tables'"
+	ssh cupid-bot "bash -l -c 'cd ~/cupid && sqlite3 cupid.db .tables'"
 
 migrate-up:
 	sql-migrate up -config=db/dbconfig.yml
