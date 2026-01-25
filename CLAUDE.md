@@ -112,6 +112,19 @@
   - 理由: sqlboiler-sqlite3のfKeyDestroyer正規表現にバグがあり、FOREIGN KEY削除時に構文エラーが発生する
   - テスト実行は `make test` を使用（entitiesディレクトリを自動的に除外）
 
+### sql-migrate (マイグレーションツール)
+- **ツール**: github.com/rubenv/sql-migrate
+- **インストール**: `go install github.com/rubenv/sql-migrate/...@latest`
+- **設定ファイル**: `db/dbconfig.yml`
+- **マイグレーションディレクトリ**: `db/migrations/`
+- **コマンド**:
+  - `make migrate-up` - マイグレーション適用
+  - `make migrate-down` - 最後のマイグレーションをロールバック
+  - `make migrate-status` - マイグレーション状態確認
+- **デプロイ時**: `make deploy` が自動的にマイグレーション実行（`sql-migrate up`）
+- **DB削除時**: `make reset-db` がDB削除後に自動的にマイグレーション実行
+- **管理テーブル**: `schema_migrations` にマイグレーション履歴を記録
+
 ## 使用するgitアカウント
 
 - このリポジトリでは**morinonusi421**アカウントを使用

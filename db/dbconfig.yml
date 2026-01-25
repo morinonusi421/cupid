@@ -6,6 +6,6 @@ development:
 
 production:
   dialect: sqlite3
-  datasource: /home/ec2-user/cupid/cupid.db
+  datasource: cupid.db
   dir: db/migrations
   table: schema_migrations

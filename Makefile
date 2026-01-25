@@ -1,10 +1,13 @@
-.PHONY: help build test generate deploy status logs restart reset-db-local reset-db
+.PHONY: help build test generate deploy status logs restart reset-db-local reset-db migrate-up migrate-down migrate-status
 
 help:
 	@echo "Available commands:"
 	@echo "  make build          - Build the Go binary locally"
 	@echo "  make test           - Run tests (excluding entities/)"
 	@echo "  make generate       - Generate entities from DB schema (sqlboiler)"
+	@echo "  make migrate-up     - Run database migrations (local)"
+	@echo "  make migrate-down   - Rollback last migration (local)"
+	@echo "  make migrate-status - Show migration status (local)"
 	@echo "  make deploy         - Deploy to EC2 (pull, build, restart)"
 	@echo "  make status         - Check service status on EC2"
 	@echo "  make logs           - Show service logs on EC2"
@@ -22,7 +25,7 @@ generate:
 	sqlboiler sqlite3 --no-auto-timestamps
 
 deploy:
-	ssh cupid-bot "bash -l -c 'cd ~/cupid && git pull && go build -o cupid ./cmd/server && sudo systemctl restart cupid && sudo systemctl status cupid'"
+	ssh cupid-bot "bash -l -c 'cd ~/cupid && git pull && sql-migrate up -config=db/dbconfig.yml && go build -o cupid ./cmd/server && sudo systemctl restart cupid && sudo systemctl status cupid'"
 
 status:
 	ssh cupid-bot "sudo systemctl status cupid"
@@ -43,7 +46,16 @@ reset-db-local:
 reset-db:
 	@echo "⚠️  WARNING: This will delete cupid.db on EC2 and reset all data!"
 	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || (echo "Aborted." && exit 1)
-	@echo "Stopping service, removing DB, restarting service..."
-	ssh cupid-bot "cd ~/cupid && sudo systemctl stop cupid && rm -f cupid.db && sudo systemctl start cupid && sleep 2 && sudo systemctl status cupid"
+	@echo "Stopping service, removing DB, running migrations, restarting service..."
+	ssh cupid-bot "cd ~/cupid && sudo systemctl stop cupid && rm -f cupid.db && sql-migrate up && sudo systemctl start cupid && sleep 2 && sudo systemctl status cupid"
 	@echo "Checking database..."
 	ssh cupid-bot "cd ~/cupid && sqlite3 cupid.db '.tables'"
+
+migrate-up:
+	sql-migrate up -config=db/dbconfig.yml
+
+migrate-down:
+	sql-migrate down -config=db/dbconfig.yml
+
+migrate-status:
+	sql-migrate status -config=db/dbconfig.yml
