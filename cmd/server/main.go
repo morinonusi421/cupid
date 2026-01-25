@@ -8,6 +8,9 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
+	"github.com/morinonusi421/cupid/internal/handler"
+	"github.com/morinonusi421/cupid/internal/repository"
+	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/morinonusi421/cupid/pkg/database"
 )
 
@@ -42,13 +45,18 @@ func main() {
 	}
 	defer db.Close()
 
+	// 依存関係の組み立て (DI)
+	userRepo := repository.NewUserRepository(db)
+	userService := service.NewUserService(userRepo)
+	webhookHandler := handler.NewWebhookHandler(channelSecret, bot, userService)
+
 	// ヘルスチェック用エンドポイント
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Cupid LINE Bot is running")
 	})
 
 	// LINE Webhook エンドポイント
-	http.HandleFunc("/webhook", handleWebhook(channelSecret, bot))
+	http.HandleFunc("/webhook", webhookHandler.Handle)
 
 	// サーバー起動
 	log.Printf("Server starting on :%s", port)
