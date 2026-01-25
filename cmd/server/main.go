@@ -57,7 +57,10 @@ func main() {
 		liffVerifier = liff.NewVerifier(liffChannelID)
 	}
 
-	userService := service.NewUserService(userRepo, liffVerifier)
+	// LIFF registration URL (環境変数から取得)
+	liffRegisterURL := os.Getenv("LIFF_REGISTER_URL")
+
+	userService := service.NewUserService(userRepo, liffVerifier, liffRegisterURL)
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
 
 	// Registration API handler

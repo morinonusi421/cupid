@@ -35,7 +35,7 @@ func (m *MockUserRepository) Update(ctx context.Context, user *model.User) error
 
 func TestUserService_RegisterUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	// Create が呼ばれることを期待
@@ -50,7 +50,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 
 func TestUserService_RegisterUser_Error(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	// Create がエラーを返すことを期待
@@ -64,7 +64,7 @@ func TestUserService_RegisterUser_Error(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_ExistingUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	existingUser := &model.User{
@@ -85,7 +85,7 @@ func TestUserService_GetOrCreateUser_ExistingUser(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_NewUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	newUser := &model.User{
@@ -114,7 +114,7 @@ func TestUserService_GetOrCreateUser_NewUser(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_FindError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	// FindByLineID がエラーを返すことを期待
@@ -129,7 +129,7 @@ func TestUserService_GetOrCreateUser_FindError(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	// FindByLineID が nil を返す（ユーザーが存在しない）
@@ -149,7 +149,7 @@ func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	user := &model.User{
@@ -177,7 +177,7 @@ func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_Step1_NameInput(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	user := &model.User{
@@ -202,7 +202,7 @@ func TestUserService_ProcessTextMessage_Step1_NameInput(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_Step1_EmptyName(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	user := &model.User{
@@ -222,7 +222,7 @@ func TestUserService_ProcessTextMessage_Step1_EmptyName(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_Step2_BirthdayInput(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	user := &model.User{
@@ -247,7 +247,7 @@ func TestUserService_ProcessTextMessage_Step2_BirthdayInput(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_Step2_InvalidBirthday(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	user := &model.User{
@@ -267,7 +267,7 @@ func TestUserService_ProcessTextMessage_Step2_InvalidBirthday(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_Step3_EchoBack(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	user := &model.User{
@@ -288,7 +288,7 @@ func TestUserService_ProcessTextMessage_Step3_EchoBack(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil)
+	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(nil, errors.New("db error"))

@@ -22,15 +22,17 @@ type UserService interface {
 }
 
 type userService struct {
-	userRepo     repository.UserRepository
-	liffVerifier *liff.Verifier
+	userRepo          repository.UserRepository
+	liffVerifier      *liff.Verifier
+	liffRegisterURL   string
 }
 
 // NewUserService は UserService の新しいインスタンスを作成する
-func NewUserService(userRepo repository.UserRepository, liffVerifier *liff.Verifier) UserService {
+func NewUserService(userRepo repository.UserRepository, liffVerifier *liff.Verifier, liffRegisterURL string) UserService {
 	return &userService{
-		userRepo:     userRepo,
-		liffVerifier: liffVerifier,
+		userRepo:        userRepo,
+		liffVerifier:    liffVerifier,
+		liffRegisterURL: liffRegisterURL,
 	}
 }
 
@@ -124,15 +126,18 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 	}
 }
 
-// handleInitialMessage は初回メッセージを処理する（名前入力の案内）
+// handleInitialMessage は初回メッセージを処理する（LIFF登録フォームの案内）
 func (s *userService) handleInitialMessage(ctx context.Context, user *model.User) (string, error) {
-	// step を 1 に進める（名前入力待ち）
-	user.RegistrationStep = 1
+	// LIFF URLが設定されている場合はLIFF登録を案内、設定されていない場合は従来の手動登録
+	if s.liffRegisterURL != "" {
+		return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", s.liffRegisterURL), nil
+	}
 
+	// LIFF URLが設定されていない場合は、手動登録フロー
+	user.RegistrationStep = 1
 	if err := s.UpdateUser(ctx, user); err != nil {
 		return "", fmt.Errorf("failed to update user: %w", err)
 	}
-
 	return "初めまして！まずは名前を教えてね。", nil
 }
 
