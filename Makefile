@@ -1,14 +1,16 @@
-.PHONY: help build test generate deploy status logs restart
+.PHONY: help build test generate deploy status logs restart reset-db-local reset-db
 
 help:
 	@echo "Available commands:"
-	@echo "  make build    - Build the Go binary locally"
-	@echo "  make test     - Run tests (excluding entities/)"
-	@echo "  make generate - Generate entities from DB schema (sqlboiler)"
-	@echo "  make deploy   - Deploy to EC2 (pull, build, restart)"
-	@echo "  make status   - Check service status on EC2"
-	@echo "  make logs     - Show service logs on EC2"
-	@echo "  make restart  - Restart service on EC2"
+	@echo "  make build          - Build the Go binary locally"
+	@echo "  make test           - Run tests (excluding entities/)"
+	@echo "  make generate       - Generate entities from DB schema (sqlboiler)"
+	@echo "  make deploy         - Deploy to EC2 (pull, build, restart)"
+	@echo "  make status         - Check service status on EC2"
+	@echo "  make logs           - Show service logs on EC2"
+	@echo "  make restart        - Restart service on EC2"
+	@echo "  make reset-db-local - Reset local database (cupid.db)"
+	@echo "  make reset-db       - Reset database on EC2 (WARNING: destructive)"
 
 build:
 	go build -o cupid ./cmd/server
@@ -30,3 +32,18 @@ logs:
 
 restart:
 	ssh cupid-bot "sudo systemctl restart cupid && sudo systemctl status cupid"
+
+reset-db-local:
+	@echo "⚠️  WARNING: This will delete cupid.db and reset all data!"
+	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || (echo "Aborted." && exit 1)
+	@echo "Removing cupid.db..."
+	rm -f cupid.db
+	@echo "✅ Database reset. Run 'make build && ./cupid' to recreate tables."
+
+reset-db:
+	@echo "⚠️  WARNING: This will delete cupid.db on EC2 and reset all data!"
+	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || (echo "Aborted." && exit 1)
+	@echo "Stopping service, removing DB, restarting service..."
+	ssh cupid-bot "cd ~/cupid && sudo systemctl stop cupid && rm -f cupid.db && sudo systemctl start cupid && sleep 2 && sudo systemctl status cupid"
+	@echo "Checking database..."
+	ssh cupid-bot "cd ~/cupid && sqlite3 cupid.db '.tables'"
