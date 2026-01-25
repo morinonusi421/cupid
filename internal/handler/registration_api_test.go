@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -23,7 +24,8 @@ func (m *MockMessageServiceForAPI) ProcessTextMessage(ctx context.Context, userI
 
 func TestRegistrationAPI_Register_Success(t *testing.T) {
 	mockMessageService := new(MockMessageServiceForAPI)
-	handler := NewRegistrationAPIHandler(mockMessageService)
+	mockVerifier := liff.NewVerifier("test-channel-id")
+	handler := NewRegistrationAPIHandler(mockMessageService, mockVerifier)
 
 	reqBody := map[string]string{
 		"name":     "田中太郎",
