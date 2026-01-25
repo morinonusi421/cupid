@@ -20,7 +20,7 @@ generate:
 	sqlboiler sqlite3 --no-auto-timestamps
 
 deploy:
-	ssh cupid-bot "source ~/.bash_profile && cd ~/cupid && git pull && go build -o cupid ./cmd/server && sudo systemctl restart cupid && sudo systemctl status cupid"
+	ssh cupid-bot "bash -l -c 'cd ~/cupid && git pull && go build -o cupid ./cmd/server && sudo systemctl restart cupid && sudo systemctl status cupid'"
 
 status:
 	ssh cupid-bot "sudo systemctl status cupid"
