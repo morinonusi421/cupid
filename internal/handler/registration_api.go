@@ -54,8 +54,15 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TODO: Save user data using messageService
-	log.Printf("Registration request for user %s: name=%s, birthday=%s", userID, req.Name, req.Birthday)
+	// Save user data using userService
+	if err := h.userService.RegisterFromLIFF(r.Context(), userID, req.Name, req.Birthday); err != nil {
+		log.Printf("Failed to register user: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "registration failed"})
+		return
+	}
+
+	log.Printf("Registration successful for user %s: name=%s, birthday=%s", userID, req.Name, req.Birthday)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})

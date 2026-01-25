@@ -18,6 +18,7 @@ type UserService interface {
 	UpdateUser(ctx context.Context, user *model.User) error
 	VerifyLIFFToken(accessToken string) (string, error)
 	ProcessTextMessage(ctx context.Context, userID, text string) (string, error)
+	RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error
 }
 
 type userService struct {
@@ -175,4 +176,24 @@ func (s *userService) handleBirthdayInput(ctx context.Context, user *model.User,
 	}
 
 	return "登録完了！ありがとう。", nil
+}
+
+// RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する
+func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error {
+	// Get or create user
+	user, err := s.GetOrCreateUser(ctx, userID, "")
+	if err != nil {
+		return fmt.Errorf("failed to get or create user: %w", err)
+	}
+
+	// Update user info
+	user.Name = name
+	user.Birthday = birthday
+	user.RegistrationStep = 3 // Registration complete
+
+	if err := s.UpdateUser(ctx, user); err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return nil
 }

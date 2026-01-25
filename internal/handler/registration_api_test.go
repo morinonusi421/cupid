@@ -45,12 +45,20 @@ func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID, 
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockUserServiceForAPI) RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error {
+	args := m.Called(ctx, userID, name, birthday)
+	return args.Error(0)
+}
+
 func TestRegistrationAPI_Register_Success(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
 	handler := NewRegistrationAPIHandler(mockUserService)
 
 	// Mock VerifyLIFFToken to return a user ID
 	mockUserService.On("VerifyLIFFToken", "mock-liff-token").Return("U-test-user", nil)
+
+	// Mock RegisterFromLIFF to succeed
+	mockUserService.On("RegisterFromLIFF", mock.Anything, "U-test-user", "田中太郎", "2000-01-15").Return(nil)
 
 	reqBody := map[string]string{
 		"name":     "田中太郎",
