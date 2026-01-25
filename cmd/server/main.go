@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/handler"
+	"github.com/morinonusi421/cupid/internal/linebot"
 	"github.com/morinonusi421/cupid/internal/repository"
 	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/morinonusi421/cupid/pkg/database"
@@ -33,7 +34,7 @@ func main() {
 	}
 
 	// LINE Messaging APIクライアントを作成
-	bot, err := messaging_api.NewMessagingApiAPI(channelToken)
+	botAPI, err := messaging_api.NewMessagingApiAPI(channelToken)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,9 +47,11 @@ func main() {
 	defer db.Close()
 
 	// 依存関係の組み立て (DI)
+	lineBotClient := linebot.NewClient(botAPI)
 	userRepo := repository.NewUserRepository(db)
 	userService := service.NewUserService(userRepo)
-	webhookHandler := handler.NewWebhookHandler(channelSecret, bot, userService)
+	messageService := service.NewMessageService(userService)
+	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, messageService)
 
 	// ヘルスチェック用エンドポイント
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

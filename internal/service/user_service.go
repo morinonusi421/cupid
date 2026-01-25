@@ -12,6 +12,7 @@ import (
 type UserService interface {
 	RegisterUser(ctx context.Context, lineID, displayName string) error
 	GetOrCreateUser(ctx context.Context, lineID, displayName string) (*model.User, error)
+	UpdateUser(ctx context.Context, user *model.User) error
 }
 
 type userService struct {
@@ -67,4 +68,12 @@ func (s *userService) GetOrCreateUser(ctx context.Context, lineID, displayName s
 	}
 
 	return user, nil
+}
+
+// UpdateUser は既存のユーザー情報を更新する
+func (s *userService) UpdateUser(ctx context.Context, user *model.User) error {
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+	return nil
 }

@@ -6,26 +6,27 @@ import (
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/line/line-bot-sdk-go/v8/linebot/webhook"
+	"github.com/morinonusi421/cupid/internal/linebot"
 	"github.com/morinonusi421/cupid/internal/service"
 )
 
 // WebhookHandler はLINE Webhookを処理するハンドラー
 type WebhookHandler struct {
-	channelSecret string
-	bot           *messaging_api.MessagingApiAPI
-	userService   service.UserService
+	channelSecret  string
+	bot            linebot.Client
+	messageService service.MessageService
 }
 
 // NewWebhookHandler は WebhookHandler の新しいインスタンスを作成する
 func NewWebhookHandler(
 	channelSecret string,
-	bot *messaging_api.MessagingApiAPI,
-	userService service.UserService,
+	bot linebot.Client,
+	messageService service.MessageService,
 ) *WebhookHandler {
 	return &WebhookHandler{
-		channelSecret: channelSecret,
-		bot:           bot,
-		userService:   userService,
+		channelSecret:  channelSecret,
+		bot:            bot,
+		messageService: messageService,
 	}
 }
 
@@ -46,9 +47,24 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			// テキストメッセージの場合
 			switch message := e.Message.(type) {
 			case webhook.TextMessageContent:
-				// オウム返し（後でユーザー登録フローに変更予定）
-				replyText := message.Text
+				// userIDを取得
+				var userID string
+				switch source := e.Source.(type) {
+				case webhook.UserSource:
+					userID = source.UserId
+				default:
+					log.Println("Unsupported source type")
+					continue
+				}
 
+				// MessageServiceで処理
+				replyText, err := h.messageService.ProcessTextMessage(r.Context(), userID, message.Text)
+				if err != nil {
+					log.Printf("Failed to process message: %v", err)
+					replyText = "エラーが発生しました。もう一度試してください。"
+				}
+
+				// LINE APIで返信
 				_, err = h.bot.ReplyMessage(
 					&messaging_api.ReplyMessageRequest{
 						ReplyToken: e.ReplyToken,
