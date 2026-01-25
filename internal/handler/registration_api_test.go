@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/morinonusi421/cupid/internal/liff"
+	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -22,10 +22,40 @@ func (m *MockMessageServiceForAPI) ProcessTextMessage(ctx context.Context, userI
 	return args.String(0), args.Error(1)
 }
 
+type MockUserServiceForAPI struct {
+	mock.Mock
+}
+
+func (m *MockUserServiceForAPI) RegisterUser(ctx context.Context, lineID, displayName string) error {
+	args := m.Called(ctx, lineID, displayName)
+	return args.Error(0)
+}
+
+func (m *MockUserServiceForAPI) GetOrCreateUser(ctx context.Context, lineID, displayName string) (*model.User, error) {
+	args := m.Called(ctx, lineID, displayName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
+
+func (m *MockUserServiceForAPI) UpdateUser(ctx context.Context, user *model.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
+func (m *MockUserServiceForAPI) VerifyLIFFToken(accessToken string) (string, error) {
+	args := m.Called(accessToken)
+	return args.String(0), args.Error(1)
+}
+
 func TestRegistrationAPI_Register_Success(t *testing.T) {
 	mockMessageService := new(MockMessageServiceForAPI)
-	mockVerifier := liff.NewVerifier("test-channel-id")
-	handler := NewRegistrationAPIHandler(mockMessageService, mockVerifier)
+	mockUserService := new(MockUserServiceForAPI)
+	handler := NewRegistrationAPIHandler(mockMessageService, mockUserService)
+
+	// Mock VerifyLIFFToken to return a user ID
+	mockUserService.On("VerifyLIFFToken", "mock-liff-token").Return("U-test-user", nil)
 
 	reqBody := map[string]string{
 		"name":     "田中太郎",
@@ -41,4 +71,5 @@ func TestRegistrationAPI_Register_Success(t *testing.T) {
 	handler.Register(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+	mockUserService.AssertExpectations(t)
 }

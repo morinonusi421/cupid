@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/handler"
+	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/morinonusi421/cupid/internal/linebot"
 	"github.com/morinonusi421/cupid/internal/repository"
 	"github.com/morinonusi421/cupid/internal/service"
@@ -49,9 +50,19 @@ func main() {
 	// 依存関係の組み立て (DI)
 	lineBotClient := linebot.NewClient(botAPI)
 	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo)
+
+	// LIFF verifier (LINE_LIFF_CHANNEL_IDが設定されていない場合はnil)
+	var liffVerifier *liff.Verifier
+	if liffChannelID := os.Getenv("LINE_LIFF_CHANNEL_ID"); liffChannelID != "" {
+		liffVerifier = liff.NewVerifier(liffChannelID)
+	}
+
+	userService := service.NewUserService(userRepo, liffVerifier)
 	messageService := service.NewMessageService(userService)
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, messageService)
+
+	// Registration API handler
+	registrationAPIHandler := handler.NewRegistrationAPIHandler(messageService, userService)
 
 	// ヘルスチェック用エンドポイント
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +71,9 @@ func main() {
 
 	// LINE Webhook エンドポイント
 	http.HandleFunc("/webhook", webhookHandler.Handle)
+
+	// Registration API endpoint
+	http.HandleFunc("/api/register", registrationAPIHandler.Register)
 
 	// サーバー起動
 	log.Printf("Server starting on :%s", port)

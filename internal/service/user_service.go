@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/morinonusi421/cupid/internal/repository"
 )
@@ -13,15 +14,20 @@ type UserService interface {
 	RegisterUser(ctx context.Context, lineID, displayName string) error
 	GetOrCreateUser(ctx context.Context, lineID, displayName string) (*model.User, error)
 	UpdateUser(ctx context.Context, user *model.User) error
+	VerifyLIFFToken(accessToken string) (string, error)
 }
 
 type userService struct {
-	userRepo repository.UserRepository
+	userRepo     repository.UserRepository
+	liffVerifier *liff.Verifier
 }
 
 // NewUserService は UserService の新しいインスタンスを作成する
-func NewUserService(userRepo repository.UserRepository) UserService {
-	return &userService{userRepo: userRepo}
+func NewUserService(userRepo repository.UserRepository, liffVerifier *liff.Verifier) UserService {
+	return &userService{
+		userRepo:     userRepo,
+		liffVerifier: liffVerifier,
+	}
 }
 
 // RegisterUser は新しいユーザーを登録する
@@ -76,4 +82,13 @@ func (s *userService) UpdateUser(ctx context.Context, user *model.User) error {
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 	return nil
+}
+
+// VerifyLIFFToken はLIFFアクセストークンを検証してLINE user IDを返す
+func (s *userService) VerifyLIFFToken(accessToken string) (string, error) {
+	userID, err := s.liffVerifier.VerifyAccessToken(accessToken)
+	if err != nil {
+		return "", fmt.Errorf("failed to verify LIFF token: %w", err)
+	}
+	return userID, nil
 }

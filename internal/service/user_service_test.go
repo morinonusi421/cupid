@@ -35,7 +35,7 @@ func (m *MockUserRepository) Update(ctx context.Context, user *model.User) error
 
 func TestUserService_RegisterUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo)
+	service := NewUserService(mockRepo, nil)
 	ctx := context.Background()
 
 	// Create が呼ばれることを期待
@@ -50,7 +50,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 
 func TestUserService_RegisterUser_Error(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo)
+	service := NewUserService(mockRepo, nil)
 	ctx := context.Background()
 
 	// Create がエラーを返すことを期待
@@ -64,7 +64,7 @@ func TestUserService_RegisterUser_Error(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_ExistingUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo)
+	service := NewUserService(mockRepo, nil)
 	ctx := context.Background()
 
 	existingUser := &model.User{
@@ -85,7 +85,7 @@ func TestUserService_GetOrCreateUser_ExistingUser(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_NewUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo)
+	service := NewUserService(mockRepo, nil)
 	ctx := context.Background()
 
 	newUser := &model.User{
@@ -114,7 +114,7 @@ func TestUserService_GetOrCreateUser_NewUser(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_FindError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo)
+	service := NewUserService(mockRepo, nil)
 	ctx := context.Background()
 
 	// FindByLineID がエラーを返すことを期待
@@ -129,7 +129,7 @@ func TestUserService_GetOrCreateUser_FindError(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo)
+	service := NewUserService(mockRepo, nil)
 	ctx := context.Background()
 
 	// FindByLineID が nil を返す（ユーザーが存在しない）

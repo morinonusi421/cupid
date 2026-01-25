@@ -34,17 +34,32 @@ func (s *messageService) ProcessTextMessage(ctx context.Context, userID, text st
 	// registration_step に応じて処理分岐
 	switch user.RegistrationStep {
 	case 0:
+		// 初期状態 - 名前入力の案内
+		return s.handleInitialMessage(ctx, user)
+	case 1:
 		// 名前入力待ち
 		return s.handleNameInput(ctx, user, text)
-	case 1:
+	case 2:
 		// 誕生日入力待ち
 		return s.handleBirthdayInput(ctx, user, text)
-	case 2:
+	case 3:
 		// 登録完了済み - オウム返し（後で通常機能に変更予定）
 		return text, nil
 	default:
 		return "", fmt.Errorf("invalid registration step: %d", user.RegistrationStep)
 	}
+}
+
+// handleInitialMessage は初回メッセージを処理する（名前入力の案内）
+func (s *messageService) handleInitialMessage(ctx context.Context, user *model.User) (string, error) {
+	// step を 1 に進める（名前入力待ち）
+	user.RegistrationStep = 1
+
+	if err := s.userService.UpdateUser(ctx, user); err != nil {
+		return "", fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return "初めまして！まずは名前を教えてね。", nil
 }
 
 // handleNameInput は名前入力を処理する

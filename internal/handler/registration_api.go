@@ -6,19 +6,18 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/morinonusi421/cupid/internal/service"
 )
 
 type RegistrationAPIHandler struct {
 	messageService service.MessageService
-	liffVerifier   *liff.Verifier
+	userService    service.UserService
 }
 
-func NewRegistrationAPIHandler(messageService service.MessageService, liffVerifier *liff.Verifier) *RegistrationAPIHandler {
+func NewRegistrationAPIHandler(messageService service.MessageService, userService service.UserService) *RegistrationAPIHandler {
 	return &RegistrationAPIHandler{
 		messageService: messageService,
-		liffVerifier:   liffVerifier,
+		userService:    userService,
 	}
 }
 
@@ -40,7 +39,7 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
 
 	// Verify LIFF access token
-	userID, err := h.liffVerifier.VerifyAccessToken(accessToken)
+	userID, err := h.userService.VerifyLIFFToken(accessToken)
 	if err != nil {
 		log.Printf("Failed to verify LIFF token: %v", err)
 		w.WriteHeader(http.StatusUnauthorized)

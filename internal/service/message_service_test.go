@@ -33,13 +33,18 @@ func (m *MockUserServiceForMessage) UpdateUser(ctx context.Context, user *model.
 	return args.Error(0)
 }
 
-func TestMessageService_ProcessTextMessage_Step0_NameInput(t *testing.T) {
+func (m *MockUserServiceForMessage) VerifyLIFFToken(accessToken string) (string, error) {
+	args := m.Called(accessToken)
+	return args.String(0), args.Error(1)
+}
+
+func TestMessageService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 	// Setup
 	mockUserService := new(MockUserServiceForMessage)
 	service := NewMessageService(mockUserService)
 	ctx := context.Background()
 
-	// ユーザー（step 0: 名前入力待ち）
+	// ユーザー（step 0: 初期状態）
 	user := &model.User{
 		LineID:           "U123",
 		Name:             "",
@@ -50,7 +55,35 @@ func TestMessageService_ProcessTextMessage_Step0_NameInput(t *testing.T) {
 	// Mock: GetOrCreateUser が既存ユーザーを返す
 	mockUserService.On("GetOrCreateUser", ctx, "U123", "").Return(user, nil)
 
-	// Mock: UpdateUser が呼ばれることを期待
+	// Mock: UpdateUser が呼ばれることを期待（step を 1 に進める）
+	mockUserService.On("UpdateUser", ctx, mock.MatchedBy(func(u *model.User) bool {
+		return u.LineID == "U123" && u.Name == "" && u.RegistrationStep == 1
+	})).Return(nil)
+
+	// Execute
+	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Contains(t, replyText, "初めまして")
+	assert.Contains(t, replyText, "名前を教えて")
+	mockUserService.AssertExpectations(t)
+}
+
+func TestMessageService_ProcessTextMessage_Step1_NameInput(t *testing.T) {
+	// Setup
+	mockUserService := new(MockUserServiceForMessage)
+	service := NewMessageService(mockUserService)
+	ctx := context.Background()
+
+	user := &model.User{
+		LineID:           "U123",
+		Name:             "",
+		RegistrationStep: 1,
+	}
+
+	mockUserService.On("GetOrCreateUser", ctx, "U123", "").Return(user, nil)
+
 	mockUserService.On("UpdateUser", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U123" && u.Name == "テスト太郎" && u.RegistrationStep == 1
 	})).Return(nil)
@@ -65,7 +98,7 @@ func TestMessageService_ProcessTextMessage_Step0_NameInput(t *testing.T) {
 	mockUserService.AssertExpectations(t)
 }
 
-func TestMessageService_ProcessTextMessage_Step0_EmptyName(t *testing.T) {
+func TestMessageService_ProcessTextMessage_Step1_EmptyName(t *testing.T) {
 	// Setup
 	mockUserService := new(MockUserServiceForMessage)
 	service := NewMessageService(mockUserService)
@@ -74,7 +107,7 @@ func TestMessageService_ProcessTextMessage_Step0_EmptyName(t *testing.T) {
 	user := &model.User{
 		LineID:           "U123",
 		Name:             "",
-		RegistrationStep: 0,
+		RegistrationStep: 1,
 	}
 
 	mockUserService.On("GetOrCreateUser", ctx, "U123", "").Return(user, nil)
@@ -88,7 +121,7 @@ func TestMessageService_ProcessTextMessage_Step0_EmptyName(t *testing.T) {
 	mockUserService.AssertNotCalled(t, "UpdateUser")
 }
 
-func TestMessageService_ProcessTextMessage_Step1_BirthdayInput(t *testing.T) {
+func TestMessageService_ProcessTextMessage_Step2_BirthdayInput(t *testing.T) {
 	// Setup
 	mockUserService := new(MockUserServiceForMessage)
 	service := NewMessageService(mockUserService)
@@ -98,7 +131,7 @@ func TestMessageService_ProcessTextMessage_Step1_BirthdayInput(t *testing.T) {
 		LineID:           "U123",
 		Name:             "テスト太郎",
 		Birthday:         "",
-		RegistrationStep: 1,
+		RegistrationStep: 2,
 	}
 
 	mockUserService.On("GetOrCreateUser", ctx, "U123", "").Return(user, nil)
@@ -116,7 +149,7 @@ func TestMessageService_ProcessTextMessage_Step1_BirthdayInput(t *testing.T) {
 	mockUserService.AssertExpectations(t)
 }
 
-func TestMessageService_ProcessTextMessage_Step1_InvalidBirthday(t *testing.T) {
+func TestMessageService_ProcessTextMessage_Step2_InvalidBirthday(t *testing.T) {
 	// Setup
 	mockUserService := new(MockUserServiceForMessage)
 	service := NewMessageService(mockUserService)
@@ -125,7 +158,7 @@ func TestMessageService_ProcessTextMessage_Step1_InvalidBirthday(t *testing.T) {
 	user := &model.User{
 		LineID:           "U123",
 		Name:             "テスト太郎",
-		RegistrationStep: 1,
+		RegistrationStep: 2,
 	}
 
 	mockUserService.On("GetOrCreateUser", ctx, "U123", "").Return(user, nil)
@@ -139,7 +172,7 @@ func TestMessageService_ProcessTextMessage_Step1_InvalidBirthday(t *testing.T) {
 	mockUserService.AssertNotCalled(t, "UpdateUser")
 }
 
-func TestMessageService_ProcessTextMessage_Step2_Completed(t *testing.T) {
+func TestMessageService_ProcessTextMessage_Step3_EchoBack(t *testing.T) {
 	// Setup
 	mockUserService := new(MockUserServiceForMessage)
 	service := NewMessageService(mockUserService)
@@ -149,7 +182,7 @@ func TestMessageService_ProcessTextMessage_Step2_Completed(t *testing.T) {
 		LineID:           "U123",
 		Name:             "テスト太郎",
 		Birthday:         "2000-01-15",
-		RegistrationStep: 2,
+		RegistrationStep: 3,
 	}
 
 	mockUserService.On("GetOrCreateUser", ctx, "U123", "").Return(user, nil)
