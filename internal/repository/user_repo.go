@@ -62,7 +62,6 @@ func entityToModel(e *entities.User) *model.User {
 		Name:             e.Name,
 		Birthday:         e.Birthday,
 		RegistrationStep: int(e.RegistrationStep),
-		TempCrushName:    e.TempCrushName.String,
 		RegisteredAt:     e.RegisteredAt,
 		UpdatedAt:        e.UpdatedAt,
 	}
@@ -75,7 +74,6 @@ func modelToEntity(m *model.User) *entities.User {
 		Name:             m.Name,
 		Birthday:         m.Birthday,
 		RegistrationStep: int64(m.RegistrationStep),
-		TempCrushName:    null.StringFrom(m.TempCrushName),
 		RegisteredAt:     m.RegisteredAt,
 		UpdatedAt:        m.UpdatedAt,
 	}

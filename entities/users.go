@@ -28,7 +28,6 @@ type User struct {
 	Name             string      `boil:"name" json:"name" toml:"name" yaml:"name"`
 	Birthday         string      `boil:"birthday" json:"birthday" toml:"birthday" yaml:"birthday"`
 	RegistrationStep int64       `boil:"registration_step" json:"registration_step" toml:"registration_step" yaml:"registration_step"`
-	TempCrushName    null.String `boil:"temp_crush_name" json:"temp_crush_name,omitempty" toml:"temp_crush_name" yaml:"temp_crush_name,omitempty"`
 	RegisteredAt     string      `boil:"registered_at" json:"registered_at" toml:"registered_at" yaml:"registered_at"`
 	UpdatedAt        string      `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 
@@ -41,7 +40,6 @@ var UserColumns = struct {
 	Name             string
 	Birthday         string
 	RegistrationStep string
-	TempCrushName    string
 	RegisteredAt     string
 	UpdatedAt        string
 }{
@@ -49,7 +47,6 @@ var UserColumns = struct {
 	Name:             "name",
 	Birthday:         "birthday",
 	RegistrationStep: "registration_step",
-	TempCrushName:    "temp_crush_name",
 	RegisteredAt:     "registered_at",
 	UpdatedAt:        "updated_at",
 }
@@ -59,7 +56,6 @@ var UserTableColumns = struct {
 	Name             string
 	Birthday         string
 	RegistrationStep string
-	TempCrushName    string
 	RegisteredAt     string
 	UpdatedAt        string
 }{
@@ -67,7 +63,6 @@ var UserTableColumns = struct {
 	Name:             "users.name",
 	Birthday:         "users.birthday",
 	RegistrationStep: "users.registration_step",
-	TempCrushName:    "users.temp_crush_name",
 	RegisteredAt:     "users.registered_at",
 	UpdatedAt:        "users.updated_at",
 }
@@ -123,7 +118,6 @@ var UserWhere = struct {
 	Name             whereHelperstring
 	Birthday         whereHelperstring
 	RegistrationStep whereHelperint64
-	TempCrushName    whereHelpernull_String
 	RegisteredAt     whereHelperstring
 	UpdatedAt        whereHelperstring
 }{
@@ -131,7 +125,6 @@ var UserWhere = struct {
 	Name:             whereHelperstring{field: "\"users\".\"name\""},
 	Birthday:         whereHelperstring{field: "\"users\".\"birthday\""},
 	RegistrationStep: whereHelperint64{field: "\"users\".\"registration_step\""},
-	TempCrushName:    whereHelpernull_String{field: "\"users\".\"temp_crush_name\""},
 	RegisteredAt:     whereHelperstring{field: "\"users\".\"registered_at\""},
 	UpdatedAt:        whereHelperstring{field: "\"users\".\"updated_at\""},
 }
@@ -173,9 +166,9 @@ func (r *userR) GetFromUserLike() *Like {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"line_user_id", "name", "birthday", "registration_step", "temp_crush_name", "registered_at", "updated_at"}
+	userAllColumns            = []string{"line_user_id", "name", "birthday", "registration_step", "registered_at", "updated_at"}
 	userColumnsWithoutDefault = []string{}
-	userColumnsWithDefault    = []string{"line_user_id", "name", "birthday", "registration_step", "temp_crush_name", "registered_at", "updated_at"}
+	userColumnsWithDefault    = []string{"line_user_id", "name", "birthday", "registration_step", "registered_at", "updated_at"}
 	userPrimaryKeyColumns     = []string{"line_user_id"}
 	userGeneratedColumns      = []string{}
 )

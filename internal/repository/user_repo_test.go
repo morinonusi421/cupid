@@ -87,7 +87,6 @@ func TestUserRepository_Create(t *testing.T) {
 		Name:             "Test User",
 		Birthday:         "1990-01-01",
 		RegistrationStep: 2,
-		TempCrushName:    "",
 		RegisteredAt:     "2026-01-23 00:00:00",
 		UpdatedAt:        "2026-01-23 00:00:00",
 	}
@@ -152,7 +151,6 @@ func TestUserRepository_Update(t *testing.T) {
 		Name:             "Original Name",
 		Birthday:         "1985-05-15",
 		RegistrationStep: 1,
-		TempCrushName:    "",
 		RegisteredAt:     "2026-01-23 00:00:00",
 		UpdatedAt:        "2026-01-23 00:00:00",
 	}
