@@ -67,6 +67,11 @@ func (m *MockUserService) RegisterFromLIFF(ctx context.Context, userID, name, bi
 	return args.Error(0)
 }
 
+func (m *MockUserService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string) (matched bool, matchedUserName string, err error) {
+	args := m.Called(ctx, userID, crushName, crushBirthday)
+	return args.Bool(0), args.String(1), args.Error(2)
+}
+
 // generateSignature はLINE Webhookの署名を生成する
 func generateSignature(channelSecret, body string) string {
 	mac := hmac.New(sha256.New, []byte(channelSecret))

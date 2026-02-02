@@ -50,6 +50,11 @@ func (m *MockUserServiceForAPI) RegisterFromLIFF(ctx context.Context, userID, na
 	return args.Error(0)
 }
 
+func (m *MockUserServiceForAPI) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string) (matched bool, matchedUserName string, err error) {
+	args := m.Called(ctx, userID, crushName, crushBirthday)
+	return args.Bool(0), args.String(1), args.Error(2)
+}
+
 func TestRegistrationAPI_Register_Success(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
 	handler := NewRegistrationAPIHandler(mockUserService)

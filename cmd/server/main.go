@@ -50,6 +50,7 @@ func main() {
 	// 依存関係の組み立て (DI)
 	lineBotClient := linebot.NewClient(botAPI)
 	userRepo := repository.NewUserRepository(db)
+	likeRepo := repository.NewLikeRepository(db)
 
 	// LIFF verifier (現在は未使用だが、インターフェース互換性のためnilで渡す)
 	// TODO: VerifyLIFFTokenメソッドをUserServiceインターフェースから削除したら、これも削除
@@ -62,7 +63,7 @@ func main() {
 	// 例: https://cupid-linebot.click/liff/register.html
 	registerURL := os.Getenv("REGISTER_URL")
 
-	userService := service.NewUserService(userRepo, liffVerifier, registerURL)
+	userService := service.NewUserService(userRepo, likeRepo, liffVerifier, registerURL)
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
 
 	// Registration API handler

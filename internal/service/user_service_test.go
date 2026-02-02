@@ -2,13 +2,76 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/morinonusi421/cupid/internal/model"
+	"github.com/morinonusi421/cupid/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	_ "modernc.org/sqlite"
 )
+
+// setupTestDB はテスト用のデータベースをセットアップする
+func setupTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+
+	// テスト用の DB ファイル名
+	testDBPath := "test_service_cupid.db"
+	t.Cleanup(func() {
+		os.Remove(testDBPath)
+	})
+
+	// DB を作成
+	db, err := sql.Open("sqlite", testDBPath)
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+
+	// 外部キー制約を有効化
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		db.Close()
+		t.Fatalf("Failed to enable foreign_keys: %v", err)
+	}
+
+	// usersテーブルを作成
+	usersTableSQL := `
+	CREATE TABLE IF NOT EXISTS users (
+		line_user_id TEXT PRIMARY KEY,
+		name TEXT NOT NULL DEFAULT '',
+		birthday TEXT NOT NULL DEFAULT '',
+		registration_step INTEGER NOT NULL DEFAULT 0,
+		registered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	if _, err := db.Exec(usersTableSQL); err != nil {
+		db.Close()
+		t.Fatalf("Failed to create users table: %v", err)
+	}
+
+	// likesテーブルを作成
+	likesTableSQL := `
+	CREATE TABLE IF NOT EXISTS likes (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		from_user_id TEXT NOT NULL,
+		to_name TEXT NOT NULL,
+		to_birthday TEXT NOT NULL,
+		matched INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (from_user_id) REFERENCES users(line_user_id),
+		UNIQUE(from_user_id)
+	);`
+
+	if _, err := db.Exec(likesTableSQL); err != nil {
+		db.Close()
+		t.Fatalf("Failed to create likes table: %v", err)
+	}
+
+	return db
+}
 
 // MockUserRepository は UserRepository の mock
 type MockUserRepository struct {
@@ -38,9 +101,40 @@ func (m *MockUserRepository) FindByNameAndBirthday(ctx context.Context, name, bi
 	return nil, nil
 }
 
+// MockLikeRepository は LikeRepository の mock
+type MockLikeRepository struct {
+	mock.Mock
+}
+
+func (m *MockLikeRepository) Create(ctx context.Context, like *model.Like) error {
+	args := m.Called(ctx, like)
+	return args.Error(0)
+}
+
+func (m *MockLikeRepository) FindByFromUserID(ctx context.Context, fromUserID string) (*model.Like, error) {
+	args := m.Called(ctx, fromUserID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Like), args.Error(1)
+}
+
+func (m *MockLikeRepository) FindMatchingLike(ctx context.Context, fromUserID, toName, toBirthday string) (*model.Like, error) {
+	args := m.Called(ctx, fromUserID, toName, toBirthday)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Like), args.Error(1)
+}
+
+func (m *MockLikeRepository) UpdateMatched(ctx context.Context, likeID int64, matched bool) error {
+	args := m.Called(ctx, likeID, matched)
+	return args.Error(0)
+}
+
 func TestUserService_RegisterUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
+	service := NewUserService(mockRepo, nil, nil, "")
 	ctx := context.Background()
 
 	// Create が呼ばれることを期待
@@ -55,7 +149,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 
 func TestUserService_RegisterUser_Error(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
+	service := NewUserService(mockRepo, nil, nil, "")
 	ctx := context.Background()
 
 	// Create がエラーを返すことを期待
@@ -69,7 +163,7 @@ func TestUserService_RegisterUser_Error(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_ExistingUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
+	service := NewUserService(mockRepo, nil, nil, "")
 	ctx := context.Background()
 
 	existingUser := &model.User{
@@ -90,7 +184,7 @@ func TestUserService_GetOrCreateUser_ExistingUser(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_NewUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
+	service := NewUserService(mockRepo, nil, nil, "")
 	ctx := context.Background()
 
 	newUser := &model.User{
@@ -119,7 +213,7 @@ func TestUserService_GetOrCreateUser_NewUser(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_FindError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
+	service := NewUserService(mockRepo, nil, nil, "")
 	ctx := context.Background()
 
 	// FindByLineID がエラーを返すことを期待
@@ -134,7 +228,7 @@ func TestUserService_GetOrCreateUser_FindError(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
+	service := NewUserService(mockRepo, nil, nil, "")
 	ctx := context.Background()
 
 	// FindByLineID が nil を返す（ユーザーが存在しない）
@@ -155,7 +249,7 @@ func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	registerURL := "https://cupid-linebot.click/liff/register.html"
-	service := NewUserService(mockRepo, nil, registerURL)
+	service := NewUserService(mockRepo, nil, nil, registerURL)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -179,7 +273,7 @@ func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_Step1_EchoBack(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
+	service := NewUserService(mockRepo, nil, nil, "")
 	ctx := context.Background()
 
 	user := &model.User{
@@ -200,7 +294,7 @@ func TestUserService_ProcessTextMessage_Step1_EchoBack(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
+	service := NewUserService(mockRepo, nil, nil, "")
 	ctx := context.Background()
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(nil, errors.New("db error"))
@@ -210,4 +304,125 @@ func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get or create user")
 	assert.Empty(t, replyText)
+}
+
+func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	userRepo := repository.NewUserRepository(db)
+	likeRepo := repository.NewLikeRepository(db)
+
+	service := NewUserService(userRepo, likeRepo, nil, "")
+
+	// ユーザーA作成
+	userA := &model.User{
+		LineID:       "U_A",
+		Name:             "山田太郎",
+		Birthday:         "1990-01-01",
+		RegistrationStep: 1,
+	}
+	userRepo.Create(context.Background(), userA)
+
+	// 好きな人を登録（相手は未登録）
+	matched, matchedName, err := service.RegisterCrush(context.Background(), "U_A", "佐藤花子", "1992-02-02")
+	if err != nil {
+		t.Errorf("RegisterCrush failed: %v", err)
+	}
+	if matched {
+		t.Error("Expected no match")
+	}
+	if matchedName != "" {
+		t.Errorf("Expected empty matchedName, got %s", matchedName)
+	}
+
+	// DBに登録されたか確認
+	like, _ := likeRepo.FindByFromUserID(context.Background(), "U_A")
+	if like == nil {
+		t.Error("Like not created")
+	}
+	if like.ToName != "佐藤花子" {
+		t.Errorf("ToName mismatch: got %s", like.ToName)
+	}
+}
+
+func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	userRepo := repository.NewUserRepository(db)
+	likeRepo := repository.NewLikeRepository(db)
+
+	service := NewUserService(userRepo, likeRepo, nil, "")
+
+	user := &model.User{
+		LineID:           "U_SELF",
+		Name:             "山田太郎",
+		Birthday:         "1990-01-01",
+		RegistrationStep: 1,
+	}
+	userRepo.Create(context.Background(), user)
+
+	// 自分自身を登録しようとする
+	_, _, err := service.RegisterCrush(context.Background(), "U_SELF", "山田太郎", "1990-01-01")
+	if err == nil {
+		t.Error("Expected error for self-registration")
+	}
+	if err.Error() != "cannot register yourself" {
+		t.Errorf("Unexpected error message: %s", err.Error())
+	}
+}
+
+func TestUserService_RegisterCrush_Matched(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	userRepo := repository.NewUserRepository(db)
+	likeRepo := repository.NewLikeRepository(db)
+
+	service := NewUserService(userRepo, likeRepo, nil, "")
+
+	// ユーザーA作成
+	userA := &model.User{
+		LineID:           "U_A",
+		Name:             "山田太郎",
+		Birthday:         "1990-01-01",
+		RegistrationStep: 1,
+	}
+	userRepo.Create(context.Background(), userA)
+
+	// ユーザーB作成
+	userB := &model.User{
+		LineID:           "U_B",
+		Name:             "佐藤花子",
+		Birthday:         "1992-02-02",
+		RegistrationStep: 1,
+	}
+	userRepo.Create(context.Background(), userB)
+
+	// A → B を登録
+	service.RegisterCrush(context.Background(), "U_A", "佐藤花子", "1992-02-02")
+
+	// B → A を登録（マッチング成立）
+	matched, matchedName, err := service.RegisterCrush(context.Background(), "U_B", "山田太郎", "1990-01-01")
+	if err != nil {
+		t.Errorf("RegisterCrush failed: %v", err)
+	}
+	if !matched {
+		t.Error("Expected match")
+	}
+	if matchedName != "山田太郎" {
+		t.Errorf("matchedName mismatch: got %s, want 山田太郎", matchedName)
+	}
+
+	// 両方のmatchedフラグが1になっているか確認
+	likeA, _ := likeRepo.FindByFromUserID(context.Background(), "U_A")
+	if !likeA.Matched {
+		t.Error("UserA's like.matched not updated")
+	}
+
+	likeB, _ := likeRepo.FindByFromUserID(context.Background(), "U_B")
+	if !likeB.Matched {
+		t.Error("UserB's like.matched not updated")
+	}
 }
