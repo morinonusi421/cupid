@@ -33,6 +33,11 @@ func (m *MockUserRepository) Update(ctx context.Context, user *model.User) error
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error) {
+	// モックの実装: 既存のテストで使用されないため、nilを返す
+	return nil, nil
+}
+
 func TestUserService_RegisterUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	service := NewUserService(mockRepo, nil, "")
