@@ -149,7 +149,8 @@ func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
+	registerURL := "https://cupid-linebot.click/liff/register.html"
+	service := NewUserService(mockRepo, nil, registerURL)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -162,110 +163,16 @@ func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 	// FindByLineID が既存ユーザーを返す
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
 
-	// Update が呼ばれることを期待（step を 1 に進める）
-	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
-		return u.LineID == "U123" && u.Name == "" && u.RegistrationStep == 1
-	})).Return(nil)
-
 	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
 
 	assert.NoError(t, err)
 	assert.Contains(t, replyText, "初めまして")
-	assert.Contains(t, replyText, "名前を教えて")
+	assert.Contains(t, replyText, "下のリンクから登録してね")
+	assert.Contains(t, replyText, registerURL+"?user_id=U123")
 	mockRepo.AssertExpectations(t)
 }
 
-func TestUserService_ProcessTextMessage_Step1_NameInput(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
-	ctx := context.Background()
-
-	user := &model.User{
-		LineID:           "U123",
-		Name:             "",
-		RegistrationStep: 1,
-	}
-
-	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
-
-	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
-		return u.LineID == "U123" && u.Name == "テスト太郎" && u.RegistrationStep == 1
-	})).Return(nil)
-
-	replyText, err := service.ProcessTextMessage(ctx, "U123", "テスト太郎")
-
-	assert.NoError(t, err)
-	assert.Contains(t, replyText, "テスト太郎さん、よろしくね")
-	assert.Contains(t, replyText, "誕生日を教えて")
-	mockRepo.AssertExpectations(t)
-}
-
-func TestUserService_ProcessTextMessage_Step1_EmptyName(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
-	ctx := context.Background()
-
-	user := &model.User{
-		LineID:           "U123",
-		Name:             "",
-		RegistrationStep: 1,
-	}
-
-	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
-
-	replyText, err := service.ProcessTextMessage(ctx, "U123", "  ")
-
-	assert.NoError(t, err)
-	assert.Equal(t, "名前を入力してください。", replyText)
-	mockRepo.AssertNotCalled(t, "Update")
-}
-
-func TestUserService_ProcessTextMessage_Step2_BirthdayInput(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
-	ctx := context.Background()
-
-	user := &model.User{
-		LineID:           "U123",
-		Name:             "テスト太郎",
-		Birthday:         "",
-		RegistrationStep: 2,
-	}
-
-	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
-
-	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
-		return u.LineID == "U123" && u.Birthday == "2000-01-15" && u.RegistrationStep == 2
-	})).Return(nil)
-
-	replyText, err := service.ProcessTextMessage(ctx, "U123", "2000-01-15")
-
-	assert.NoError(t, err)
-	assert.Contains(t, replyText, "登録完了")
-	mockRepo.AssertExpectations(t)
-}
-
-func TestUserService_ProcessTextMessage_Step2_InvalidBirthday(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, "")
-	ctx := context.Background()
-
-	user := &model.User{
-		LineID:           "U123",
-		Name:             "テスト太郎",
-		RegistrationStep: 2,
-	}
-
-	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
-
-	replyText, err := service.ProcessTextMessage(ctx, "U123", "2000/01/15")
-
-	assert.NoError(t, err)
-	assert.Contains(t, replyText, "YYYY-MM-DD形式")
-	mockRepo.AssertNotCalled(t, "Update")
-}
-
-func TestUserService_ProcessTextMessage_Step3_EchoBack(t *testing.T) {
+func TestUserService_ProcessTextMessage_Step1_EchoBack(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	service := NewUserService(mockRepo, nil, "")
 	ctx := context.Background()
@@ -274,7 +181,7 @@ func TestUserService_ProcessTextMessage_Step3_EchoBack(t *testing.T) {
 		LineID:           "U123",
 		Name:             "テスト太郎",
 		Birthday:         "2000-01-15",
-		RegistrationStep: 3,
+		RegistrationStep: 1,
 	}
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
