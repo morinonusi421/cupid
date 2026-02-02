@@ -68,6 +68,7 @@ func main() {
 
 	// Registration API handler
 	registrationAPIHandler := handler.NewRegistrationAPIHandler(userService)
+	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService)
 
 	// ヘルスチェック用エンドポイント
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -77,8 +78,12 @@ func main() {
 	// LINE Webhook エンドポイント
 	http.HandleFunc("/webhook", webhookHandler.Handle)
 
-	// Registration API endpoint
+	// Registration API endpoints
 	http.HandleFunc("/api/register", registrationAPIHandler.Register)
+	http.HandleFunc("/api/register-crush", crushRegistrationAPIHandler.RegisterCrush)
+
+	// 静的ファイル配信
+	http.Handle("/crush/", http.StripPrefix("/crush/", http.FileServer(http.Dir("static/crush"))))
 
 	// サーバー起動
 	log.Printf("Server starting on :%s", port)
