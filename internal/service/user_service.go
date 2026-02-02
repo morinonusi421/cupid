@@ -113,8 +113,9 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 		// 初期状態 - Web登録フォームの案内
 		return s.handleInitialMessage(ctx, user)
 	case 1:
-		// 登録完了済み - オウム返し（後で通常機能に変更予定）
-		return text, nil
+		// ユーザー登録完了済み - 好きな人の登録を案内
+		crushRegisterURL := fmt.Sprintf("https://cupid-linebot.click/crush/register.html?user_id=%s", userID)
+		return fmt.Sprintf("次に、好きな人を登録してください💘\n\n%s", crushRegisterURL), nil
 	default:
 		return "", fmt.Errorf("invalid registration step: %d", user.RegistrationStep)
 	}
