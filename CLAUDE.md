@@ -124,6 +124,12 @@
 - **デプロイ時**: `make deploy` が自動的にマイグレーション実行（`sql-migrate up`）
 - **DB削除時**: `make reset-db` がDB削除後に自動的にマイグレーション実行
 - **管理テーブル**: `schema_migrations` にマイグレーション履歴を記録
+- **ベストプラクティス**:
+  - **既存のマイグレーションファイルは絶対に編集しない**
+  - スキーマ変更は必ず新しいマイグレーションファイルを追加する
+  - ファイル名は `YYYYMMDDNNNNNN-description.sql` 形式（例: `20260202000001-remove_temp_crush_name.sql`）
+  - 各マイグレーションには `-- +migrate Up` と `-- +migrate Down` を記述
+  - 適用済みマイグレーションは履歴として保持する
 
 ## 使用するgitアカウント
 
