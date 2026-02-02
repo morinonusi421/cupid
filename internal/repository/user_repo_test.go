@@ -183,3 +183,42 @@ func TestUserRepository_Update(t *testing.T) {
 		t.Errorf("Expected registration_step 2, got %d", found.RegistrationStep)
 	}
 }
+
+func TestUserRepository_FindByNameAndBirthday(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	repo := NewUserRepository(db)
+
+	// テストユーザーを作成
+	user := &model.User{
+		LineID:           "U_FIND_TEST",
+		Name:             "山田太郎",
+		Birthday:         "1990-01-01",
+		RegistrationStep: 1,
+	}
+	if err := repo.Create(context.Background(), user); err != nil {
+		t.Fatal(err)
+	}
+
+	// 名前と誕生日で検索
+	found, err := repo.FindByNameAndBirthday(context.Background(), "山田太郎", "1990-01-01")
+	if err != nil {
+		t.Errorf("FindByNameAndBirthday failed: %v", err)
+	}
+	if found == nil {
+		t.Error("User not found")
+	}
+	if found.LineID != "U_FIND_TEST" {
+		t.Errorf("LineID mismatch: got %s, want U_FIND_TEST", found.LineID)
+	}
+
+	// 存在しないユーザー
+	notFound, err := repo.FindByNameAndBirthday(context.Background(), "存在しない", "2000-01-01")
+	if err != nil {
+		t.Errorf("FindByNameAndBirthday failed: %v", err)
+	}
+	if notFound != nil {
+		t.Error("Expected nil for non-existent user")
+	}
+}

@@ -14,6 +14,7 @@ import (
 // UserRepository はユーザーのデータアクセス層のインターフェース
 type UserRepository interface {
 	FindByLineID(ctx context.Context, lineID string) (*model.User, error)
+	FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error)
 	Create(ctx context.Context, user *model.User) error
 	Update(ctx context.Context, user *model.User) error
 }
@@ -35,6 +36,21 @@ func (r *userRepository) FindByLineID(ctx context.Context, lineID string) (*mode
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // ユーザーが見つからない場合は nil を返す
+		}
+		return nil, err
+	}
+
+	return entityToModel(entityUser), nil
+}
+
+// FindByNameAndBirthday は名前と誕生日でユーザーを検索する
+func (r *userRepository) FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error) {
+	entityUser, err := entities.Users(
+		qm.Where("name = ? AND birthday = ?", name, birthday),
+	).One(ctx, r.db)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
 		}
 		return nil, err
 	}
