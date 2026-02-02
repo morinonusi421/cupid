@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cupid - 好きな人登録</title>
+    <link rel="stylesheet" href="register.css">
+</head>
+<body>
+    <div class="container">
+        <h1>💘 Cupid</h1>
+        <p class="subtitle">好きな人を登録</p>
+
+        <form id="register-form">
+            <div class="form-group">
+                <label for="name">好きな人の名前</label>
+                <input
+                    type="text"
+                    id="name"
+                    placeholder="例: 山田太郎"
+                    maxlength="50"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="birthday">好きな人の誕生日</label>
+                <input
+                    type="date"
+                    id="birthday"
+                    required
+                >
+            </div>
+
+            <button type="submit" id="submit-button">登録する</button>
+        </form>
+
+        <div id="loading" style="display: none;">
+            <p>登録中...</p>
+        </div>
+
+        <div id="message" style="display: none;"></div>
+    </div>
+
+    <script src="register.js"></script>
+</body>
+</html>
