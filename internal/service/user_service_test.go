@@ -134,7 +134,8 @@ func (m *MockLikeRepository) UpdateMatched(ctx context.Context, likeID int64, ma
 
 func TestUserService_RegisterUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, nil, "")
+	mockLikeRepo := new(MockLikeRepository)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "")
 	ctx := context.Background()
 
 	// Create が呼ばれることを期待
@@ -149,7 +150,8 @@ func TestUserService_RegisterUser(t *testing.T) {
 
 func TestUserService_RegisterUser_Error(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, nil, "")
+	mockLikeRepo := new(MockLikeRepository)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "")
 	ctx := context.Background()
 
 	// Create がエラーを返すことを期待
@@ -163,7 +165,8 @@ func TestUserService_RegisterUser_Error(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_ExistingUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, nil, "")
+	mockLikeRepo := new(MockLikeRepository)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "")
 	ctx := context.Background()
 
 	existingUser := &model.User{
@@ -184,7 +187,8 @@ func TestUserService_GetOrCreateUser_ExistingUser(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_NewUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, nil, "")
+	mockLikeRepo := new(MockLikeRepository)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "")
 	ctx := context.Background()
 
 	newUser := &model.User{
@@ -213,7 +217,8 @@ func TestUserService_GetOrCreateUser_NewUser(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_FindError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, nil, "")
+	mockLikeRepo := new(MockLikeRepository)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "")
 	ctx := context.Background()
 
 	// FindByLineID がエラーを返すことを期待
@@ -228,7 +233,8 @@ func TestUserService_GetOrCreateUser_FindError(t *testing.T) {
 
 func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, nil, "")
+	mockLikeRepo := new(MockLikeRepository)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "")
 	ctx := context.Background()
 
 	// FindByLineID が nil を返す（ユーザーが存在しない）
@@ -248,8 +254,9 @@ func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 
 func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 	mockRepo := new(MockUserRepository)
+	mockLikeRepo := new(MockLikeRepository)
 	registerURL := "https://cupid-linebot.click/liff/register.html"
-	service := NewUserService(mockRepo, nil, nil, registerURL)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, registerURL)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -271,9 +278,10 @@ func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-func TestUserService_ProcessTextMessage_Step1_EchoBack(t *testing.T) {
+func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, nil, "")
+	mockLikeRepo := new(MockLikeRepository)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "")
 	ctx := context.Background()
 
 	user := &model.User{
@@ -288,13 +296,15 @@ func TestUserService_ProcessTextMessage_Step1_EchoBack(t *testing.T) {
 	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
 
 	assert.NoError(t, err)
-	assert.Equal(t, "こんにちは", replyText) // オウム返し
+	assert.Contains(t, replyText, "次に、好きな人を登録してください")
+	assert.Contains(t, replyText, "https://cupid-linebot.click/crush/register.html?user_id=U123")
 	mockRepo.AssertNotCalled(t, "Update")
 }
 
 func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	service := NewUserService(mockRepo, nil, nil, "")
+	mockLikeRepo := new(MockLikeRepository)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "")
 	ctx := context.Background()
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(nil, errors.New("db error"))
