@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/aarondl/sqlboiler/v4/queries/qm"
@@ -98,11 +99,16 @@ func (r *likeRepository) UpdateMatched(ctx context.Context, id int64, matched bo
 		matchedInt = 1
 	}
 
-	_, err := entities.Likes(
+	rowsAff, err := entities.Likes(
 		qm.Where("id = ?", id),
 	).UpdateAll(ctx, r.db, entities.M{
 		entities.LikeColumns.Matched: matchedInt,
 	})
-
-	return err
+	if err != nil {
+		return err
+	}
+	if rowsAff == 0 {
+		return fmt.Errorf("like with id %d not found", id)
+	}
+	return nil
 }

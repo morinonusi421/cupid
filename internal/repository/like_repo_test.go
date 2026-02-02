@@ -69,7 +69,9 @@ func TestLikeRepository_FindMatchingLike(t *testing.T) {
 		RegisteredAt:     "2026-02-02 00:00:00",
 		UpdatedAt:        "2026-02-02 00:00:00",
 	}
-	userRepo.Create(context.Background(), userA)
+	if err := userRepo.Create(context.Background(), userA); err != nil {
+		t.Fatal(err)
+	}
 
 	// ユーザーB: 佐藤花子
 	userB := &model.User{
@@ -80,7 +82,9 @@ func TestLikeRepository_FindMatchingLike(t *testing.T) {
 		RegisteredAt:     "2026-02-02 00:00:00",
 		UpdatedAt:        "2026-02-02 00:00:00",
 	}
-	userRepo.Create(context.Background(), userB)
+	if err := userRepo.Create(context.Background(), userB); err != nil {
+		t.Fatal(err)
+	}
 
 	// A → B を登録
 	likeAtoB := &model.Like{
@@ -89,7 +93,9 @@ func TestLikeRepository_FindMatchingLike(t *testing.T) {
 		ToBirthday: "1992-02-02",
 		Matched:    false,
 	}
-	repo.Create(context.Background(), likeAtoB)
+	if err := repo.Create(context.Background(), likeAtoB); err != nil {
+		t.Fatal(err)
+	}
 
 	// B → A を登録
 	likeBtoA := &model.Like{
@@ -98,7 +104,9 @@ func TestLikeRepository_FindMatchingLike(t *testing.T) {
 		ToBirthday: "1990-01-01",
 		Matched:    false,
 	}
-	repo.Create(context.Background(), likeBtoA)
+	if err := repo.Create(context.Background(), likeBtoA); err != nil {
+		t.Fatal(err)
+	}
 
 	// B が A を登録しているか検索
 	found, err := repo.FindMatchingLike(context.Background(), "U_B", "山田太郎", "1990-01-01")
