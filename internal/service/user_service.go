@@ -116,6 +116,10 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 		// ユーザー登録完了済み - 好きな人の登録を案内
 		crushRegisterURL := fmt.Sprintf("https://cupid-linebot.click/crush/register.html?user_id=%s", userID)
 		return fmt.Sprintf("次に、好きな人を登録してください💘\n\n%s", crushRegisterURL), nil
+	case 2:
+		// 好きな人登録完了済み - 再登録を案内
+		crushRegisterURL := fmt.Sprintf("https://cupid-linebot.click/crush/register.html?user_id=%s", userID)
+		return fmt.Sprintf("登録済みです。好きな人を変更する場合は下のリンクから再登録できます。\n\n%s", crushRegisterURL), nil
 	default:
 		return "", fmt.Errorf("invalid registration step: %d", user.RegistrationStep)
 	}
@@ -175,6 +179,12 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		Matched:     false,
 	}
 	if err := s.likeRepo.Create(ctx, like); err != nil {
+		return false, "", err
+	}
+
+	// 3-1. RegistrationStepを2に更新（好きな人登録完了）
+	currentUser.RegistrationStep = 2
+	if err := s.userRepo.Update(ctx, currentUser); err != nil {
 		return false, "", err
 	}
 

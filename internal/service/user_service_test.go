@@ -301,6 +301,30 @@ func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 	mockRepo.AssertNotCalled(t, "Update")
 }
 
+func TestUserService_ProcessTextMessage_Step2_CrushReregistration(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	mockLikeRepo := new(MockLikeRepository)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "")
+	ctx := context.Background()
+
+	user := &model.User{
+		LineID:           "U123",
+		Name:             "テスト太郎",
+		Birthday:         "2000-01-15",
+		RegistrationStep: 2,
+	}
+
+	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
+
+	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
+
+	assert.NoError(t, err)
+	assert.Contains(t, replyText, "登録済みです")
+	assert.Contains(t, replyText, "好きな人を変更する場合は")
+	assert.Contains(t, replyText, "https://cupid-linebot.click/crush/register.html?user_id=U123")
+	mockRepo.AssertNotCalled(t, "Update")
+}
+
 func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
