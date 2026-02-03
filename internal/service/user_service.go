@@ -25,15 +25,17 @@ type userService struct {
 	likeRepo          repository.LikeRepository
 	liffVerifier      *liff.Verifier
 	liffRegisterURL   string
+	matchingService   MatchingService
 }
 
 // NewUserService は UserService の新しいインスタンスを作成する
-func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, liffVerifier *liff.Verifier, liffRegisterURL string) UserService {
+func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, liffVerifier *liff.Verifier, liffRegisterURL string, matchingService MatchingService) UserService {
 	return &userService{
 		userRepo:        userRepo,
 		likeRepo:        likeRepo,
 		liffVerifier:    liffVerifier,
 		liffRegisterURL: liffRegisterURL,
+		matchingService: matchingService,
 	}
 }
 
@@ -143,10 +145,10 @@ func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthd
 		return fmt.Errorf("failed to get or create user: %w", err)
 	}
 
-	// Update user info
+	// Update user info using domain method
 	user.Name = name
 	user.Birthday = birthday
-	user.RegistrationStep = 1 // Registration complete
+	user.CompleteUserRegistration()
 
 	if err := s.UpdateUser(ctx, user); err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
@@ -166,66 +168,28 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		return false, "", fmt.Errorf("user not found: %s", userID)
 	}
 
-	// 2. 自己登録チェック
-	if currentUser.Name == crushName && currentUser.Birthday == crushBirthday {
+	// 2. 自己登録チェック（domain method使用）
+	if currentUser.IsSamePerson(crushName, crushBirthday) {
 		return false, "", fmt.Errorf("cannot register yourself")
 	}
 
-	// 3. 好きな人を登録（UPSERT）
-	like := &model.Like{
-		FromUserID:  userID,
-		ToName:      crushName,
-		ToBirthday:  crushBirthday,
-		Matched:     false,
-	}
+	// 3. 好きな人を登録（factory method使用）
+	like := model.NewLike(userID, crushName, crushBirthday)
 	if err := s.likeRepo.Create(ctx, like); err != nil {
 		return false, "", err
 	}
 
-	// 3-1. RegistrationStepを2に更新（好きな人登録完了）
-	currentUser.RegistrationStep = 2
+	// 4. RegistrationStepを2に更新（domain method使用）
+	currentUser.CompleteCrushRegistration()
 	if err := s.userRepo.Update(ctx, currentUser); err != nil {
 		return false, "", err
 	}
 
-	// 4. マッチング判定
-	// 4-1. 好きな人がusersテーブルに存在するか確認
-	crushUser, err := s.userRepo.FindByNameAndBirthday(ctx, crushName, crushBirthday)
-	if err != nil {
-		return false, "", err
-	}
-	if crushUser == nil {
-		// 相手が未登録 → マッチング不可
-		return false, "", nil
-	}
-
-	// 4-2. 相手も自分を登録しているか確認
-	reverseLike, err := s.likeRepo.FindMatchingLike(ctx, crushUser.LineID, currentUser.Name, currentUser.Birthday)
-	if err != nil {
-		return false, "", err
-	}
-	if reverseLike == nil {
-		// 相手は自分を登録していない → マッチング不可
-		return false, "", nil
-	}
-
-	// 5. マッチング成立！
-	// 5-1. 自分のlikeレコードを取得してIDを確認
-	currentLike, err := s.likeRepo.FindByFromUserID(ctx, userID)
+	// 5. マッチング判定（MatchingService に委譲）
+	matched, matchedUserName, err = s.matchingService.CheckAndUpdateMatch(ctx, currentUser, like)
 	if err != nil {
 		return false, "", err
 	}
 
-	// 5-2. 両方のmatchedフラグを1に更新
-	if err := s.likeRepo.UpdateMatched(ctx, currentLike.ID, true); err != nil {
-		return false, "", err
-	}
-	if err := s.likeRepo.UpdateMatched(ctx, reverseLike.ID, true); err != nil {
-		return false, "", err
-	}
-
-	// 5-3. LINE通知を送信
-	// TODO: PushMessage実装後に追加
-
-	return true, crushName, nil
+	return matched, matchedUserName, nil
 }

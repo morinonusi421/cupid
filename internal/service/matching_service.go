@@ -7,15 +7,20 @@ import (
 	"github.com/morinonusi421/cupid/internal/repository"
 )
 
-// MatchingService はマッチング処理を行うドメインサービス
-type MatchingService struct {
+// MatchingService はマッチング処理を行うドメインサービスのインターフェース
+type MatchingService interface {
+	CheckAndUpdateMatch(ctx context.Context, currentUser *model.User, currentLike *model.Like) (matched bool, matchedUserName string, err error)
+}
+
+// matchingService は MatchingService の実装
+type matchingService struct {
 	userRepo repository.UserRepository
 	likeRepo repository.LikeRepository
 }
 
 // NewMatchingService は MatchingService の新しいインスタンスを作成する
-func NewMatchingService(userRepo repository.UserRepository, likeRepo repository.LikeRepository) *MatchingService {
-	return &MatchingService{
+func NewMatchingService(userRepo repository.UserRepository, likeRepo repository.LikeRepository) MatchingService {
+	return &matchingService{
 		userRepo: userRepo,
 		likeRepo: likeRepo,
 	}
@@ -32,7 +37,7 @@ func NewMatchingService(userRepo repository.UserRepository, likeRepo repository.
 //   - matched: マッチングが成立したかどうか
 //   - matchedUserName: マッチング相手の名前（マッチング成立時のみ）
 //   - err: エラー（あれば）
-func (s *MatchingService) CheckAndUpdateMatch(
+func (s *matchingService) CheckAndUpdateMatch(
 	ctx context.Context,
 	currentUser *model.User,
 	currentLike *model.Like,
