@@ -63,7 +63,9 @@ func main() {
 	// 例: https://cupid-linebot.click/liff/register.html
 	registerURL := os.Getenv("REGISTER_URL")
 
-	userService := service.NewUserService(userRepo, likeRepo, liffVerifier, registerURL)
+	// Service層
+	matchingService := service.NewMatchingService(userRepo, likeRepo)
+	userService := service.NewUserService(userRepo, likeRepo, liffVerifier, registerURL, matchingService)
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
 
 	// Registration API handler
