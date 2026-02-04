@@ -7,6 +7,7 @@ import (
 // Client はLINE Messaging APIクライアントのインターフェース
 type Client interface {
 	ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error)
+	PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error)
 }
 
 // client はLINE SDKをラップする実装
@@ -22,4 +23,9 @@ func NewClient(api *messaging_api.MessagingApiAPI) Client {
 // ReplyMessage はメッセージを返信する
 func (c *client) ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error) {
 	return c.api.ReplyMessage(request)
+}
+
+// PushMessage はメッセージをプッシュ送信する
+func (c *client) PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error) {
+	return c.api.PushMessage(request, "")
 }

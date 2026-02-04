@@ -65,6 +65,10 @@ func (m *mockLineBotClient) ReplyMessage(request *messaging_api.ReplyMessageRequ
 	return &messaging_api.ReplyMessageResponse{}, nil
 }
 
+func (m *mockLineBotClient) PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error) {
+	return &messaging_api.PushMessageResponse{}, nil
+}
+
 func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.RegistrationAPIHandler, *handler.CrushRegistrationAPIHandler, *sql.DB) {
 	// Initialize real database
 	db, err := database.InitDB(testDBFile)
