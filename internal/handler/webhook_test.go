@@ -29,6 +29,14 @@ func (m *MockLineBotClient) ReplyMessage(request *messaging_api.ReplyMessageRequ
 	return args.Get(0).(*messaging_api.ReplyMessageResponse), args.Error(1)
 }
 
+func (m *MockLineBotClient) PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error) {
+	args := m.Called(request)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*messaging_api.PushMessageResponse), args.Error(1)
+}
+
 // MockUserService は service.UserService の mock (webhook_test用)
 type MockUserService struct {
 	mock.Mock
