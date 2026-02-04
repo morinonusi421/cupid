@@ -182,12 +182,14 @@ func TestMatchingService_CheckAndUpdateMatch_Match(t *testing.T) {
 
 	// Execute
 	service := NewMatchingService(mockUserRepo, mockLikeRepo)
-	matched, matchedUserName, err := service.CheckAndUpdateMatch(ctx, currentUser, currentLike)
+	matched, matchedUser, err := service.CheckAndUpdateMatch(ctx, currentUser, currentLike)
 
 	// Assert
 	assert.NoError(t, err)
 	assert.True(t, matched)
-	assert.Equal(t, "Bob", matchedUserName)
+	assert.NotNil(t, matchedUser)
+	assert.Equal(t, "Bob", matchedUser.Name)
+	assert.Equal(t, "user2", matchedUser.LineID)
 	mockUserRepo.AssertExpectations(t)
 	mockLikeRepo.AssertExpectations(t)
 }

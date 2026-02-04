@@ -74,9 +74,12 @@ type MockMatchingService struct {
 	mock.Mock
 }
 
-func (m *MockMatchingService) CheckAndUpdateMatch(ctx context.Context, currentUser *model.User, currentLike *model.Like) (matched bool, matchedUserName string, err error) {
+func (m *MockMatchingService) CheckAndUpdateMatch(ctx context.Context, currentUser *model.User, currentLike *model.Like) (matched bool, matchedUser *model.User, err error) {
 	args := m.Called(ctx, currentUser, currentLike)
-	return args.Bool(0), args.String(1), args.Error(2)
+	if args.Get(1) == nil {
+		return args.Bool(0), nil, args.Error(2)
+	}
+	return args.Bool(0), args.Get(1).(*model.User), args.Error(2)
 }
 
 func TestUserService_RegisterUser(t *testing.T) {
@@ -388,7 +391,7 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 		return like.FromUserID == "U_A" &&
 			like.ToName == "サトウハナコ" &&
 			like.ToBirthday == "1992-02-02"
-	})).Return(false, "", nil)
+	})).Return(false, nil, nil)
 
 	matched, matchedName, err := service.RegisterCrush(ctx, "U_A", "サトウハナコ", "1992-02-02")
 
@@ -486,11 +489,16 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	})).Return(nil)
 
 	// MatchingService.CheckAndUpdateMatch がマッチを返す
+	matchedUser := &model.User{
+		LineID:   "U_A",
+		Name:     "ヤマダタロウ",
+		Birthday: "1990-01-01",
+	}
 	mockMatchingService.On("CheckAndUpdateMatch", ctx, currentUser, mock.MatchedBy(func(like *model.Like) bool {
 		return like.FromUserID == "U_B" &&
 			like.ToName == "ヤマダタロウ" &&
 			like.ToBirthday == "1990-01-01"
-	})).Return(true, "ヤマダタロウ", nil)
+	})).Return(true, matchedUser, nil)
 
 	matched, matchedName, err := service.RegisterCrush(ctx, "U_B", "ヤマダタロウ", "1990-01-01")
 
