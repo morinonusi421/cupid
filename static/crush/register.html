@@ -13,14 +13,15 @@
 
         <form id="register-form">
             <div class="form-group">
-                <label for="name">好きな人の名前</label>
+                <label for="name">好きな人の名前（カタカナフルネーム）</label>
                 <input
                     type="text"
                     id="name"
-                    placeholder="例: 山田太郎"
-                    maxlength="50"
+                    placeholder="例: ヤマダタロウ"
+                    maxlength="20"
                     required
                 >
+                <span id="name-error" class="error-message" style="display: none;"></span>
             </div>
 
             <div class="form-group">

@@ -120,3 +120,19 @@ button:disabled {
     color: #856404;
     border: 1px solid #ffeeba;
 }
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 4px;
+    display: block;
+}
+
+input.error {
+    border-color: #dc3545 !important;
+}
+
+input.error:focus {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
