@@ -553,3 +553,60 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	mockMatchingService.AssertExpectations(t)
 	mockLineBotClient.AssertExpectations(t)
 }
+
+func TestUserService_RegisterCrush_Matched_NotificationFails(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	mockLikeRepo := new(MockLikeRepository)
+	mockMatchingService := new(MockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
+	ctx := context.Background()
+
+	currentUser := &model.User{
+		LineID:           "U_B",
+		Name:             "サトウハナコ",
+		Birthday:         "1992-02-02",
+		RegistrationStep: 1,
+	}
+
+	// FindByLineID が既存ユーザーを返す
+	mockRepo.On("FindByLineID", ctx, "U_B").Return(currentUser, nil)
+
+	// Like.Create が呼ばれることを期待
+	mockLikeRepo.On("Create", ctx, mock.MatchedBy(func(like *model.Like) bool {
+		return like.FromUserID == "U_B" &&
+			like.ToName == "ヤマダタロウ" &&
+			like.ToBirthday == "1990-01-01"
+	})).Return(nil)
+
+	// User.Update が呼ばれることを期待（CompleteCrushRegistration後）
+	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
+		return u.LineID == "U_B" && u.RegistrationStep == 2
+	})).Return(nil)
+
+	// MatchingService.CheckAndUpdateMatch がマッチを返す
+	matchedUser := &model.User{
+		LineID:   "U_A",
+		Name:     "ヤマダタロウ",
+		Birthday: "1990-01-01",
+	}
+	mockMatchingService.On("CheckAndUpdateMatch", ctx, currentUser, mock.MatchedBy(func(like *model.Like) bool {
+		return like.FromUserID == "U_B" &&
+			like.ToName == "ヤマダタロウ" &&
+			like.ToBirthday == "1990-01-01"
+	})).Return(true, matchedUser, nil)
+
+	// PushMessage が2回呼ばれるがエラーを返す
+	mockLineBotClient.On("PushMessage", mock.Anything).Return(nil, errors.New("notification failed")).Times(2)
+
+	matched, matchedName, err := service.RegisterCrush(ctx, "U_B", "ヤマダタロウ", "1990-01-01")
+
+	// 通知失敗してもマッチ成立は正常に返される
+	assert.NoError(t, err)
+	assert.True(t, matched)
+	assert.Equal(t, "ヤマダタロウ", matchedName)
+	mockRepo.AssertExpectations(t)
+	mockLikeRepo.AssertExpectations(t)
+	mockMatchingService.AssertExpectations(t)
+	mockLineBotClient.AssertExpectations(t)
+}
