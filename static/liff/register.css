@@ -114,3 +114,19 @@ button:disabled {
     color: #721c24;
     border: 1px solid #f5c6cb;
 }
+
+/* Input validation error styles */
+.error-message {
+    color: #d32f2f;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+input.error {
+    border-color: #d32f2f;
+}
+
+input.error:focus {
+    border-color: #d32f2f;
+}
