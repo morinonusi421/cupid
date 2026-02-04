@@ -46,7 +46,7 @@ func (r *likeRepository) Create(ctx context.Context, like *model.Like) error {
 	entityLike.ToBirthday = cols[entities.LikeColumns.ToBirthday].(string)
 	entityLike.Matched = int64(cols[entities.LikeColumns.Matched].(int))
 
-	return entityLike.Upsert(
+	err := entityLike.Upsert(
 		ctx,
 		r.db,
 		true, // updateOnConflict
@@ -58,6 +58,13 @@ func (r *likeRepository) Create(ctx context.Context, like *model.Like) error {
 		),
 		boil.Infer(),
 	)
+	if err != nil {
+		return err
+	}
+
+	// Upsert後に自動採番されたIDをlikeオブジェクトに反映
+	like.ID = entityLike.ID.Int64
+	return nil
 }
 
 // FindByFromUserID は登録者IDで検索
