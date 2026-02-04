@@ -30,9 +30,9 @@ const (
 )
 
 var (
-	channelSecret      string
-	channelAccessToken string
-	registerURL        string
+	channelSecret string
+	channelToken  string
+	registerURL   string
 )
 
 func TestMain(m *testing.M) {
@@ -53,7 +53,7 @@ func TestMain(m *testing.M) {
 	}
 
 	channelSecret = os.Getenv("LINE_CHANNEL_SECRET")
-	channelAccessToken = os.Getenv("LINE_CHANNEL_ACCESS_TOKEN")
+	channelToken = os.Getenv("LINE_CHANNEL_TOKEN")
 	registerURL = os.Getenv("REGISTER_URL")
 
 	// Clean up test DB before and after
@@ -77,8 +77,8 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.Regis
 
 	// Initialize LINE Bot client (real or mock)
 	var lineBotClient linebot.Client
-	if channelAccessToken != "" && os.Getenv("SKIP_LINE_API") != "true" {
-		botAPI, err := messaging_api.NewMessagingApiAPI(channelAccessToken)
+	if channelToken != "" && os.Getenv("SKIP_LINE_API") != "true" {
+		botAPI, err := messaging_api.NewMessagingApiAPI(channelToken)
 		require.NoError(t, err)
 		lineBotClient = linebot.NewClient(botAPI)
 	} else {
@@ -90,7 +90,10 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.Regis
 	likeRepo := repository.NewLikeRepository(db)
 
 	// Initialize LIFF verifier (can be nil for webhook tests)
-	liffVerifier := liff.NewVerifier(channelAccessToken)
+	var liffVerifier *liff.Verifier
+	if liffChannelID := os.Getenv("LINE_LIFF_CHANNEL_ID"); liffChannelID != "" {
+		liffVerifier = liff.NewVerifier(liffChannelID)
+	}
 
 	// Initialize real services
 	matchingService := service.NewMatchingService(userRepo, likeRepo)
