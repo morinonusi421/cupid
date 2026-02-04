@@ -146,7 +146,7 @@ func (s *userService) handleInitialMessage(ctx context.Context, user *model.User
 func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error {
 	// Validate name format
 	if ok, errMsg := model.IsValidName(name); !ok {
-		return fmt.Errorf("invalid name: %s", errMsg)
+		return fmt.Errorf("%s", errMsg)
 	}
 
 	// Get or create user
@@ -185,7 +185,7 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 
 	// 3. 名前のバリデーション
 	if valid, errMsg := model.IsValidName(crushName); !valid {
-		return false, "", fmt.Errorf("invalid crush name: %s", errMsg)
+		return false, "", fmt.Errorf("%s", errMsg)
 	}
 
 	// 4. 好きな人を登録（factory method使用）

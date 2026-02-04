@@ -386,7 +386,7 @@ func TestUserService_RegisterFromLIFF_InvalidName(t *testing.T) {
 	err := service.RegisterFromLIFF(ctx, "U123", "山田太郎", "2000-01-15")
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid name")
+	assert.Contains(t, err.Error(), "名前は全角カタカナ")
 	// Update は呼ばれないはず（バリデーションで弾かれる）
 	mockRepo.AssertNotCalled(t, "Update")
 }
@@ -489,7 +489,7 @@ func TestUserService_RegisterCrush_InvalidCrushName(t *testing.T) {
 	_, _, err := service.RegisterCrush(ctx, "U_INVALID", "やまだはなこ", "1995-05-20")
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid crush name")
+	assert.Contains(t, err.Error(), "名前は全角カタカナ")
 	mockRepo.AssertExpectations(t)
 	// Like.Create や MatchingService は呼ばれないはず（バリデーションで弾かれる）
 	mockLikeRepo.AssertNotCalled(t, "Create")

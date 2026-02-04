@@ -331,7 +331,7 @@ func TestIntegration_ValidationError(t *testing.T) {
 				"name":     "山田太郎",
 				"birthday": "1990-01-01",
 			},
-			expectedMsg: "registration failed",
+			expectedMsg: "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
 		},
 		{
 			name: "ひらがなを含む名前",
@@ -340,7 +340,7 @@ func TestIntegration_ValidationError(t *testing.T) {
 				"name":     "やまだたろう",
 				"birthday": "1990-01-01",
 			},
-			expectedMsg: "registration failed",
+			expectedMsg: "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
 		},
 	}
 
@@ -355,7 +355,7 @@ func TestIntegration_ValidationError(t *testing.T) {
 			rec := httptest.NewRecorder()
 			registrationAPIHandler.Register(rec, req)
 
-			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
 
 			var response map[string]interface{}
 			err = json.Unmarshal(rec.Body.Bytes(), &response)

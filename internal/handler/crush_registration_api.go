@@ -68,8 +68,8 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "registration failed"})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 

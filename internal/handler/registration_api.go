@@ -49,8 +49,8 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 	// Save user data using userService
 	if err := h.userService.RegisterFromLIFF(r.Context(), req.UserID, req.Name, req.Birthday); err != nil {
 		log.Printf("Failed to register user: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "registration failed"})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
