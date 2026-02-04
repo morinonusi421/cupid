@@ -26,6 +26,7 @@ func (c *client) ReplyMessage(request *messaging_api.ReplyMessageRequest) (*mess
 }
 
 // PushMessage はメッセージをプッシュ送信する
+// retry keyは空文字列を指定（リトライ機能は使用しない）
 func (c *client) PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error) {
 	return c.api.PushMessage(request, "")
 }
