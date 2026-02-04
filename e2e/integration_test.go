@@ -1,0 +1,355 @@
+package e2e
+
+import (
+	"bytes"
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+
+	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
+	"github.com/morinonusi421/cupid/internal/handler"
+	"github.com/morinonusi421/cupid/internal/liff"
+	"github.com/morinonusi421/cupid/internal/linebot"
+	"github.com/morinonusi421/cupid/internal/model"
+	"github.com/morinonusi421/cupid/internal/repository"
+	"github.com/morinonusi421/cupid/internal/service"
+	"github.com/morinonusi421/cupid/pkg/database"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	testDBFile = "cupid_test.db"
+)
+
+var (
+	channelSecret      string
+	channelAccessToken string
+	registerURL        string
+)
+
+func TestMain(m *testing.M) {
+	// Load .env from project root
+	if data, err := os.ReadFile(".env"); err == nil {
+		lines := bytes.Split(data, []byte("\n"))
+		for _, line := range lines {
+			if len(line) == 0 || line[0] == '#' {
+				continue
+			}
+			parts := bytes.SplitN(line, []byte("="), 2)
+			if len(parts) == 2 {
+				key := string(bytes.TrimSpace(parts[0]))
+				value := string(bytes.TrimSpace(parts[1]))
+				os.Setenv(key, value)
+			}
+		}
+	}
+
+	channelSecret = os.Getenv("LINE_CHANNEL_SECRET")
+	channelAccessToken = os.Getenv("LINE_CHANNEL_ACCESS_TOKEN")
+	registerURL = os.Getenv("REGISTER_URL")
+
+	// Clean up test DB before and after
+	os.Remove(testDBFile)
+	code := m.Run()
+	os.Remove(testDBFile)
+	os.Exit(code)
+}
+
+// mockLineBotClient is a mock implementation for CI/CD
+type mockLineBotClient struct{}
+
+func (m *mockLineBotClient) ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error) {
+	return &messaging_api.ReplyMessageResponse{}, nil
+}
+
+func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.RegistrationAPIHandler, *handler.CrushRegistrationAPIHandler, *sql.DB) {
+	// Initialize real database
+	db, err := database.InitDB(testDBFile)
+	require.NoError(t, err)
+
+	// Initialize LINE Bot client (real or mock)
+	var lineBotClient linebot.Client
+	if channelAccessToken != "" && os.Getenv("SKIP_LINE_API") != "true" {
+		botAPI, err := messaging_api.NewMessagingApiAPI(channelAccessToken)
+		require.NoError(t, err)
+		lineBotClient = linebot.NewClient(botAPI)
+	} else {
+		lineBotClient = &mockLineBotClient{}
+	}
+
+	// Initialize real repositories
+	userRepo := repository.NewUserRepository(db)
+	likeRepo := repository.NewLikeRepository(db)
+
+	// Initialize LIFF verifier (can be nil for webhook tests)
+	liffVerifier := liff.NewVerifier(channelAccessToken)
+
+	// Initialize real services
+	matchingService := service.NewMatchingService(userRepo, likeRepo)
+	userService := service.NewUserService(userRepo, likeRepo, liffVerifier, registerURL, matchingService)
+
+	// Initialize real handlers
+	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
+	registrationAPIHandler := handler.NewRegistrationAPIHandler(userService)
+	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService)
+
+	return webhookHandler, registrationAPIHandler, crushRegistrationAPIHandler, db
+}
+
+func generateSignature(body []byte) string {
+	mac := hmac.New(sha256.New, []byte(channelSecret))
+	mac.Write(body)
+	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
+}
+
+func sendWebhook(t *testing.T, handler *handler.WebhookHandler, events []interface{}) *httptest.ResponseRecorder {
+	body, err := json.Marshal(map[string]interface{}{
+		"events": events,
+	})
+	require.NoError(t, err)
+
+	signature := generateSignature(body)
+
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-Line-Signature", signature)
+
+	rec := httptest.NewRecorder()
+	handler.Handle(rec, req)
+
+	return rec
+}
+
+func TestIntegration_UserRegistrationFlow(t *testing.T) {
+	if channelSecret == "" {
+		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
+	}
+
+	webhookHandler, registrationAPIHandler, _, db := setupTestEnvironment(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	userID := "test-user-001"
+
+	// Step 1: Send message event via webhook
+	messageEvent := map[string]interface{}{
+		"type": "message",
+		"source": map[string]interface{}{
+			"type":   "user",
+			"userId": userID,
+		},
+		"replyToken": "test-reply-token-001",
+		"message": map[string]interface{}{
+			"type": "text",
+			"text": "hello",
+		},
+	}
+
+	rec := sendWebhook(t, webhookHandler, []interface{}{messageEvent})
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// Step 2: Register user via LIFF API
+	registrationReq := map[string]interface{}{
+		"user_id":  userID,
+		"name":     "ヤマダタロウ",
+		"birthday": "1990-01-01",
+	}
+	body, err := json.Marshal(registrationReq)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	rec = httptest.NewRecorder()
+	registrationAPIHandler.Register(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// Step 3: Verify user is saved in DB
+	userRepo := repository.NewUserRepository(db)
+	user, err := userRepo.FindByLineID(ctx, userID)
+	require.NoError(t, err)
+	assert.NotNil(t, user)
+	assert.Equal(t, "ヤマダタロウ", user.Name)
+	assert.Equal(t, "1990-01-01", user.Birthday)
+	assert.Equal(t, 1, user.RegistrationStep)
+}
+
+func TestIntegration_CrushRegistrationNoMatch(t *testing.T) {
+	if channelSecret == "" {
+		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
+	}
+
+	_, _, crushHandler, db := setupTestEnvironment(t)
+	defer db.Close()
+
+	ctx := context.Background()
+
+	// Create a test user
+	userRepo := repository.NewUserRepository(db)
+	user := &model.User{
+		LineID:           "test-user-002",
+		Name:             "タナカハナコ",
+		Birthday:         "1995-05-05",
+		RegistrationStep: 0,
+	}
+	err := userRepo.Create(ctx, user)
+	require.NoError(t, err)
+
+	// Update to step 1
+	user, _ = userRepo.FindByLineID(ctx, "test-user-002")
+	user.CompleteUserRegistration()
+	err = userRepo.Update(ctx, user)
+	require.NoError(t, err)
+
+	// Register crush (no matching)
+	crushReq := map[string]interface{}{
+		"user_id":        "test-user-002",
+		"crush_name":     "サトウケンタ",
+		"crush_birthday": "1992-03-15",
+	}
+	body, err := json.Marshal(crushReq)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/crush/register", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	rec := httptest.NewRecorder()
+	crushHandler.RegisterCrush(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var response map[string]interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.False(t, response["matched"].(bool))
+}
+
+func TestIntegration_CrushRegistrationMatch(t *testing.T) {
+	if channelSecret == "" {
+		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
+	}
+
+	_, _, crushHandler, db := setupTestEnvironment(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	userRepo := repository.NewUserRepository(db)
+	likeRepo := repository.NewLikeRepository(db)
+
+	// Create User A
+	userA := &model.User{
+		LineID:           "test-user-a",
+		Name:             "スズキイチロウ",
+		Birthday:         "1988-08-08",
+		RegistrationStep: 0,
+	}
+	err := userRepo.Create(ctx, userA)
+	require.NoError(t, err)
+	userA, _ = userRepo.FindByLineID(ctx, "test-user-a")
+	userA.CompleteUserRegistration()
+	err = userRepo.Update(ctx, userA)
+	require.NoError(t, err)
+
+	// Create User B
+	userB := &model.User{
+		LineID:           "test-user-b",
+		Name:             "コバヤシミキ",
+		Birthday:         "1990-12-25",
+		RegistrationStep: 0,
+	}
+	err = userRepo.Create(ctx, userB)
+	require.NoError(t, err)
+	userB, _ = userRepo.FindByLineID(ctx, "test-user-b")
+	userB.CompleteUserRegistration()
+	err = userRepo.Update(ctx, userB)
+	require.NoError(t, err)
+
+	// User A registers User B as crush
+	likeA := model.NewLike("test-user-a", "コバヤシミキ", "1990-12-25")
+	err = likeRepo.Create(ctx, likeA)
+	require.NoError(t, err)
+
+	// User B registers User A as crush (should trigger match)
+	crushReq := map[string]interface{}{
+		"user_id":        "test-user-b",
+		"crush_name":     "スズキイチロウ",
+		"crush_birthday": "1988-08-08",
+	}
+	body, err := json.Marshal(crushReq)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/crush/register", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	rec := httptest.NewRecorder()
+	crushHandler.RegisterCrush(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var response map[string]interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.True(t, response["matched"].(bool))
+}
+
+func TestIntegration_ValidationError(t *testing.T) {
+	if channelSecret == "" {
+		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
+	}
+
+	_, registrationAPIHandler, _, db := setupTestEnvironment(t)
+	defer db.Close()
+
+	tests := []struct {
+		name        string
+		requestBody map[string]interface{}
+		expectedMsg string
+	}{
+		{
+			name: "漢字を含む名前",
+			requestBody: map[string]interface{}{
+				"user_id":  "test-user-kanji",
+				"name":     "山田太郎",
+				"birthday": "1990-01-01",
+			},
+			expectedMsg: "registration failed",
+		},
+		{
+			name: "ひらがなを含む名前",
+			requestBody: map[string]interface{}{
+				"user_id":  "test-user-hiragana",
+				"name":     "やまだたろう",
+				"birthday": "1990-01-01",
+			},
+			expectedMsg: "registration failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := json.Marshal(tt.requestBody)
+			require.NoError(t, err)
+
+			req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			rec := httptest.NewRecorder()
+			registrationAPIHandler.Register(rec, req)
+
+			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+			var response map[string]interface{}
+			err = json.Unmarshal(rec.Body.Bytes(), &response)
+			require.NoError(t, err)
+			assert.Contains(t, response["error"], tt.expectedMsg)
+		})
+	}
+}
