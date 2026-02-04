@@ -317,15 +317,41 @@ func TestUserService_RegisterFromLIFF(t *testing.T) {
 	// Update が呼ばれることを期待（CompleteUserRegistration後の状態）
 	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U123" &&
-			u.Name == "テスト太郎" &&
+			u.Name == "テストタロウ" &&
 			u.Birthday == "2000-01-15" &&
 			u.RegistrationStep == 1
 	})).Return(nil)
 
-	err := service.RegisterFromLIFF(ctx, "U123", "テスト太郎", "2000-01-15")
+	err := service.RegisterFromLIFF(ctx, "U123", "テストタロウ", "2000-01-15")
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
+}
+
+func TestUserService_RegisterFromLIFF_InvalidName(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	mockLikeRepo := new(MockLikeRepository)
+	mockMatchingService := new(MockMatchingService)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	ctx := context.Background()
+
+	user := &model.User{
+		LineID:           "U123",
+		Name:             "",
+		Birthday:         "",
+		RegistrationStep: 0,
+	}
+
+	// FindByLineID が既存ユーザーを返す
+	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
+
+	// 漢字を含む無効な名前で登録を試みる
+	err := service.RegisterFromLIFF(ctx, "U123", "山田太郎", "2000-01-15")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid name")
+	// Update は呼ばれないはず（バリデーションで弾かれる）
+	mockRepo.AssertNotCalled(t, "Update")
 }
 
 func TestUserService_RegisterCrush_NoMatch(t *testing.T) {

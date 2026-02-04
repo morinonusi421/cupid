@@ -139,6 +139,11 @@ func (s *userService) handleInitialMessage(ctx context.Context, user *model.User
 
 // RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する
 func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error {
+	// Validate name format
+	if ok, errMsg := model.IsValidName(name); !ok {
+		return fmt.Errorf("invalid name: %s", errMsg)
+	}
+
 	// Get or create user
 	user, err := s.GetOrCreateUser(ctx, userID, "")
 	if err != nil {
