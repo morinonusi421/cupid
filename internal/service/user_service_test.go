@@ -541,7 +541,7 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	// PushMessage が2回呼ばれることを期待（現在のユーザーと相手ユーザー）
 	mockLineBotClient.On("PushMessage", mock.MatchedBy(func(req *messaging_api.PushMessageRequest) bool {
 		return req.To == "U_B" || req.To == "U_A"
-	})).Return(&messaging_api.PushMessageResponse{}, nil)
+	})).Return(&messaging_api.PushMessageResponse{}, nil).Times(2)
 
 	matched, matchedName, err := service.RegisterCrush(ctx, "U_B", "ヤマダタロウ", "1990-01-01")
 
@@ -551,4 +551,5 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 	mockLikeRepo.AssertExpectations(t)
 	mockMatchingService.AssertExpectations(t)
+	mockLineBotClient.AssertExpectations(t)
 }
