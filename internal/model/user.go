@@ -1,5 +1,7 @@
 package model
 
+import "regexp"
+
 // User はユーザーのドメインモデル
 // TODO: Model層の充実化 - Validationメソッドとbusiness logicを追加
 //   - IsValidName(), IsValidBirthday() などのValidation
@@ -38,4 +40,25 @@ func (u *User) IsRegistrationComplete() bool {
 // CompleteUserRegistration は、ユーザー登録を完了する
 func (u *User) CompleteUserRegistration() {
 	u.RegistrationStep = 1
+}
+
+// IsValidName は名前が有効なカタカナ文字列かをチェックする
+// 2〜20文字の全角カタカナ（スペース不可）であること
+// 返り値: (有効かどうか, エラーメッセージ)
+func IsValidName(name string) (bool, string) {
+	runes := []rune(name)
+	length := len(runes)
+
+	// 長さチェック: 2〜20文字
+	if length < 2 || length > 20 {
+		return false, "名前は2〜20文字で入力してください"
+	}
+
+	// カタカナチェック: 全角カタカナのみ（長音符を含む）
+	katakanaPattern := regexp.MustCompile(`^[ァ-ヴー]+$`)
+	if !katakanaPattern.MatchString(name) {
+		return false, "名前は全角カタカナ2〜20文字で入力してください（スペース不可）"
+	}
+
+	return true, ""
 }
