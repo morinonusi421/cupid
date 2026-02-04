@@ -178,19 +178,24 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		return false, "", fmt.Errorf("cannot register yourself")
 	}
 
-	// 3. 好きな人を登録（factory method使用）
+	// 3. 名前のバリデーション
+	if valid, errMsg := model.IsValidName(crushName); !valid {
+		return false, "", fmt.Errorf("invalid crush name: %s", errMsg)
+	}
+
+	// 4. 好きな人を登録（factory method使用）
 	like := model.NewLike(userID, crushName, crushBirthday)
 	if err := s.likeRepo.Create(ctx, like); err != nil {
 		return false, "", err
 	}
 
-	// 4. RegistrationStepを2に更新（domain method使用）
+	// 5. RegistrationStepを2に更新（domain method使用）
 	currentUser.CompleteCrushRegistration()
 	if err := s.userRepo.Update(ctx, currentUser); err != nil {
 		return false, "", err
 	}
 
-	// 5. マッチング判定（MatchingService に委譲）
+	// 6. マッチング判定（MatchingService に委譲）
 	matched, matchedUserName, err = s.matchingService.CheckAndUpdateMatch(ctx, currentUser, like)
 	if err != nil {
 		return false, "", err

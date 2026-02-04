@@ -363,7 +363,7 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 
 	currentUser := &model.User{
 		LineID:           "U_A",
-		Name:             "山田太郎",
+		Name:             "ヤマダタロウ",
 		Birthday:         "1990-01-01",
 		RegistrationStep: 1,
 	}
@@ -374,7 +374,7 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 	// Like.Create が呼ばれることを期待
 	mockLikeRepo.On("Create", ctx, mock.MatchedBy(func(like *model.Like) bool {
 		return like.FromUserID == "U_A" &&
-			like.ToName == "佐藤花子" &&
+			like.ToName == "サトウハナコ" &&
 			like.ToBirthday == "1992-02-02"
 	})).Return(nil)
 
@@ -386,11 +386,11 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 	// MatchingService.CheckAndUpdateMatch がマッチなしを返す
 	mockMatchingService.On("CheckAndUpdateMatch", ctx, currentUser, mock.MatchedBy(func(like *model.Like) bool {
 		return like.FromUserID == "U_A" &&
-			like.ToName == "佐藤花子" &&
+			like.ToName == "サトウハナコ" &&
 			like.ToBirthday == "1992-02-02"
 	})).Return(false, "", nil)
 
-	matched, matchedName, err := service.RegisterCrush(ctx, "U_A", "佐藤花子", "1992-02-02")
+	matched, matchedName, err := service.RegisterCrush(ctx, "U_A", "サトウハナコ", "1992-02-02")
 
 	assert.NoError(t, err)
 	assert.False(t, matched)
@@ -409,7 +409,7 @@ func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
 
 	user := &model.User{
 		LineID:           "U_SELF",
-		Name:             "山田太郎",
+		Name:             "ヤマダタロウ",
 		Birthday:         "1990-01-01",
 		RegistrationStep: 1,
 	}
@@ -418,12 +418,40 @@ func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
 	mockRepo.On("FindByLineID", ctx, "U_SELF").Return(user, nil)
 
 	// 自分自身を登録しようとする
-	_, _, err := service.RegisterCrush(ctx, "U_SELF", "山田太郎", "1990-01-01")
+	_, _, err := service.RegisterCrush(ctx, "U_SELF", "ヤマダタロウ", "1990-01-01")
 
 	assert.Error(t, err)
 	assert.Equal(t, "cannot register yourself", err.Error())
 	mockRepo.AssertExpectations(t)
 	// Like.Create や MatchingService は呼ばれないはず
+	mockLikeRepo.AssertNotCalled(t, "Create")
+	mockMatchingService.AssertNotCalled(t, "CheckAndUpdateMatch")
+}
+
+func TestUserService_RegisterCrush_InvalidCrushName(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	mockLikeRepo := new(MockLikeRepository)
+	mockMatchingService := new(MockMatchingService)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	ctx := context.Background()
+
+	user := &model.User{
+		LineID:           "U_INVALID",
+		Name:             "ヤマダタロウ",
+		Birthday:         "2000-01-15",
+		RegistrationStep: 1,
+	}
+
+	// FindByLineID が既存ユーザーを返す
+	mockRepo.On("FindByLineID", ctx, "U_INVALID").Return(user, nil)
+
+	// ひらがなの無効な名前で登録を試みる
+	_, _, err := service.RegisterCrush(ctx, "U_INVALID", "やまだはなこ", "1995-05-20")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid crush name")
+	mockRepo.AssertExpectations(t)
+	// Like.Create や MatchingService は呼ばれないはず（バリデーションで弾かれる）
 	mockLikeRepo.AssertNotCalled(t, "Create")
 	mockMatchingService.AssertNotCalled(t, "CheckAndUpdateMatch")
 }
@@ -437,7 +465,7 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 
 	currentUser := &model.User{
 		LineID:           "U_B",
-		Name:             "佐藤花子",
+		Name:             "サトウハナコ",
 		Birthday:         "1992-02-02",
 		RegistrationStep: 1,
 	}
@@ -448,7 +476,7 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	// Like.Create が呼ばれることを期待
 	mockLikeRepo.On("Create", ctx, mock.MatchedBy(func(like *model.Like) bool {
 		return like.FromUserID == "U_B" &&
-			like.ToName == "山田太郎" &&
+			like.ToName == "ヤマダタロウ" &&
 			like.ToBirthday == "1990-01-01"
 	})).Return(nil)
 
@@ -460,15 +488,15 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	// MatchingService.CheckAndUpdateMatch がマッチを返す
 	mockMatchingService.On("CheckAndUpdateMatch", ctx, currentUser, mock.MatchedBy(func(like *model.Like) bool {
 		return like.FromUserID == "U_B" &&
-			like.ToName == "山田太郎" &&
+			like.ToName == "ヤマダタロウ" &&
 			like.ToBirthday == "1990-01-01"
-	})).Return(true, "山田太郎", nil)
+	})).Return(true, "ヤマダタロウ", nil)
 
-	matched, matchedName, err := service.RegisterCrush(ctx, "U_B", "山田太郎", "1990-01-01")
+	matched, matchedName, err := service.RegisterCrush(ctx, "U_B", "ヤマダタロウ", "1990-01-01")
 
 	assert.NoError(t, err)
 	assert.True(t, matched)
-	assert.Equal(t, "山田太郎", matchedName)
+	assert.Equal(t, "ヤマダタロウ", matchedName)
 	mockRepo.AssertExpectations(t)
 	mockLikeRepo.AssertExpectations(t)
 	mockMatchingService.AssertExpectations(t)
