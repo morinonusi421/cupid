@@ -1,9 +1,10 @@
-.PHONY: help build test generate deploy status logs restart reset-db-local reset-db migrate-up migrate-down migrate-status
+.PHONY: help build test test-integration generate deploy status logs restart reset-db-local reset-db migrate-up migrate-down migrate-status
 
 help:
 	@echo "Available commands:"
 	@echo "  make build          - Build the Go binary locally"
 	@echo "  make test           - Run tests (excluding entities/)"
+	@echo "  make test-integration - Run backend integration tests (e2e/)"
 	@echo "  make generate       - Generate entities from DB schema (sqlboiler)"
 	@echo "  make migrate-up     - Run database migrations (local)"
 	@echo "  make migrate-down   - Rollback last migration (local)"
@@ -20,6 +21,9 @@ build:
 
 test:
 	go test $$(go list ./... | grep -v /entities)
+
+test-integration:
+	go test ./e2e -v
 
 generate:
 	sqlboiler sqlite3 --no-auto-timestamps
