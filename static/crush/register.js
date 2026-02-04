@@ -110,16 +110,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
         }
 
         // 成功
-        showMessage(data.message, data.matched ? 'matched' : 'success');
-
-        // マッチングした場合は3秒後にLINEに戻る
-        if (data.matched) {
-            setTimeout(() => {
-                if (window.liff && window.liff.isInClient()) {
-                    window.liff.closeWindow();
-                }
-            }, 3000);
-        }
+        showMessage('登録が完了しました。結果はLINEでお知らせします。', 'success');
 
     } catch (error) {
         console.error('Registration error:', error);
