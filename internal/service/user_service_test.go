@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -82,11 +83,33 @@ func (m *MockMatchingService) CheckAndUpdateMatch(ctx context.Context, currentUs
 	return args.Bool(0), args.Get(1).(*model.User), args.Error(2)
 }
 
+// MockLineBotClient は linebot.Client の mock
+type MockLineBotClient struct {
+	mock.Mock
+}
+
+func (m *MockLineBotClient) ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error) {
+	args := m.Called(request)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*messaging_api.ReplyMessageResponse), args.Error(1)
+}
+
+func (m *MockLineBotClient) PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error) {
+	args := m.Called(request)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*messaging_api.PushMessageResponse), args.Error(1)
+}
+
 func TestUserService_RegisterUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	// Create が呼ばれることを期待
@@ -103,7 +126,8 @@ func TestUserService_RegisterUser_Error(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	// Create がエラーを返すことを期待
@@ -119,7 +143,8 @@ func TestUserService_GetOrCreateUser_ExistingUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	existingUser := &model.User{
@@ -142,7 +167,8 @@ func TestUserService_GetOrCreateUser_NewUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	newUser := &model.User{
@@ -173,7 +199,8 @@ func TestUserService_GetOrCreateUser_FindError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	// FindByLineID がエラーを返すことを期待
@@ -190,7 +217,8 @@ func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	// FindByLineID が nil を返す（ユーザーが存在しない）
@@ -213,7 +241,8 @@ func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
 	registerURL := "https://cupid-linebot.click/liff/register.html"
-	service := NewUserService(mockRepo, mockLikeRepo, nil, registerURL, mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, registerURL, mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -239,7 +268,8 @@ func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -263,7 +293,8 @@ func TestUserService_ProcessTextMessage_Step2_CrushReregistration(t *testing.T) 
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -288,7 +319,8 @@ func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(nil, errors.New("db error"))
@@ -304,7 +336,8 @@ func TestUserService_RegisterFromLIFF(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -335,7 +368,8 @@ func TestUserService_RegisterFromLIFF_InvalidName(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -361,7 +395,8 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	currentUser := &model.User{
@@ -407,7 +442,8 @@ func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -435,7 +471,8 @@ func TestUserService_RegisterCrush_InvalidCrushName(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -463,7 +500,8 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, nil, "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	currentUser := &model.User{
@@ -499,6 +537,11 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 			like.ToName == "ヤマダタロウ" &&
 			like.ToBirthday == "1990-01-01"
 	})).Return(true, matchedUser, nil)
+
+	// PushMessage が2回呼ばれることを期待（現在のユーザーと相手ユーザー）
+	mockLineBotClient.On("PushMessage", mock.MatchedBy(func(req *messaging_api.PushMessageRequest) bool {
+		return req.To == "U_B" || req.To == "U_A"
+	})).Return(&messaging_api.PushMessageResponse{}, nil)
 
 	matched, matchedName, err := service.RegisterCrush(ctx, "U_B", "ヤマダタロウ", "1990-01-01")
 

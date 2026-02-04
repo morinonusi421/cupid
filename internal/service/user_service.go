@@ -3,8 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 
+	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/liff"
+	"github.com/morinonusi421/cupid/internal/linebot"
 	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/morinonusi421/cupid/internal/repository"
 )
@@ -26,16 +29,18 @@ type userService struct {
 	liffVerifier      *liff.Verifier
 	liffRegisterURL   string
 	matchingService   MatchingService
+	lineBotClient     linebot.Client
 }
 
 // NewUserService は UserService の新しいインスタンスを作成する
-func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, liffVerifier *liff.Verifier, liffRegisterURL string, matchingService MatchingService) UserService {
+func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, liffVerifier *liff.Verifier, liffRegisterURL string, matchingService MatchingService, lineBotClient linebot.Client) UserService {
 	return &userService{
 		userRepo:        userRepo,
 		likeRepo:        likeRepo,
 		liffVerifier:    liffVerifier,
 		liffRegisterURL: liffRegisterURL,
 		matchingService: matchingService,
+		lineBotClient:   lineBotClient,
 	}
 }
 
@@ -202,10 +207,43 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		return false, "", fmt.Errorf("matching check failed: %w", err)
 	}
 
+	// マッチした場合、両方のユーザーにLINE通知を送信
+	if matched {
+		// 現在のユーザーに通知
+		if err := s.sendMatchNotification(ctx, currentUser, matchedUser); err != nil {
+			log.Printf("Failed to send match notification to %s: %v", currentUser.LineID, err)
+			// エラーをログに記録するが、処理は継続
+		}
+
+		// 相手ユーザーに通知
+		if err := s.sendMatchNotification(ctx, matchedUser, currentUser); err != nil {
+			log.Printf("Failed to send match notification to %s: %v", matchedUser.LineID, err)
+			// エラーをログに記録するが、処理は継続
+		}
+	}
+
 	matchedUserName = ""
 	if matchedUser != nil {
 		matchedUserName = matchedUser.Name
 	}
 
 	return matched, matchedUserName, nil
+}
+
+// sendMatchNotification はマッチ成立時にLINE Push通知を送信する
+func (s *userService) sendMatchNotification(ctx context.Context, toUser *model.User, matchedWithUser *model.User) error {
+	message := fmt.Sprintf("相思相愛が成立しました！\n相手：%s", matchedWithUser.Name)
+
+	request := &messaging_api.PushMessageRequest{
+		To: toUser.LineID,
+		Messages: []messaging_api.MessageInterface{
+			messaging_api.TextMessage{
+				Text: message,
+			},
+		},
+		NotificationDisabled: false,
+	}
+
+	_, err := s.lineBotClient.PushMessage(request)
+	return err
 }

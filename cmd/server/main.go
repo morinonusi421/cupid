@@ -65,7 +65,7 @@ func main() {
 
 	// Service層
 	matchingService := service.NewMatchingService(userRepo, likeRepo)
-	userService := service.NewUserService(userRepo, likeRepo, liffVerifier, registerURL, matchingService)
+	userService := service.NewUserService(userRepo, likeRepo, liffVerifier, registerURL, matchingService, lineBotClient)
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
 
 	// Registration API handler
