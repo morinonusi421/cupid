@@ -9,7 +9,7 @@ import (
 
 // MatchingService はマッチング処理を行うドメインサービスのインターフェース
 type MatchingService interface {
-	CheckAndUpdateMatch(ctx context.Context, currentUser *model.User, currentLike *model.Like) (matched bool, matchedUserName string, err error)
+	CheckAndUpdateMatch(ctx context.Context, currentUser *model.User, currentLike *model.Like) (matched bool, matchedUser *model.User, err error)
 }
 
 // matchingService は MatchingService の実装
@@ -35,33 +35,33 @@ func NewMatchingService(userRepo repository.UserRepository, likeRepo repository.
 //
 // 戻り値:
 //   - matched: マッチングが成立したかどうか
-//   - matchedUserName: マッチング相手の名前（マッチング成立時のみ）
+//   - matchedUser: マッチング相手のUserオブジェクト（マッチング成立時のみ）
 //   - err: エラー（あれば）
 func (s *matchingService) CheckAndUpdateMatch(
 	ctx context.Context,
 	currentUser *model.User,
 	currentLike *model.Like,
-) (matched bool, matchedUserName string, err error) {
+) (matched bool, matchedUser *model.User, err error) {
 	// 1. 相手がユーザーテーブルに存在するかチェック
 	crushUser, err := s.userRepo.FindByNameAndBirthday(ctx, currentLike.ToName, currentLike.ToBirthday)
 	if err != nil {
-		return false, "", err
+		return false, nil, err
 	}
 
 	// 相手が未登録の場合はマッチング成立しない
 	if crushUser == nil {
-		return false, "", nil
+		return false, nil, nil
 	}
 
 	// 2. 相手も自分を登録しているかチェック
 	crushLike, err := s.likeRepo.FindMatchingLike(ctx, crushUser.LineID, currentUser.Name, currentUser.Birthday)
 	if err != nil {
-		return false, "", err
+		return false, nil, err
 	}
 
 	// 相手が自分を登録していない場合はマッチング成立しない
 	if crushLike == nil {
-		return false, "", nil
+		return false, nil, nil
 	}
 
 	// 3. 両方の Like レコードの matched を true に更新
@@ -69,12 +69,12 @@ func (s *matchingService) CheckAndUpdateMatch(
 	crushLike.MarkAsMatched()
 
 	if err := s.likeRepo.UpdateMatched(ctx, currentLike.ID, true); err != nil {
-		return false, "", err
+		return false, nil, err
 	}
 
 	if err := s.likeRepo.UpdateMatched(ctx, crushLike.ID, true); err != nil {
-		return false, "", err
+		return false, nil, err
 	}
 
-	return true, crushUser.Name, nil
+	return true, crushUser, nil
 }

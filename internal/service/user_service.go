@@ -196,9 +196,15 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 	}
 
 	// 6. マッチング判定（MatchingService に委譲）
-	matched, matchedUserName, err = s.matchingService.CheckAndUpdateMatch(ctx, currentUser, like)
+	var matchedUser *model.User
+	matched, matchedUser, err = s.matchingService.CheckAndUpdateMatch(ctx, currentUser, like)
 	if err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("matching check failed: %w", err)
+	}
+
+	matchedUserName = ""
+	if matchedUser != nil {
+		matchedUserName = matchedUser.Name
 	}
 
 	return matched, matchedUserName, nil
