@@ -115,7 +115,7 @@ button:disabled {
     border: 1px solid #f5c6cb;
 }
 
-/* Input validation error styles */
+/* エラーメッセージスタイル */
 .error-message {
     color: #d32f2f;
     font-size: 0.875rem;
@@ -123,10 +123,8 @@ button:disabled {
     display: block;
 }
 
-input.error {
-    border-color: #d32f2f;
+/* バリデーションエラー時のinputスタイル */
+input[style*="border-color: red"] {
+    border-color: #d32f2f !important;
 }
 
-input.error:focus {
-    border-color: #d32f2f;
-}
