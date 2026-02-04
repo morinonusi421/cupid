@@ -8,11 +8,13 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/handler"
 	"github.com/morinonusi421/cupid/internal/liff"
@@ -36,19 +38,12 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	// Load .env from project root
-	if data, err := os.ReadFile(".env"); err == nil {
-		lines := bytes.Split(data, []byte("\n"))
-		for _, line := range lines {
-			if len(line) == 0 || line[0] == '#' {
-				continue
-			}
-			parts := bytes.SplitN(line, []byte("="), 2)
-			if len(parts) == 2 {
-				key := string(bytes.TrimSpace(parts[0]))
-				value := string(bytes.TrimSpace(parts[1]))
-				os.Setenv(key, value)
-			}
+	// Load .env from project root (same as production code)
+	// Try current directory first, then parent directory
+	if err := godotenv.Load(); err != nil {
+		// If not found in current directory, try parent directory
+		if err := godotenv.Load("../.env"); err != nil {
+			log.Println("Warning: .env file not found (tests may be skipped)")
 		}
 	}
 
