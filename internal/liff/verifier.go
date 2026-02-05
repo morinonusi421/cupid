@@ -41,6 +41,10 @@ func (v *Verifier) VerifyAccessToken(accessToken string) (string, error) {
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
+	// Debug logging
+	fmt.Printf("DEBUG: VerifyResponse: ClientID=%s, Sub=%s, Exp=%d, ExpectedChannelID=%s\n",
+		verifyResp.ClientID, verifyResp.Sub, verifyResp.Exp, v.channelID)
+
 	// Verify channel ID matches
 	if verifyResp.ClientID != v.channelID {
 		return "", fmt.Errorf("channel ID mismatch")
