@@ -17,8 +17,14 @@ func NewVerifier(channelID string) *Verifier {
 
 type VerifyResponse struct {
 	ClientID string `json:"client_id"`
-	Sub      string `json:"sub"` // LINE user ID
 	Exp      int64  `json:"exp"`
+}
+
+type ProfileResponse struct {
+	UserID        string `json:"userId"`
+	DisplayName   string `json:"displayName"`
+	PictureURL    string `json:"pictureUrl"`
+	StatusMessage string `json:"statusMessage"`
 }
 
 func (v *Verifier) VerifyAccessToken(accessToken string) (string, error) {
@@ -41,14 +47,34 @@ func (v *Verifier) VerifyAccessToken(accessToken string) (string, error) {
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// Debug logging
-	fmt.Printf("DEBUG: VerifyResponse: ClientID=%s, Sub=%s, Exp=%d, ExpectedChannelID=%s\n",
-		verifyResp.ClientID, verifyResp.Sub, verifyResp.Exp, v.channelID)
-
 	// Verify channel ID matches
 	if verifyResp.ClientID != v.channelID {
 		return "", fmt.Errorf("channel ID mismatch")
 	}
 
-	return verifyResp.Sub, nil
+	// Get user profile using the access token
+	profileURL := "https://api.line.me/v2/profile"
+	profileReq, err := http.NewRequest("GET", profileURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create profile request: %w", err)
+	}
+	profileReq.Header.Set("Authorization", "Bearer "+accessToken)
+
+	profileResp, err := http.DefaultClient.Do(profileReq)
+	if err != nil {
+		return "", fmt.Errorf("failed to get profile: %w", err)
+	}
+	defer profileResp.Body.Close()
+
+	if profileResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(profileResp.Body)
+		return "", fmt.Errorf("profile request failed: %s", string(body))
+	}
+
+	var profile ProfileResponse
+	if err := json.NewDecoder(profileResp.Body).Decode(&profile); err != nil {
+		return "", fmt.Errorf("failed to decode profile response: %w", err)
+	}
+
+	return profile.UserID, nil
 }
