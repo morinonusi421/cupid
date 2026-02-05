@@ -110,21 +110,21 @@ async function registerUser(name, birthday) {
         showLoading(true);
         submitButton.disabled = true;
 
-        // アクセストークン取得
-        const accessToken = liff.getAccessToken();
+        // IDトークン取得
+        const idToken = liff.getIDToken();
 
-        if (!accessToken) {
+        if (!idToken) {
             throw new Error('認証情報が取得できませんでした');
         }
 
-        // API呼び出し（user_idは送らない）
+        // API呼び出し
         const response = await fetch('/api/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}` // トークンをヘッダーで送信
+                'Authorization': `Bearer ${idToken}` // IDトークンをヘッダーで送信
             },
-            body: JSON.stringify({ name, birthday }) // user_id削除
+            body: JSON.stringify({ name, birthday })
         });
 
         if (!response.ok) {

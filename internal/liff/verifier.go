@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 type Verifier struct {
@@ -25,6 +27,18 @@ type ProfileResponse struct {
 	DisplayName   string `json:"displayName"`
 	PictureURL    string `json:"pictureUrl"`
 	StatusMessage string `json:"statusMessage"`
+}
+
+type IDTokenVerifyResponse struct {
+	ISS     string   `json:"iss"`
+	Sub     string   `json:"sub"` // LINE user ID
+	Aud     string   `json:"aud"` // Channel ID
+	Exp     int64    `json:"exp"`
+	Iat     int64    `json:"iat"`
+	Nonce   string   `json:"nonce"`
+	AmR     []string `json:"amr"`
+	Name    string   `json:"name"`
+	Picture string   `json:"picture"`
 }
 
 func (v *Verifier) VerifyAccessToken(accessToken string) (string, error) {
@@ -77,4 +91,44 @@ func (v *Verifier) VerifyAccessToken(accessToken string) (string, error) {
 	}
 
 	return profile.UserID, nil
+}
+
+// VerifyIDToken verifies LIFF ID token and returns LINE user ID
+func (v *Verifier) VerifyIDToken(idToken string) (string, error) {
+	// Call LINE's ID token verification endpoint
+	apiURL := "https://api.line.me/oauth2/v2.1/verify"
+
+	// Prepare form data
+	data := url.Values{}
+	data.Set("id_token", idToken)
+	data.Set("client_id", v.channelID)
+
+	req, err := http.NewRequest("POST", apiURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to verify ID token: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("ID token verification failed: %s", string(body))
+	}
+
+	var verifyResp IDTokenVerifyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&verifyResp); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Verify channel ID matches
+	if verifyResp.Aud != v.channelID {
+		return "", fmt.Errorf("channel ID mismatch")
+	}
+
+	return verifyResp.Sub, nil
 }

@@ -97,9 +97,9 @@ func (s *userService) UpdateUser(ctx context.Context, user *model.User) error {
 	return nil
 }
 
-// VerifyLIFFToken はLIFFアクセストークンを検証してLINE user IDを返す
-func (s *userService) VerifyLIFFToken(accessToken string) (string, error) {
-	userID, err := s.liffVerifier.VerifyAccessToken(accessToken)
+// VerifyLIFFToken はLIFF IDトークンを検証してLINE user IDを返す
+func (s *userService) VerifyLIFFToken(idToken string) (string, error) {
+	userID, err := s.liffVerifier.VerifyIDToken(idToken)
 	if err != nil {
 		return "", fmt.Errorf("failed to verify LIFF token: %w", err)
 	}
