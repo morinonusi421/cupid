@@ -132,14 +132,10 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 	}
 }
 
-// handleInitialMessage は初回メッセージを処理する（Web登録フォームの案内）
+// handleInitialMessage は初回メッセージを処理する（LINEミニアプリの案内）
 func (s *userService) handleInitialMessage(ctx context.Context, user *model.User) (string, error) {
-	// TODO: セキュリティ改善 - ワンタイムトークン方式に変更する
-	// 現在はURLパラメータに直接user_idを含めているが、なりすまし可能
-
-	// URLにuser_idをクエリパラメータとして追加
-	registerURL := fmt.Sprintf("%s?user_id=%s", s.liffRegisterURL, user.LineID)
-	return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", registerURL), nil
+	// LIFF URLを返す（user_idはLIFF認証で自動取得されるため不要）
+	return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", s.liffRegisterURL), nil
 }
 
 // RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する
