@@ -260,7 +260,7 @@ func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, replyText, "初めまして")
 	assert.Contains(t, replyText, "下のリンクから登録してね")
-	assert.Contains(t, replyText, registerURL+"?user_id=U123")
+	assert.Contains(t, replyText, registerURL) // LIFF URLにはuser_idパラメータは含まれない
 	mockRepo.AssertExpectations(t)
 }
 

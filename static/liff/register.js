@@ -1,6 +1,5 @@
-// TODO: セキュリティ改善 - ワンタイムトークン方式に変更する
-// 現在はURLパラメータに直接user_idを含めているが、なりすまし可能
-// 将来的にはサーバー生成のワンタイムトークンを使用すべき
+// LIFF ID（環境変数から取得する想定、開発用）
+const LIFF_ID = '2009059074-aX6pc41R';
 
 // DOM要素
 const form = document.getElementById('register-form');
@@ -39,9 +38,21 @@ function validateName(name) {
     return { valid: true, message: '' };
 }
 
-// ページ読み込み時にフォーム設定
-window.addEventListener('load', () => {
-    setupForm();
+// ページ読み込み時にLIFF初期化
+window.addEventListener('load', async () => {
+    try {
+        await liff.init({ liffId: LIFF_ID });
+
+        if (!liff.isLoggedIn()) {
+            liff.login(); // 未ログインならLINEログイン画面へ
+            return;
+        }
+
+        setupForm(); // ログイン済みならフォーム表示
+    } catch (error) {
+        console.error('LIFF initialization failed', error);
+        showMessage('LINE認証に失敗しました。再度お試しください。', 'error');
+    }
 });
 
 /**
@@ -92,35 +103,28 @@ function setupForm() {
 }
 
 /**
- * URLパラメータからuser_idを取得
- */
-function getUserIdFromURL() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('user_id');
-}
-
-/**
  * ユーザー登録
  */
 async function registerUser(name, birthday) {
     try {
-        // ローディング表示
         showLoading(true);
         submitButton.disabled = true;
 
-        // URLパラメータからuser_idを取得
-        const userId = getUserIdFromURL();
-        if (!userId) {
-            throw new Error('ユーザーIDが見つかりません。URLが正しいか確認してください。');
+        // アクセストークン取得
+        const accessToken = liff.getAccessToken();
+
+        if (!accessToken) {
+            throw new Error('認証情報が取得できませんでした');
         }
 
-        // API呼び出し
+        // API呼び出し（user_idは送らない）
         const response = await fetch('/api/register', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}` // トークンをヘッダーで送信
             },
-            body: JSON.stringify({ user_id: userId, name, birthday })
+            body: JSON.stringify({ name, birthday }) // user_id削除
         });
 
         if (!response.ok) {

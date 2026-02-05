@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/morinonusi421/cupid/internal/service"
 )
@@ -19,17 +20,37 @@ func NewRegistrationAPIHandler(userService service.UserService) *RegistrationAPI
 }
 
 type RegisterRequest struct {
-	UserID   string `json:"user_id"`
 	Name     string `json:"name"`
 	Birthday string `json:"birthday"`
 }
 
 func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request) {
-	// TODO: セキュリティ改善 - ワンタイムトークン方式に変更する
-	// 現在はリクエストボディに直接user_idを含めているが、なりすまし可能
-	// 将来的にはサーバー生成のワンタイムトークンを使用すべき
+	// Authorizationヘッダーからトークン取得
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "認証が必要です"})
+		return
+	}
 
-	// Decode request body
+	// "Bearer {token}" 形式からトークン抽出
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	if token == authHeader { // Bearerプレフィックスがない
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "無効な認証形式です"})
+		return
+	}
+
+	// トークン検証してuser_id取得
+	userID, err := h.userService.VerifyLIFFToken(token)
+	if err != nil {
+		log.Printf("Token verification failed: %v", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "認証に失敗しました"})
+		return
+	}
+
+	// リクエストボディからname, birthdayのみ取得
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Failed to decode request: %v", err)
@@ -38,23 +59,15 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Validate user_id
-	if req.UserID == "" {
-		log.Println("Missing user_id in request")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "user_id is required"})
-		return
-	}
-
-	// Save user data using userService
-	if err := h.userService.RegisterFromLIFF(r.Context(), req.UserID, req.Name, req.Birthday); err != nil {
+	// user_idはトークンから取得したものを使用
+	if err := h.userService.RegisterFromLIFF(r.Context(), userID, req.Name, req.Birthday); err != nil {
 		log.Printf("Failed to register user: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
-	log.Printf("Registration successful for user %s: name=%s, birthday=%s", req.UserID, req.Name, req.Birthday)
+	log.Printf("Registration successful for user %s: name=%s, birthday=%s", userID, req.Name, req.Birthday)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
