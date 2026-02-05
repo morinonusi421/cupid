@@ -57,6 +57,31 @@
 - **Channel Secret**: `.env`
 - **Channel Access Token**: `.env`
 
+## LINEミニアプリ情報
+
+### チャネルID
+- **開発用**: `2009059074`
+- **審査用**: `2009059075`
+- **本番用**: `2009059076`
+
+### LIFF URL（ユーザー登録用）
+- **開発用**: `https://miniapp.line.me/2009059074-aX6pc41R`
+- **審査用**: `https://miniapp.line.me/2009059075-2bCpQry4`
+- **本番用**: `https://miniapp.line.me/2009059076-kBsUXYIC`
+
+### LIFF ID
+- **開発用**: `2009059074-aX6pc41R`
+- **審査用**: `2009059075-2bCpQry4`
+- **本番用**: `2009059076-kBsUXYIC`
+
+### エンドポイントURL
+- **開発用**: `https://cupid-linebot.click/liff/register.html`（要設定）
+- **審査用**: （自動反映）
+- **本番用**: （自動反映）
+
+### TODO
+- [ ] 好きな人登録フォーム用のLIFF URL作成（後回し）
+
 ## 開発環境
 
 ### Go
