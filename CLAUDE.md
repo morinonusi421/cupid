@@ -74,8 +74,28 @@
 - **審査用**: `2009059075-2bCpQry4`
 - **本番用**: `2009059076-kBsUXYIC`
 
-### エンドポイントURL
-- **開発用**: `https://cupid-linebot.click/liff/register.html`（要設定）
+### エンドポイントURL（ユーザー登録用）
+- **開発用**: `https://cupid-linebot.click/liff/register.html`
+- **審査用**: （自動反映）
+- **本番用**: （自動反映）
+
+### チャネルID（好きな人登録用）
+- **開発用**: `2009070889`
+- **審査用**: `2009070890`
+- **本番用**: `2009070891`
+
+### LIFF URL（好きな人登録用）
+- **開発用**: `https://miniapp.line.me/2009070889-qZo1cdq6`
+- **審査用**: `https://miniapp.line.me/2009070890-jtxmk3U1`
+- **本番用**: `https://miniapp.line.me/2009070891-iIdvFKtI`
+
+### LIFF ID（好きな人登録用）
+- **開発用**: `2009070889-qZo1cdq6`
+- **審査用**: `2009070890-jtxmk3U1`
+- **本番用**: `2009070891-iIdvFKtI`
+
+### エンドポイントURL（好きな人登録用）
+- **開発用**: `https://cupid-linebot.click/crush/register.html`
 - **審査用**: （自動反映）
 - **本番用**: （自動反映）
 

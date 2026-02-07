@@ -1,12 +1,13 @@
-// DOM要素
-const nameInput = document.getElementById('name');
-const nameError = document.getElementById('name-error');
+// LIFF ID（環境変数から取得する想定、開発用）
+const LIFF_ID = '2009070889-qZo1cdq6';
 
-// URLパラメータからuser_idを取得
-function getUserIdFromURL() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('user_id');
-}
+// DOM要素
+const form = document.getElementById('register-form');
+const nameInput = document.getElementById('name');
+const birthdayInput = document.getElementById('birthday');
+const submitButton = document.getElementById('submit-button');
+const loading = document.getElementById('loading');
+const message = document.getElementById('message');
 
 /**
  * 名前のバリデーション
@@ -37,16 +38,29 @@ function validateName(name) {
     return { valid: true, message: '' };
 }
 
-// ページ読み込み時にフォーム設定
-window.addEventListener('load', () => {
-    setupForm();
+// ページ読み込み時にLIFF初期化
+window.addEventListener('load', async () => {
+    try {
+        await liff.init({ liffId: LIFF_ID });
+
+        if (!liff.isLoggedIn()) {
+            liff.login(); // 未ログインならLINEログイン画面へ
+            return;
+        }
+
+        setupForm(); // ログイン済みならフォーム表示
+    } catch (error) {
+        console.error('LIFF initialization failed', error);
+        showMessage('LINE認証に失敗しました。再度お試しください。', 'error');
+    }
 });
 
 /**
- * フォーム設定
+ * フォーム送信イベントを設定
  */
 function setupForm() {
     // 名前入力のblurイベント（リアルタイムバリデーション）
+    const nameError = document.getElementById('name-error');
     nameInput.addEventListener('blur', () => {
         const result = validateName(nameInput.value);
         if (!result.valid) {
@@ -58,73 +72,100 @@ function setupForm() {
             nameInput.style.borderColor = '';
         }
     });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const name = nameInput.value.trim();
+        const birthday = birthdayInput.value;
+
+        // バリデーション
+        if (!name) {
+            showMessage('名前を入力してください。', 'error');
+            return;
+        }
+
+        // 名前の詳細バリデーション
+        const nameValidation = validateName(name);
+        if (!nameValidation.valid) {
+            showMessage(nameValidation.message, 'error');
+            return;
+        }
+
+        if (!birthday) {
+            showMessage('誕生日を入力してください。', 'error');
+            return;
+        }
+
+        // 登録処理
+        await registerCrush(name, birthday);
+    });
 }
 
-// フォーム送信処理
-document.getElementById('register-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const name = document.getElementById('name').value.trim();
-    const birthday = document.getElementById('birthday').value;
-    const userId = getUserIdFromURL();
-
-    if (!userId) {
-        showMessage('エラー: ユーザーIDが取得できませんでした', 'error');
-        return;
-    }
-
-    if (!name || !birthday) {
-        showMessage('名前と誕生日を入力してください', 'error');
-        return;
-    }
-
-    // 名前の詳細バリデーション
-    const nameValidation = validateName(name);
-    if (!nameValidation.valid) {
-        showMessage(nameValidation.message, 'error');
-        return;
-    }
-
-    // UI更新
-    document.getElementById('submit-button').disabled = true;
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('message').style.display = 'none';
-
+/**
+ * 好きな人登録
+ */
+async function registerCrush(name, birthday) {
     try {
+        showLoading(true);
+        submitButton.disabled = true;
+
+        // IDトークン取得
+        const idToken = liff.getIDToken();
+
+        if (!idToken) {
+            throw new Error('認証情報が取得できませんでした');
+        }
+
+        // API呼び出し
         const response = await fetch('/api/register-crush', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}` // IDトークンをヘッダーで送信
             },
             body: JSON.stringify({
-                user_id: userId,
                 crush_name: name,
                 crush_birthday: birthday
             })
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            throw new Error(data.error || '登録に失敗しました');
+            const errorData = await response.json();
+            throw new Error(errorData.error || '登録に失敗しました。');
         }
 
         // 成功
-        showMessage('登録が完了しました。結果はLINEでお知らせします。', 'success');
+        showMessage('登録が完了しました！結果はLINEでお知らせします。', 'success');
 
     } catch (error) {
-        console.error('Registration error:', error);
-        showMessage(error.message, 'error');
+        console.error('Registration failed', error);
+        showMessage(error.message || '登録に失敗しました。', 'error');
+        submitButton.disabled = false;
     } finally {
-        document.getElementById('submit-button').disabled = false;
-        document.getElementById('loading').style.display = 'none';
+        showLoading(false);
     }
-});
+}
 
-// メッセージ表示
+/**
+ * ローディング表示切り替え
+ */
+function showLoading(isLoading) {
+    if (isLoading) {
+        form.style.display = 'none';
+        loading.style.display = 'block';
+        message.style.display = 'none';
+    } else {
+        form.style.display = 'block';
+        loading.style.display = 'none';
+    }
+}
+
+/**
+ * メッセージ表示
+ */
 function showMessage(text, type) {
-    const messageEl = document.getElementById('message');
-    messageEl.textContent = text;
-    messageEl.className = type;
-    messageEl.style.display = 'block';
+    message.textContent = text;
+    message.className = type;
+    message.style.display = 'block';
 }
