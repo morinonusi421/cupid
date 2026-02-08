@@ -26,14 +26,14 @@ type UserService interface {
 type userService struct {
 	userRepo          repository.UserRepository
 	likeRepo          repository.LikeRepository
-	liffVerifier      *liff.Verifier
+	liffVerifier      liff.Verifier
 	liffRegisterURL   string
 	matchingService   MatchingService
 	lineBotClient     linebot.Client
 }
 
 // NewUserService は UserService の新しいインスタンスを作成する
-func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, liffVerifier *liff.Verifier, liffRegisterURL string, matchingService MatchingService, lineBotClient linebot.Client) UserService {
+func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, liffVerifier liff.Verifier, liffRegisterURL string, matchingService MatchingService, lineBotClient linebot.Client) UserService {
 	return &userService{
 		userRepo:        userRepo,
 		likeRepo:        likeRepo,

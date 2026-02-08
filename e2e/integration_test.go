@@ -17,7 +17,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/handler"
-	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/morinonusi421/cupid/internal/linebot"
 	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/morinonusi421/cupid/internal/repository"
@@ -70,6 +69,23 @@ func (m *mockLineBotClient) PushMessage(request *messaging_api.PushMessageReques
 	return &messaging_api.PushMessageResponse{}, nil
 }
 
+// mockLIFFVerifier is a mock implementation for testing
+type mockLIFFVerifier struct{}
+
+func (m *mockLIFFVerifier) VerifyAccessToken(accessToken string) (string, error) {
+	// Not used in current implementation
+	return "", nil
+}
+
+func (m *mockLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
+	// Accept tokens in format "test-token-{userID}"
+	// Example: "test-token-U123" returns "U123"
+	if len(idToken) > 11 && idToken[:11] == "test-token-" {
+		return idToken[11:], nil
+	}
+	return "", nil
+}
+
 func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.RegistrationAPIHandler, *handler.CrushRegistrationAPIHandler, *sql.DB) {
 	// Initialize real database
 	db, err := database.InitDB(testDBFile)
@@ -97,15 +113,13 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.Regis
 	userRepo := repository.NewUserRepository(db)
 	likeRepo := repository.NewLikeRepository(db)
 
-	// Initialize LIFF verifier (can be nil for webhook tests)
-	var liffVerifier *liff.Verifier
-	if liffChannelID := os.Getenv("LINE_LIFF_CHANNEL_ID"); liffChannelID != "" {
-		liffVerifier = liff.NewVerifier(liffChannelID)
-	}
+	// Initialize mock LIFF verifier for integration tests
+	// This allows us to test LIFF authentication without real LINE API calls
+	mockVerifier := &mockLIFFVerifier{}
 
 	// Initialize real services
 	matchingService := service.NewMatchingService(userRepo, likeRepo)
-	userService := service.NewUserService(userRepo, likeRepo, liffVerifier, registerURL, matchingService, lineBotClient)
+	userService := service.NewUserService(userRepo, likeRepo, mockVerifier, registerURL, matchingService, lineBotClient)
 
 	// Initialize real handlers
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
@@ -166,9 +180,8 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 	rec := sendWebhook(t, webhookHandler, []interface{}{messageEvent})
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	// Step 2: Register user via LIFF API
+	// Step 2: Register user via LIFF API with ID token
 	registrationReq := map[string]interface{}{
-		"user_id":  userID,
 		"name":     "ヤマダタロウ",
 		"birthday": "1990-01-01",
 	}
@@ -177,6 +190,7 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer test-token-"+userID) // Mock ID token
 
 	rec = httptest.NewRecorder()
 	registrationAPIHandler.Register(rec, req)
@@ -220,9 +234,8 @@ func TestIntegration_CrushRegistrationNoMatch(t *testing.T) {
 	err = userRepo.Update(ctx, user)
 	require.NoError(t, err)
 
-	// Register crush (no matching)
+	// Register crush (no matching) with ID token
 	crushReq := map[string]interface{}{
-		"user_id":        "test-user-002",
 		"crush_name":     "サトウケンタ",
 		"crush_birthday": "1992-03-15",
 	}
@@ -231,6 +244,7 @@ func TestIntegration_CrushRegistrationNoMatch(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/crush/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer test-token-test-user-002") // Mock ID token
 
 	rec := httptest.NewRecorder()
 	crushHandler.RegisterCrush(rec, req)
@@ -288,9 +302,8 @@ func TestIntegration_CrushRegistrationMatch(t *testing.T) {
 	err = likeRepo.Create(ctx, likeA)
 	require.NoError(t, err)
 
-	// User B registers User A as crush (should trigger match)
+	// User B registers User A as crush (should trigger match) with ID token
 	crushReq := map[string]interface{}{
-		"user_id":        "test-user-b",
 		"crush_name":     "スズキイチロウ",
 		"crush_birthday": "1988-08-08",
 	}
@@ -299,6 +312,7 @@ func TestIntegration_CrushRegistrationMatch(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/crush/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer test-token-test-user-b") // Mock ID token
 
 	rec := httptest.NewRecorder()
 	crushHandler.RegisterCrush(rec, req)
@@ -327,7 +341,6 @@ func TestIntegration_ValidationError(t *testing.T) {
 		{
 			name: "漢字を含む名前",
 			requestBody: map[string]interface{}{
-				"user_id":  "test-user-kanji",
 				"name":     "山田太郎",
 				"birthday": "1990-01-01",
 			},
@@ -336,7 +349,6 @@ func TestIntegration_ValidationError(t *testing.T) {
 		{
 			name: "ひらがなを含む名前",
 			requestBody: map[string]interface{}{
-				"user_id":  "test-user-hiragana",
 				"name":     "やまだたろう",
 				"birthday": "1990-01-01",
 			},
@@ -351,6 +363,7 @@ func TestIntegration_ValidationError(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer test-token-test-user") // Mock ID token
 
 			rec := httptest.NewRecorder()
 			registrationAPIHandler.Register(rec, req)

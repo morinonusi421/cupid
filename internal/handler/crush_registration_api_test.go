@@ -16,18 +16,21 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
 	handler := NewCrushRegistrationAPIHandler(mockUserService)
 
+	// Mock VerifyLIFFToken to return user ID
+	mockUserService.On("VerifyLIFFToken", "valid-token").Return("U_TEST", nil)
+
 	// Mock RegisterCrush to return no match
 	mockUserService.On("RegisterCrush", mock.Anything, "U_TEST", "佐藤花子", "1992-02-02").Return(false, "", nil)
 
 	// リクエスト作成
 	reqBody := RegisterCrushRequest{
-		UserID:        "U_TEST",
 		CrushName:     "佐藤花子",
 		CrushBirthday: "1992-02-02",
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/register-crush", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer valid-token")
 
 	// レスポンス記録
 	w := httptest.NewRecorder()
@@ -53,18 +56,21 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_SelfRegistrationError(t *test
 	mockUserService := new(MockUserServiceForAPI)
 	handler := NewCrushRegistrationAPIHandler(mockUserService)
 
+	// Mock VerifyLIFFToken to return user ID
+	mockUserService.On("VerifyLIFFToken", "valid-token").Return("U_SELF", nil)
+
 	// Mock RegisterCrush to return self-registration error
 	selfRegError := errors.New("cannot register yourself")
 	mockUserService.On("RegisterCrush", mock.Anything, "U_SELF", "山田太郎", "1990-01-01").Return(false, "", selfRegError)
 
 	reqBody := RegisterCrushRequest{
-		UserID:        "U_SELF",
 		CrushName:     "山田太郎",
 		CrushBirthday: "1990-01-01",
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/register-crush", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer valid-token")
 
 	w := httptest.NewRecorder()
 	handler.RegisterCrush(w, req)

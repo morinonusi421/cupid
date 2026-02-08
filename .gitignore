@@ -57,3 +57,4 @@ package-lock.json
 tests/visual/screenshots/
 test-results/
 playwright-report/
+server
