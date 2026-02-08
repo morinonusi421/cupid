@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
-	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/morinonusi421/cupid/internal/linebot"
 	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/morinonusi421/cupid/internal/repository"
@@ -17,27 +16,24 @@ type UserService interface {
 	RegisterUser(ctx context.Context, lineID, displayName string) error
 	GetOrCreateUser(ctx context.Context, lineID, displayName string) (*model.User, error)
 	UpdateUser(ctx context.Context, user *model.User) error
-	VerifyLIFFToken(accessToken string) (string, error)
 	ProcessTextMessage(ctx context.Context, userID, text string) (string, error)
 	RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error
 	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string) (matched bool, matchedUserName string, err error)
 }
 
 type userService struct {
-	userRepo          repository.UserRepository
-	likeRepo          repository.LikeRepository
-	liffVerifier      liff.Verifier
-	liffRegisterURL   string
-	matchingService   MatchingService
-	lineBotClient     linebot.Client
+	userRepo        repository.UserRepository
+	likeRepo        repository.LikeRepository
+	liffRegisterURL string
+	matchingService MatchingService
+	lineBotClient   linebot.Client
 }
 
 // NewUserService は UserService の新しいインスタンスを作成する
-func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, liffVerifier liff.Verifier, liffRegisterURL string, matchingService MatchingService, lineBotClient linebot.Client) UserService {
+func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, liffRegisterURL string, matchingService MatchingService, lineBotClient linebot.Client) UserService {
 	return &userService{
 		userRepo:        userRepo,
 		likeRepo:        likeRepo,
-		liffVerifier:    liffVerifier,
 		liffRegisterURL: liffRegisterURL,
 		matchingService: matchingService,
 		lineBotClient:   lineBotClient,
@@ -95,15 +91,6 @@ func (s *userService) UpdateUser(ctx context.Context, user *model.User) error {
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 	return nil
-}
-
-// VerifyLIFFToken はLIFF IDトークンを検証してLINE user IDを返す
-func (s *userService) VerifyLIFFToken(idToken string) (string, error) {
-	userID, err := s.liffVerifier.VerifyIDToken(idToken)
-	if err != nil {
-		return "", fmt.Errorf("failed to verify LIFF token: %w", err)
-	}
-	return userID, nil
 }
 
 // ProcessTextMessage はテキストメッセージを処理して返信テキストを決定する

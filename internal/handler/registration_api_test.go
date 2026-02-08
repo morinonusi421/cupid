@@ -13,6 +13,25 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// mockLIFFVerifier is a mock implementation for testing
+type mockLIFFVerifier struct{}
+
+func (m *mockLIFFVerifier) VerifyAccessToken(accessToken string) (string, error) {
+	return "", nil
+}
+
+func (m *mockLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
+	// Accept tokens in format "test-token-{userID}"
+	if len(idToken) > 11 && idToken[:11] == "test-token-" {
+		return idToken[11:], nil
+	}
+	// For specific test tokens
+	if idToken == "valid-token" {
+		return "U-test-user", nil
+	}
+	return "", nil
+}
+
 type MockUserServiceForAPI struct {
 	mock.Mock
 }
@@ -35,11 +54,6 @@ func (m *MockUserServiceForAPI) UpdateUser(ctx context.Context, user *model.User
 	return args.Error(0)
 }
 
-func (m *MockUserServiceForAPI) VerifyLIFFToken(accessToken string) (string, error) {
-	args := m.Called(accessToken)
-	return args.String(0), args.Error(1)
-}
-
 func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
 	args := m.Called(ctx, userID, text)
 	return args.String(0), args.Error(1)
@@ -57,10 +71,8 @@ func (m *MockUserServiceForAPI) RegisterCrush(ctx context.Context, userID, crush
 
 func TestRegistrationAPI_Register_Success(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
-	handler := NewRegistrationAPIHandler(mockUserService)
-
-	// Mock VerifyLIFFToken to return user ID
-	mockUserService.On("VerifyLIFFToken", "valid-token").Return("U-test-user", nil)
+	mockVerifier := &mockLIFFVerifier{}
+	handler := NewRegistrationAPIHandler(mockUserService, mockVerifier)
 
 	// Mock RegisterFromLIFF to succeed
 	mockUserService.On("RegisterFromLIFF", mock.Anything, "U-test-user", "田中太郎", "2000-01-15").Return(nil)

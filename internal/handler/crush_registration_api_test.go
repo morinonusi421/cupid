@@ -12,12 +12,28 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// mockLIFFVerifier is a mock implementation for testing
+type mockCrushLIFFVerifier struct{}
+
+func (m *mockCrushLIFFVerifier) VerifyAccessToken(accessToken string) (string, error) {
+	return "", nil
+}
+
+func (m *mockCrushLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
+	// For specific test tokens
+	if idToken == "valid-token" {
+		return "U_TEST", nil
+	}
+	if len(idToken) > 11 && idToken[:11] == "test-token-" {
+		return idToken[11:], nil
+	}
+	return "", nil
+}
+
 func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
-	handler := NewCrushRegistrationAPIHandler(mockUserService)
-
-	// Mock VerifyLIFFToken to return user ID
-	mockUserService.On("VerifyLIFFToken", "valid-token").Return("U_TEST", nil)
+	mockVerifier := &mockCrushLIFFVerifier{}
+	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier)
 
 	// Mock RegisterCrush to return no match
 	mockUserService.On("RegisterCrush", mock.Anything, "U_TEST", "佐藤花子", "1992-02-02").Return(false, "", nil)
@@ -54,10 +70,8 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 
 func TestCrushRegistrationAPIHandler_RegisterCrush_SelfRegistrationError(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
-	handler := NewCrushRegistrationAPIHandler(mockUserService)
-
-	// Mock VerifyLIFFToken to return user ID
-	mockUserService.On("VerifyLIFFToken", "valid-token").Return("U_SELF", nil)
+	mockVerifier := &mockCrushLIFFVerifier{}
+	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier)
 
 	// Mock RegisterCrush to return self-registration error
 	selfRegError := errors.New("cannot register yourself")
@@ -70,7 +84,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_SelfRegistrationError(t *test
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/register-crush", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer valid-token")
+	req.Header.Set("Authorization", "Bearer test-token-U_SELF")
 
 	w := httptest.NewRecorder()
 	handler.RegisterCrush(w, req)

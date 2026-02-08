@@ -6,16 +6,19 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/morinonusi421/cupid/internal/service"
 )
 
 type CrushRegistrationAPIHandler struct {
 	userService service.UserService
+	verifier    liff.Verifier
 }
 
-func NewCrushRegistrationAPIHandler(userService service.UserService) *CrushRegistrationAPIHandler {
+func NewCrushRegistrationAPIHandler(userService service.UserService, verifier liff.Verifier) *CrushRegistrationAPIHandler {
 	return &CrushRegistrationAPIHandler{
 		userService: userService,
+		verifier:    verifier,
 	}
 }
 
@@ -48,7 +51,7 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 	}
 
 	// トークン検証してuser_id取得
-	userID, err := h.userService.VerifyLIFFToken(token)
+	userID, err := h.verifier.VerifyIDToken(token)
 	if err != nil {
 		log.Printf("Token verification failed: %v", err)
 		w.WriteHeader(http.StatusUnauthorized)

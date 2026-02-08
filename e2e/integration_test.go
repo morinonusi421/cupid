@@ -119,12 +119,12 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.Regis
 
 	// Initialize real services
 	matchingService := service.NewMatchingService(userRepo, likeRepo)
-	userService := service.NewUserService(userRepo, likeRepo, mockVerifier, registerURL, matchingService, lineBotClient)
+	userService := service.NewUserService(userRepo, likeRepo, registerURL, matchingService, lineBotClient)
 
 	// Initialize real handlers
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
-	registrationAPIHandler := handler.NewRegistrationAPIHandler(userService)
-	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService)
+	registrationAPIHandler := handler.NewRegistrationAPIHandler(userService, mockVerifier)
+	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, mockVerifier)
 
 	return webhookHandler, registrationAPIHandler, crushRegistrationAPIHandler, db
 }

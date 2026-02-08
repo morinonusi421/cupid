@@ -6,16 +6,19 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/morinonusi421/cupid/internal/service"
 )
 
 type RegistrationAPIHandler struct {
 	userService service.UserService
+	verifier    liff.Verifier
 }
 
-func NewRegistrationAPIHandler(userService service.UserService) *RegistrationAPIHandler {
+func NewRegistrationAPIHandler(userService service.UserService, verifier liff.Verifier) *RegistrationAPIHandler {
 	return &RegistrationAPIHandler{
 		userService: userService,
+		verifier:    verifier,
 	}
 }
 
@@ -42,7 +45,7 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 	}
 
 	// トークン検証してuser_id取得
-	userID, err := h.userService.VerifyLIFFToken(token)
+	userID, err := h.verifier.VerifyIDToken(token)
 	if err != nil {
 		log.Printf("Token verification failed: %v", err)
 		w.WriteHeader(http.StatusUnauthorized)
