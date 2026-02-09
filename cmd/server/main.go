@@ -22,19 +22,33 @@ func main() {
 		log.Println("Warning: .env file not found")
 	}
 
-	// 環境変数を読み込む
+	// === 環境変数の読み込み ===
 	channelSecret := os.Getenv("LINE_CHANNEL_SECRET")
 	channelToken := os.Getenv("LINE_CHANNEL_TOKEN")
+	liffChannelID := os.Getenv("LINE_LIFF_CHANNEL_ID")
+	crushLiffChannelID := os.Getenv("LINE_LIFF_CRUSH_CHANNEL_ID")
+	liffURL := os.Getenv("LINE_MINIAPP_LIFF_URL")
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
+	// 必須環境変数のチェック
 	if channelSecret == "" || channelToken == "" {
 		log.Fatal("LINE_CHANNEL_SECRET and LINE_CHANNEL_TOKEN must be set")
 	}
+	if liffChannelID == "" {
+		log.Fatal("LINE_LIFF_CHANNEL_ID must be set")
+	}
+	if crushLiffChannelID == "" {
+		log.Fatal("LINE_LIFF_CRUSH_CHANNEL_ID must be set")
+	}
+	if liffURL == "" {
+		log.Fatal("LINE_MINIAPP_LIFF_URL must be set")
+	}
 
-	// LINE Messaging APIクライアントを作成
+	// === 外部リソースの初期化 ===
+	// LINE Messaging APIクライアント
 	botAPI, err := messaging_api.NewMessagingApiAPI(channelToken)
 	if err != nil {
 		log.Fatal(err)
@@ -47,58 +61,41 @@ func main() {
 	}
 	defer db.Close()
 
-	// 依存関係の組み立て (DI)
-	lineBotClient := linebot.NewClient(botAPI)
+	// === Repository層 ===
 	userRepo := repository.NewUserRepository(db)
 	likeRepo := repository.NewLikeRepository(db)
 
-	// LIFF verifier（トークン検証に使用）
-	// ユーザー登録用
-	liffChannelID := os.Getenv("LINE_LIFF_CHANNEL_ID")
-	if liffChannelID == "" {
-		log.Fatal("LINE_LIFF_CHANNEL_ID must be set")
-	}
+	// === LIFF Verifier ===
 	userLiffVerifier := liff.NewVerifier(liffChannelID)
-
-	// Crush registration用
-	crushLiffChannelID := os.Getenv("LINE_LIFF_CRUSH_CHANNEL_ID")
-	if crushLiffChannelID == "" {
-		log.Fatal("LINE_LIFF_CRUSH_CHANNEL_ID must be set")
-	}
 	crushLiffVerifier := liff.NewVerifier(crushLiffChannelID)
 
-	// LINEミニアプリ LIFF URL (環境変数から取得)
-	// 例: https://miniapp.line.me/2009059074-aX6pc41R
-	liffURL := os.Getenv("LINE_MINIAPP_LIFF_URL")
-	if liffURL == "" {
-		log.Fatal("LINE_MINIAPP_LIFF_URL must be set")
-	}
-
-	// Service層
+	// === Service層 ===
+	lineBotClient := linebot.NewClient(botAPI)
 	matchingService := service.NewMatchingService(userRepo, likeRepo)
 	userService := service.NewUserService(userRepo, likeRepo, liffURL, matchingService, lineBotClient)
-	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
 
-	// Registration API handler
+	// === Handler層 ===
+	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
 	registrationAPIHandler := handler.NewRegistrationAPIHandler(userService, userLiffVerifier)
 	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, crushLiffVerifier)
 
-	// ヘルスチェック用エンドポイント
+	// === ルーティング設定 ===
+	// ヘルスチェック
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Cupid LINE Bot is running")
 	})
 
-	// LINE Webhook エンドポイント
+	// LINE Webhook
 	http.HandleFunc("/webhook", webhookHandler.Handle)
 
-	// Registration API endpoints
+	// Registration API
 	http.HandleFunc("/api/register", registrationAPIHandler.Register)
 	http.HandleFunc("/api/register-crush", crushRegistrationAPIHandler.RegisterCrush)
 
 	// 静的ファイル配信
 	http.Handle("/crush/", http.StripPrefix("/crush/", http.FileServer(http.Dir("static/crush"))))
 
-	// サーバー起動
+	// === サーバー起動 ===
 	log.Printf("Server starting on :%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)
