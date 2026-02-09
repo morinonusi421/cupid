@@ -226,6 +226,57 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 	return matched, matchedUserName, nil
 }
 
+// registerNewUser は初回登録時に新規ユーザーを作成する
+func (s *userService) registerNewUser(ctx context.Context, userID, name, birthday string) error {
+	// 1. 完全なユーザーオブジェクトを作成
+	user := &model.User{
+		LineID:           userID,
+		Name:             name,
+		Birthday:         birthday,
+		RegistrationStep: 1,  // 最初から登録完了状態
+		RegisteredAt:     "", // DBのDEFAULT（現在時刻）を使用
+		UpdatedAt:        "", // DBのDEFAULT（現在時刻）を使用
+	}
+
+	// 2. DBに保存
+	if err := s.userRepo.Create(ctx, user); err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// 3. 好きな人登録を促すメッセージを送信
+	if err := s.sendCrushRegistrationPrompt(ctx, user); err != nil {
+		log.Printf("Failed to send crush registration prompt to %s: %v", user.LineID, err)
+		// エラーをログに記録するが、登録処理は成功として扱う
+	}
+
+	return nil
+}
+
+// updateUserInfo は再登録時に既存ユーザーの情報を更新する
+func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name, birthday string) error {
+	// 1. ユーザー情報を更新
+	user.Name = name
+	user.Birthday = birthday
+
+	// 2. registration_step が 0 の場合のみ 1 に更新（通常はありえないが念のため）
+	if user.RegistrationStep == 0 {
+		user.CompleteUserRegistration()
+	}
+
+	// 3. DBに保存
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	// 4. 更新完了メッセージを送信
+	if err := s.sendUserInfoUpdateConfirmation(ctx, user); err != nil {
+		log.Printf("Failed to send update confirmation to %s: %v", user.LineID, err)
+		// エラーをログに記録するが、更新処理は成功として扱う
+	}
+
+	return nil
+}
+
 // sendMatchNotification はマッチ成立時にLINE Push通知を送信する
 func (s *userService) sendMatchNotification(ctx context.Context, toUser *model.User, matchedWithUser *model.User) error {
 	message := fmt.Sprintf("相思相愛が成立しました！\n相手：%s", matchedWithUser.Name)
@@ -292,6 +343,24 @@ func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *mod
 						},
 					},
 				},
+			},
+		},
+		NotificationDisabled: false,
+	}
+
+	_, err := s.lineBotClient.PushMessage(request)
+	return err
+}
+
+// sendUserInfoUpdateConfirmation は情報更新完了のメッセージを送信する
+func (s *userService) sendUserInfoUpdateConfirmation(ctx context.Context, user *model.User) error {
+	message := "情報を更新しました✨"
+
+	request := &messaging_api.PushMessageRequest{
+		To: user.LineID,
+		Messages: []messaging_api.MessageInterface{
+			messaging_api.TextMessage{
+				Text: message,
 			},
 		},
 		NotificationDisabled: false,
