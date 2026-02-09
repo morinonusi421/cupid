@@ -209,6 +209,12 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 			log.Printf("Failed to send match notification to %s: %v", matchedUser.LineID, err)
 			// エラーをログに記録するが、処理は継続
 		}
+	} else {
+		// マッチしなかった場合も登録完了を通知
+		if err := s.sendCrushRegistrationComplete(ctx, currentUser); err != nil {
+			log.Printf("Failed to send crush registration complete notification to %s: %v", currentUser.LineID, err)
+			// エラーをログに記録するが、処理は継続
+		}
 	}
 
 	matchedUserName = ""
@@ -257,6 +263,24 @@ func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *mod
 						},
 					},
 				},
+			},
+		},
+		NotificationDisabled: false,
+	}
+
+	_, err := s.lineBotClient.PushMessage(request)
+	return err
+}
+
+// sendCrushRegistrationComplete は好きな人登録完了時（マッチなし）のメッセージを送信する
+func (s *userService) sendCrushRegistrationComplete(ctx context.Context, user *model.User) error {
+	message := "好きな人の登録が完了しました💘\n\n相思相愛が成立したら、お知らせするね。"
+
+	request := &messaging_api.PushMessageRequest{
+		To: user.LineID,
+		Messages: []messaging_api.MessageInterface{
+			messaging_api.TextMessage{
+				Text: message,
 			},
 		},
 		NotificationDisabled: false,

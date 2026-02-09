@@ -434,6 +434,11 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 			like.ToBirthday == "1992-02-02"
 	})).Return(false, nil, nil)
 
+	// PushMessage が登録完了メッセージで呼ばれることを期待
+	mockLineBotClient.On("PushMessage", mock.MatchedBy(func(r *messaging_api.PushMessageRequest) bool {
+		return r.To == "U_A" && len(r.Messages) == 1
+	})).Return(&messaging_api.PushMessageResponse{}, nil)
+
 	matched, matchedName, err := service.RegisterCrush(ctx, "U_A", "サトウハナコ", "1992-02-02")
 
 	assert.NoError(t, err)
@@ -442,6 +447,7 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 	mockLikeRepo.AssertExpectations(t)
 	mockMatchingService.AssertExpectations(t)
+	mockLineBotClient.AssertExpectations(t)
 }
 
 func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
