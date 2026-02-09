@@ -43,6 +43,38 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	// 各イベントを処理
 	for _, event := range callbackRequest.Events {
 		switch e := event.(type) {
+		case webhook.FollowEvent:
+			// 友達登録時の挨拶メッセージ（クイックリプライ付き）
+			greetingText := "友達追加ありがとう！\nCupidは相思相愛を見つけるお手伝いをするよ。\n\nまずは下のボタンから登録してね。"
+
+			// LINE APIで返信（クイックリプライで登録を促す）
+			_, err = h.bot.ReplyMessage(
+				&messaging_api.ReplyMessageRequest{
+					ReplyToken: e.ReplyToken,
+					Messages: []messaging_api.MessageInterface{
+						messaging_api.TextMessage{
+							Text: greetingText,
+							QuickReply: &messaging_api.QuickReply{
+								Items: []messaging_api.QuickReplyItem{
+									{
+										Type: "action",
+										Action: &messaging_api.UriAction{
+											Label: "登録する",
+											Uri:   "https://miniapp.line.me/2009059074-aX6pc41R",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			)
+			if err != nil {
+				log.Println("Failed to send greeting message:", err)
+			} else {
+				log.Printf("Sent greeting message to new follower")
+			}
+
 		case webhook.MessageEvent:
 			// テキストメッセージの場合
 			switch message := e.Message.(type) {

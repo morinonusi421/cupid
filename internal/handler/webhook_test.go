@@ -144,6 +144,82 @@ func TestWebhookHandler_Handle_TextMessage(t *testing.T) {
 	mockUserService.AssertExpectations(t)
 }
 
+func TestWebhookHandler_Handle_FollowEvent(t *testing.T) {
+	// Setup
+	channelSecret := "test-channel-secret"
+	mockBot := new(MockLineBotClient)
+	mockUserService := new(MockUserService)
+	handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
+
+	// テスト用のFollow Webhookイベント（JSONフォーマット）
+	webhookBodyJSON := `{
+		"destination": "U1234567890",
+		"events": [
+			{
+				"type": "follow",
+				"replyToken": "reply-token-456",
+				"source": {
+					"type": "user",
+					"userId": "U-new-user"
+				},
+				"timestamp": 1234567890123,
+				"mode": "active"
+			}
+		]
+	}`
+
+	bodyBytes := []byte(webhookBodyJSON)
+	signature := generateSignature(channelSecret, webhookBodyJSON)
+
+	// HTTPリクエストを作成
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Line-Signature", signature)
+
+	// Mock: ReplyMessage が挨拶メッセージ（クイックリプライ付き）で呼ばれることを期待
+	mockBot.On("ReplyMessage", mock.MatchedBy(func(r *messaging_api.ReplyMessageRequest) bool {
+		if r.ReplyToken != "reply-token-456" {
+			return false
+		}
+		if len(r.Messages) != 1 {
+			return false
+		}
+		textMsg, ok := r.Messages[0].(messaging_api.TextMessage)
+		if !ok {
+			return false
+		}
+		// メッセージテキストを確認
+		expectedText := "友達追加ありがとう！\nCupidは相思相愛を見つけるお手伝いをするよ。\n\nまずは下のボタンから登録してね。"
+		if textMsg.Text != expectedText {
+			return false
+		}
+		// クイックリプライを確認
+		if textMsg.QuickReply == nil {
+			return false
+		}
+		if len(textMsg.QuickReply.Items) != 1 {
+			return false
+		}
+		item := textMsg.QuickReply.Items[0]
+		if item.Type != "action" {
+			return false
+		}
+		uriAction, ok := item.Action.(*messaging_api.UriAction)
+		if !ok {
+			return false
+		}
+		return uriAction.Label == "登録する" && uriAction.Uri == "https://miniapp.line.me/2009059074-aX6pc41R"
+	})).Return(&messaging_api.ReplyMessageResponse{}, nil)
+
+	// Execute
+	rr := httptest.NewRecorder()
+	handler.Handle(rr, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, rr.Code)
+	mockBot.AssertExpectations(t)
+}
+
 func TestWebhookHandler_Handle_InvalidSignature(t *testing.T) {
 	// Setup
 	channelSecret := "test-channel-secret"
