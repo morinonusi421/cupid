@@ -119,7 +119,8 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.Regis
 
 	// Initialize real services
 	matchingService := service.NewMatchingService(userRepo, likeRepo)
-	userService := service.NewUserService(userRepo, likeRepo, registerURL, matchingService, lineBotClient)
+	// Use registerURL for both user and crush LIFF URLs in tests
+	userService := service.NewUserService(userRepo, likeRepo, registerURL, registerURL, matchingService, lineBotClient)
 
 	// Initialize real handlers
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)

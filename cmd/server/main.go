@@ -25,9 +25,10 @@ func main() {
 	// === 環境変数の読み込み ===
 	channelSecret := os.Getenv("LINE_CHANNEL_SECRET")
 	channelToken := os.Getenv("LINE_CHANNEL_TOKEN")
-	liffChannelID := os.Getenv("LINE_LIFF_CHANNEL_ID")
+	userLiffChannelID := os.Getenv("LINE_LIFF_USER_CHANNEL_ID")
 	crushLiffChannelID := os.Getenv("LINE_LIFF_CRUSH_CHANNEL_ID")
-	liffURL := os.Getenv("LINE_MINIAPP_LIFF_URL")
+	userLiffURL := os.Getenv("LINE_LIFF_USER_URL")
+	crushLiffURL := os.Getenv("LINE_LIFF_CRUSH_URL")
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -37,14 +38,17 @@ func main() {
 	if channelSecret == "" || channelToken == "" {
 		log.Fatal("LINE_CHANNEL_SECRET and LINE_CHANNEL_TOKEN must be set")
 	}
-	if liffChannelID == "" {
-		log.Fatal("LINE_LIFF_CHANNEL_ID must be set")
+	if userLiffChannelID == "" {
+		log.Fatal("LINE_LIFF_USER_CHANNEL_ID must be set")
 	}
 	if crushLiffChannelID == "" {
 		log.Fatal("LINE_LIFF_CRUSH_CHANNEL_ID must be set")
 	}
-	if liffURL == "" {
-		log.Fatal("LINE_MINIAPP_LIFF_URL must be set")
+	if userLiffURL == "" {
+		log.Fatal("LINE_LIFF_USER_URL must be set")
+	}
+	if crushLiffURL == "" {
+		log.Fatal("LINE_LIFF_CRUSH_URL must be set")
 	}
 
 	// === 外部リソースの初期化 ===
@@ -66,13 +70,13 @@ func main() {
 	likeRepo := repository.NewLikeRepository(db)
 
 	// === LIFF Verifier ===
-	userLiffVerifier := liff.NewVerifier(liffChannelID)
+	userLiffVerifier := liff.NewVerifier(userLiffChannelID)
 	crushLiffVerifier := liff.NewVerifier(crushLiffChannelID)
 
 	// === Service層 ===
 	lineBotClient := linebot.NewClient(botAPI)
 	matchingService := service.NewMatchingService(userRepo, likeRepo)
-	userService := service.NewUserService(userRepo, likeRepo, liffURL, matchingService, lineBotClient)
+	userService := service.NewUserService(userRepo, likeRepo, userLiffURL, crushLiffURL, matchingService, lineBotClient)
 
 	// === Handler層 ===
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)

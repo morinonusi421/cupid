@@ -24,17 +24,19 @@ type UserService interface {
 type userService struct {
 	userRepo        repository.UserRepository
 	likeRepo        repository.LikeRepository
-	liffRegisterURL string
+	userLiffURL     string
+	crushLiffURL    string
 	matchingService MatchingService
 	lineBotClient   linebot.Client
 }
 
 // NewUserService は UserService の新しいインスタンスを作成する
-func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, liffRegisterURL string, matchingService MatchingService, lineBotClient linebot.Client) UserService {
+func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, userLiffURL string, crushLiffURL string, matchingService MatchingService, lineBotClient linebot.Client) UserService {
 	return &userService{
 		userRepo:        userRepo,
 		likeRepo:        likeRepo,
-		liffRegisterURL: liffRegisterURL,
+		userLiffURL:     userLiffURL,
+		crushLiffURL:    crushLiffURL,
 		matchingService: matchingService,
 		lineBotClient:   lineBotClient,
 	}
@@ -108,12 +110,10 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 		return s.handleInitialMessage(ctx, user)
 	case 1:
 		// ユーザー登録完了済み - 好きな人の登録を案内（LIFF URL）
-		crushRegisterURL := "https://miniapp.line.me/2009070891-iIdvFKtI"
-		return fmt.Sprintf("次に、好きな人を登録してください💘\n\n%s", crushRegisterURL), nil
+		return fmt.Sprintf("次に、好きな人を登録してください💘\n\n%s", s.crushLiffURL), nil
 	case 2:
 		// 好きな人登録完了済み - 再登録を案内（LIFF URL）
-		crushRegisterURL := "https://miniapp.line.me/2009070891-iIdvFKtI"
-		return fmt.Sprintf("登録済みです。好きな人を変更する場合は下のリンクから再登録できます。\n\n%s", crushRegisterURL), nil
+		return fmt.Sprintf("登録済みです。好きな人を変更する場合は下のリンクから再登録できます。\n\n%s", s.crushLiffURL), nil
 	default:
 		return "", fmt.Errorf("invalid registration step: %d", user.RegistrationStep)
 	}
@@ -122,7 +122,7 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 // handleInitialMessage は初回メッセージを処理する（LINEミニアプリの案内）
 func (s *userService) handleInitialMessage(ctx context.Context, user *model.User) (string, error) {
 	// LIFF URLを返す（user_idはLIFF認証で自動取得されるため不要）
-	return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", s.liffRegisterURL), nil
+	return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", s.userLiffURL), nil
 }
 
 // RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する
@@ -258,7 +258,7 @@ func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *mod
 							Type: "action",
 							Action: &messaging_api.UriAction{
 								Label: "好きな人を登録",
-								Uri:   "https://miniapp.line.me/2009070891-iIdvFKtI",
+								Uri:   s.crushLiffURL,
 							},
 						},
 					},
