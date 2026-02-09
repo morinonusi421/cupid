@@ -354,27 +354,21 @@ func TestUserService_ProcessTextMessage_UnregisteredUser(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-func TestUserService_RegisterFromLIFF(t *testing.T) {
+func TestUserService_RegisterFromLIFF_NewUser(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
 	mockLineBotClient := new(MockLineBotClient)
-	service := NewUserService(mockRepo, mockLikeRepo, "", "", mockMatchingService, mockLineBotClient)
+	crushLiffURL := "https://miniapp.line.me/2009070891-iIdvFKtI"
+	service := NewUserService(mockRepo, mockLikeRepo, "", crushLiffURL, mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
-	user := &model.User{
-		LineID:           "U123",
-		Name:             "",
-		Birthday:         "",
-		RegistrationStep: 0,
-	}
+	// FindByLineID が nil を返す（ユーザー未登録）
+	mockRepo.On("FindByLineID", ctx, "U-new-user").Return(nil, nil)
 
-	// FindByLineID が既存ユーザーを返す
-	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
-
-	// Update が呼ばれることを期待（CompleteUserRegistration後の状態）
-	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
-		return u.LineID == "U123" &&
+	// Create が呼ばれることを期待（RegistrationStep=1で作成）
+	mockRepo.On("Create", ctx, mock.MatchedBy(func(u *model.User) bool {
+		return u.LineID == "U-new-user" &&
 			u.Name == "テストタロウ" &&
 			u.Birthday == "2000-01-15" &&
 			u.RegistrationStep == 1
@@ -382,10 +376,49 @@ func TestUserService_RegisterFromLIFF(t *testing.T) {
 
 	// PushMessage が好きな人登録を促すメッセージで呼ばれることを期待
 	mockLineBotClient.On("PushMessage", mock.MatchedBy(func(r *messaging_api.PushMessageRequest) bool {
-		return r.To == "U123" && len(r.Messages) == 1
+		return r.To == "U-new-user" && len(r.Messages) == 1
 	})).Return(&messaging_api.PushMessageResponse{}, nil)
 
-	err := service.RegisterFromLIFF(ctx, "U123", "テストタロウ", "2000-01-15")
+	err := service.RegisterFromLIFF(ctx, "U-new-user", "テストタロウ", "2000-01-15")
+
+	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
+	mockLineBotClient.AssertExpectations(t)
+}
+
+func TestUserService_RegisterFromLIFF_UpdateExisting(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	mockLikeRepo := new(MockLikeRepository)
+	mockMatchingService := new(MockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, "", "", mockMatchingService, mockLineBotClient)
+	ctx := context.Background()
+
+	existingUser := &model.User{
+		LineID:           "U-existing",
+		Name:             "旧ナマエ",
+		Birthday:         "2000-01-01",
+		RegistrationStep: 1,
+		RegisteredAt:     "2024-01-01 00:00:00",
+	}
+
+	// FindByLineID が既存ユーザーを返す
+	mockRepo.On("FindByLineID", ctx, "U-existing").Return(existingUser, nil)
+
+	// Update が呼ばれることを期待（Name と Birthday が更新される）
+	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
+		return u.LineID == "U-existing" &&
+			u.Name == "アタラシイナマエ" &&
+			u.Birthday == "2000-12-25" &&
+			u.RegisteredAt == "2024-01-01 00:00:00" // RegisteredAt は保持される
+	})).Return(nil)
+
+	// PushMessage が更新完了メッセージで呼ばれることを期待
+	mockLineBotClient.On("PushMessage", mock.MatchedBy(func(r *messaging_api.PushMessageRequest) bool {
+		return r.To == "U-existing" && len(r.Messages) == 1
+	})).Return(&messaging_api.PushMessageResponse{}, nil)
+
+	err := service.RegisterFromLIFF(ctx, "U-existing", "アタラシイナマエ", "2000-12-25")
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
