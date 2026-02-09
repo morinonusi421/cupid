@@ -19,6 +19,7 @@ type UserService interface {
 	ProcessTextMessage(ctx context.Context, userID, text string) (string, error)
 	RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error
 	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string) (matched bool, matchedUserName string, err error)
+	HandleFollowEvent(ctx context.Context, replyToken string) error
 }
 
 type userService struct {
@@ -240,6 +241,34 @@ func (s *userService) sendMatchNotification(ctx context.Context, toUser *model.U
 	}
 
 	_, err := s.lineBotClient.PushMessage(request)
+	return err
+}
+
+// HandleFollowEvent はFollowイベント時の挨拶メッセージ（QuickReply付き）を送信する
+func (s *userService) HandleFollowEvent(ctx context.Context, replyToken string) error {
+	greetingText := "友達追加ありがとう！\nCupidは相思相愛を見つけるお手伝いをするよ。\n\nまずは下のボタンから登録してね。"
+
+	request := &messaging_api.ReplyMessageRequest{
+		ReplyToken: replyToken,
+		Messages: []messaging_api.MessageInterface{
+			messaging_api.TextMessage{
+				Text: greetingText,
+				QuickReply: &messaging_api.QuickReply{
+					Items: []messaging_api.QuickReplyItem{
+						{
+							Type: "action",
+							Action: &messaging_api.UriAction{
+								Label: "登録する",
+								Uri:   s.userLiffURL,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := s.lineBotClient.ReplyMessage(request)
 	return err
 }
 

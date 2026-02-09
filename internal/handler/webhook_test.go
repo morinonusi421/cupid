@@ -80,6 +80,11 @@ func (m *MockUserService) RegisterCrush(ctx context.Context, userID, crushName, 
 	return args.Bool(0), args.String(1), args.Error(2)
 }
 
+func (m *MockUserService) HandleFollowEvent(ctx context.Context, replyToken string) error {
+	args := m.Called(ctx, replyToken)
+	return args.Error(0)
+}
+
 // generateSignature はLINE Webhookの署名を生成する
 func generateSignature(channelSecret, body string) string {
 	mac := hmac.New(sha256.New, []byte(channelSecret))
@@ -176,40 +181,8 @@ func TestWebhookHandler_Handle_FollowEvent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Line-Signature", signature)
 
-	// Mock: ReplyMessage が挨拶メッセージ（クイックリプライ付き）で呼ばれることを期待
-	mockBot.On("ReplyMessage", mock.MatchedBy(func(r *messaging_api.ReplyMessageRequest) bool {
-		if r.ReplyToken != "reply-token-456" {
-			return false
-		}
-		if len(r.Messages) != 1 {
-			return false
-		}
-		textMsg, ok := r.Messages[0].(messaging_api.TextMessage)
-		if !ok {
-			return false
-		}
-		// メッセージテキストを確認
-		expectedText := "友達追加ありがとう！\nCupidは相思相愛を見つけるお手伝いをするよ。\n\nまずは下のボタンから登録してね。"
-		if textMsg.Text != expectedText {
-			return false
-		}
-		// クイックリプライを確認
-		if textMsg.QuickReply == nil {
-			return false
-		}
-		if len(textMsg.QuickReply.Items) != 1 {
-			return false
-		}
-		item := textMsg.QuickReply.Items[0]
-		if item.Type != "action" {
-			return false
-		}
-		uriAction, ok := item.Action.(*messaging_api.UriAction)
-		if !ok {
-			return false
-		}
-		return uriAction.Label == "登録する" && uriAction.Uri == "https://miniapp.line.me/2009059076-kBsUXYIC"
-	})).Return(&messaging_api.ReplyMessageResponse{}, nil)
+	// Mock: HandleFollowEvent が呼ばれることを期待
+	mockUserService.On("HandleFollowEvent", mock.Anything, "reply-token-456").Return(nil)
 
 	// Execute
 	rr := httptest.NewRecorder()
@@ -217,7 +190,7 @@ func TestWebhookHandler_Handle_FollowEvent(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, http.StatusOK, rr.Code)
-	mockBot.AssertExpectations(t)
+	mockUserService.AssertExpectations(t)
 }
 
 func TestWebhookHandler_Handle_InvalidSignature(t *testing.T) {

@@ -69,6 +69,11 @@ func (m *MockUserServiceForAPI) RegisterCrush(ctx context.Context, userID, crush
 	return args.Bool(0), args.String(1), args.Error(2)
 }
 
+func (m *MockUserServiceForAPI) HandleFollowEvent(ctx context.Context, replyToken string) error {
+	args := m.Called(ctx, replyToken)
+	return args.Error(0)
+}
+
 func TestRegistrationAPI_Register_Success(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
 	mockVerifier := &mockLIFFVerifier{}
