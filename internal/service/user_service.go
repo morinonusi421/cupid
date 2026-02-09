@@ -46,7 +46,7 @@ func (s *userService) RegisterUser(ctx context.Context, lineID, displayName stri
 		LineID:           lineID,
 		Name:             displayName,
 		Birthday:         "",
-		RegistrationStep: 0, // 0: 未登録
+		RegistrationStep: 0,  // 0: 未登録
 		RegisteredAt:     "", // DBのDEFAULTを使用
 		UpdatedAt:        "", // DBのDEFAULTを使用
 	}
@@ -147,6 +147,12 @@ func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthd
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
+	// ユーザー登録完了後、好きな人登録を促すメッセージを送信
+	if err := s.sendCrushRegistrationPrompt(ctx, user); err != nil {
+		log.Printf("Failed to send crush registration prompt to %s: %v", user.LineID, err)
+		// エラーをログに記録するが、登録処理は成功として扱う
+	}
+
 	return nil
 }
 
@@ -222,6 +228,35 @@ func (s *userService) sendMatchNotification(ctx context.Context, toUser *model.U
 		Messages: []messaging_api.MessageInterface{
 			messaging_api.TextMessage{
 				Text: message,
+			},
+		},
+		NotificationDisabled: false,
+	}
+
+	_, err := s.lineBotClient.PushMessage(request)
+	return err
+}
+
+// sendCrushRegistrationPrompt はユーザー登録完了後に好きな人登録を促すメッセージを送信する
+func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *model.User) error {
+	message := "登録完了！\n\n次に、好きな人を登録してね💘\n下のボタンから登録できるよ。"
+
+	request := &messaging_api.PushMessageRequest{
+		To: user.LineID,
+		Messages: []messaging_api.MessageInterface{
+			messaging_api.TextMessage{
+				Text: message,
+				QuickReply: &messaging_api.QuickReply{
+					Items: []messaging_api.QuickReplyItem{
+						{
+							Type: "action",
+							Action: &messaging_api.UriAction{
+								Label: "好きな人を登録",
+								Uri:   "https://miniapp.line.me/2009070889-qZo1cdq6",
+							},
+						},
+					},
+				},
 			},
 		},
 		NotificationDisabled: false,

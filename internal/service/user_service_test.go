@@ -358,10 +358,16 @@ func TestUserService_RegisterFromLIFF(t *testing.T) {
 			u.RegistrationStep == 1
 	})).Return(nil)
 
+	// PushMessage が好きな人登録を促すメッセージで呼ばれることを期待
+	mockLineBotClient.On("PushMessage", mock.MatchedBy(func(r *messaging_api.PushMessageRequest) bool {
+		return r.To == "U123" && len(r.Messages) == 1
+	})).Return(&messaging_api.PushMessageResponse{}, nil)
+
 	err := service.RegisterFromLIFF(ctx, "U123", "テストタロウ", "2000-01-15")
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
+	mockLineBotClient.AssertExpectations(t)
 }
 
 func TestUserService_RegisterFromLIFF_InvalidName(t *testing.T) {
