@@ -128,33 +128,25 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 
 // RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する
 func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error {
-	// Validate name format
+	// 1. バリデーション
 	if ok, errMsg := model.IsValidName(name); !ok {
 		return fmt.Errorf("%s", errMsg)
 	}
 
-	// Get or create user
-	user, err := s.GetOrCreateUser(ctx, userID, "")
+	// 2. ユーザー検索
+	user, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get or create user: %w", err)
+		return fmt.Errorf("failed to find user: %w", err)
 	}
 
-	// Update user info using domain method
-	user.Name = name
-	user.Birthday = birthday
-	user.CompleteUserRegistration()
-
-	if err := s.UpdateUser(ctx, user); err != nil {
-		return fmt.Errorf("failed to update user: %w", err)
+	// 3. 初回登録 vs 再登録で分岐
+	if user == nil {
+		// 初回登録
+		return s.registerNewUser(ctx, userID, name, birthday)
+	} else {
+		// 再登録（情報更新）
+		return s.updateUserInfo(ctx, user, name, birthday)
 	}
-
-	// ユーザー登録完了後、好きな人登録を促すメッセージを送信
-	if err := s.sendCrushRegistrationPrompt(ctx, user); err != nil {
-		log.Printf("Failed to send crush registration prompt to %s: %v", user.LineID, err)
-		// エラーをログに記録するが、登録処理は成功として扱う
-	}
-
-	return nil
 }
 
 // RegisterCrush は好きな人を登録し、マッチング判定を行う
