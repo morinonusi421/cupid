@@ -31,7 +31,7 @@ function validateName(name) {
     if (!katakanaRegex.test(trimmed)) {
         return {
             valid: false,
-            message: '名前はカタカナフルネームで入力してください（例: ヤマダタロウ）'
+            message: '名前はカタカナフルネーム(空白なし)で入力してください（例: ヤマダタロウ）'
         };
     }
 
