@@ -60,7 +60,7 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 										Type: "action",
 										Action: &messaging_api.UriAction{
 											Label: "登録する",
-											Uri:   "https://miniapp.line.me/2009059074-aX6pc41R",
+											Uri:   "https://miniapp.line.me/2009059076-kBsUXYIC",
 										},
 									},
 								},

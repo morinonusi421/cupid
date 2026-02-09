@@ -208,7 +208,7 @@ func TestWebhookHandler_Handle_FollowEvent(t *testing.T) {
 		if !ok {
 			return false
 		}
-		return uriAction.Label == "登録する" && uriAction.Uri == "https://miniapp.line.me/2009059074-aX6pc41R"
+		return uriAction.Label == "登録する" && uriAction.Uri == "https://miniapp.line.me/2009059076-kBsUXYIC"
 	})).Return(&messaging_api.ReplyMessageResponse{}, nil)
 
 	// Execute

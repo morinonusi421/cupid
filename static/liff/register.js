@@ -1,5 +1,5 @@
-// LIFF ID（環境変数から取得する想定、開発用）
-const LIFF_ID = '2009059074-aX6pc41R';
+// LIFF ID（本番用）
+const LIFF_ID = '2009059076-kBsUXYIC';
 
 // DOM要素
 const form = document.getElementById('register-form');

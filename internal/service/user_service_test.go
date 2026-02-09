@@ -285,7 +285,7 @@ func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Contains(t, replyText, "次に、好きな人を登録してください")
-	assert.Contains(t, replyText, "https://miniapp.line.me/2009070889-qZo1cdq6")
+	assert.Contains(t, replyText, "https://miniapp.line.me/2009070891-iIdvFKtI")
 	mockRepo.AssertNotCalled(t, "Update")
 }
 
@@ -311,7 +311,7 @@ func TestUserService_ProcessTextMessage_Step2_CrushReregistration(t *testing.T) 
 	assert.NoError(t, err)
 	assert.Contains(t, replyText, "登録済みです")
 	assert.Contains(t, replyText, "好きな人を変更する場合は")
-	assert.Contains(t, replyText, "https://miniapp.line.me/2009070889-qZo1cdq6")
+	assert.Contains(t, replyText, "https://miniapp.line.me/2009070891-iIdvFKtI")
 	mockRepo.AssertNotCalled(t, "Update")
 }
 
