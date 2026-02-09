@@ -98,17 +98,23 @@ func (s *userService) UpdateUser(ctx context.Context, user *model.User) error {
 
 // ProcessTextMessage はテキストメッセージを処理して返信テキストを決定する
 func (s *userService) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
-	// ユーザーを取得または作成
-	user, err := s.GetOrCreateUser(ctx, userID, "")
+	// DBからユーザーを検索（createはしない）
+	user, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
-		return "", fmt.Errorf("failed to get or create user: %w", err)
+		return "", fmt.Errorf("failed to find user: %w", err)
 	}
 
-	// registration_step に応じて処理分岐
+	// ユーザーが未登録の場合
+	if user == nil {
+		// LIFFフォームへの案内（DB登録はしない）
+		return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", s.userLiffURL), nil
+	}
+
+	// 登録済みの場合、registration_step に応じて処理分岐
 	switch user.RegistrationStep {
 	case 0:
-		// 初期状態 - Web登録フォームの案内
-		return s.handleInitialMessage(ctx, user)
+		// DB登録済みなのに registration_step が 0 は異常な状態
+		return "", fmt.Errorf("invalid state: user exists but registration_step is 0 (user_id: %s)", userID)
 	case 1:
 		// ユーザー登録完了済み - 好きな人の登録を案内（LIFF URL）
 		return fmt.Sprintf("次に、好きな人を登録してください💘\n\n%s", s.crushLiffURL), nil
@@ -118,12 +124,6 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 	default:
 		return "", fmt.Errorf("invalid registration step: %d", user.RegistrationStep)
 	}
-}
-
-// handleInitialMessage は初回メッセージを処理する（LINEミニアプリの案内）
-func (s *userService) handleInitialMessage(ctx context.Context, user *model.User) (string, error) {
-	// LIFF URLを返す（user_idはLIFF認証で自動取得されるため不要）
-	return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", s.userLiffURL), nil
 }
 
 // RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する

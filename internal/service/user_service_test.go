@@ -236,13 +236,12 @@ func TestUserService_GetOrCreateUser_CreateError(t *testing.T) {
 
 // ProcessTextMessage tests
 
-func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
+func TestUserService_ProcessTextMessage_Step0_InvalidState(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockLikeRepo := new(MockLikeRepository)
 	mockMatchingService := new(MockMatchingService)
-	registerURL := "https://cupid-linebot.click/liff/register.html"
 	mockLineBotClient := new(MockLineBotClient)
-	service := NewUserService(mockRepo, mockLikeRepo, registerURL, registerURL, mockMatchingService, mockLineBotClient)
+	service := NewUserService(mockRepo, mockLikeRepo, "", "", mockMatchingService, mockLineBotClient)
 	ctx := context.Background()
 
 	user := &model.User{
@@ -252,15 +251,15 @@ func TestUserService_ProcessTextMessage_Step0_InitialMessage(t *testing.T) {
 		RegistrationStep: 0,
 	}
 
-	// FindByLineID が既存ユーザーを返す
+	// FindByLineID が既存ユーザーを返す（異常な状態：DB登録済みなのに registration_step が 0）
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
 
 	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
 
-	assert.NoError(t, err)
-	assert.Contains(t, replyText, "初めまして")
-	assert.Contains(t, replyText, "下のリンクから登録してね")
-	assert.Contains(t, replyText, registerURL) // LIFF URLにはuser_idパラメータは含まれない
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid state")
+	assert.Contains(t, err.Error(), "registration_step is 0")
+	assert.Empty(t, replyText)
 	mockRepo.AssertExpectations(t)
 }
 
@@ -330,8 +329,29 @@ func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 	replyText, err := service.ProcessTextMessage(ctx, "U123", "test")
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get or create user")
+	assert.Contains(t, err.Error(), "failed to find user")
 	assert.Empty(t, replyText)
+}
+
+func TestUserService_ProcessTextMessage_UnregisteredUser(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	mockLikeRepo := new(MockLikeRepository)
+	mockMatchingService := new(MockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	userLiffURL := "https://miniapp.line.me/2009059076-kBsUXYIC"
+	service := NewUserService(mockRepo, mockLikeRepo, userLiffURL, "", mockMatchingService, mockLineBotClient)
+	ctx := context.Background()
+
+	// FindByLineID が nil を返す（ユーザー未登録）
+	mockRepo.On("FindByLineID", ctx, "U-new-user").Return(nil, nil)
+
+	replyText, err := service.ProcessTextMessage(ctx, "U-new-user", "こんにちは")
+
+	assert.NoError(t, err)
+	assert.Contains(t, replyText, "初めまして")
+	assert.Contains(t, replyText, "下のリンクから登録してね")
+	assert.Contains(t, replyText, userLiffURL)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestUserService_RegisterFromLIFF(t *testing.T) {
