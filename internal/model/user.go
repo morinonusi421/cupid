@@ -11,10 +11,10 @@ type User struct {
 	LineID             string
 	Name               string
 	Birthday           string
-	RegistrationStep   int // 1: 登録完了（好きな人未登録）, 2: 好きな人登録完了
+	RegistrationStep   int    // 1: 登録完了（好きな人未登録）, 2: 好きな人登録完了
 	CrushName          string
 	CrushBirthday      string
-	MatchedWithUserID  string
+	MatchedWithUserID  string // マッチング相手のLINE ID（空文字列=未マッチ）
 	RegisteredAt       string
 	UpdatedAt          string
 }
