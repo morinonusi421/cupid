@@ -12,74 +12,61 @@ import "testing"
 // It does NOT run each operation group in parallel.
 // Separating the tests thusly grants avoidance of Postgres deadlocks.
 func TestParent(t *testing.T) {
-	t.Run("Likes", testLikes)
 	t.Run("SchemaMigrations", testSchemaMigrations)
 	t.Run("Users", testUsers)
 }
 
 func TestDelete(t *testing.T) {
-	t.Run("Likes", testLikesDelete)
 	t.Run("SchemaMigrations", testSchemaMigrationsDelete)
 	t.Run("Users", testUsersDelete)
 }
 
 func TestQueryDeleteAll(t *testing.T) {
-	t.Run("Likes", testLikesQueryDeleteAll)
 	t.Run("SchemaMigrations", testSchemaMigrationsQueryDeleteAll)
 	t.Run("Users", testUsersQueryDeleteAll)
 }
 
 func TestSliceDeleteAll(t *testing.T) {
-	t.Run("Likes", testLikesSliceDeleteAll)
 	t.Run("SchemaMigrations", testSchemaMigrationsSliceDeleteAll)
 	t.Run("Users", testUsersSliceDeleteAll)
 }
 
 func TestExists(t *testing.T) {
-	t.Run("Likes", testLikesExists)
 	t.Run("SchemaMigrations", testSchemaMigrationsExists)
 	t.Run("Users", testUsersExists)
 }
 
 func TestFind(t *testing.T) {
-	t.Run("Likes", testLikesFind)
 	t.Run("SchemaMigrations", testSchemaMigrationsFind)
 	t.Run("Users", testUsersFind)
 }
 
 func TestBind(t *testing.T) {
-	t.Run("Likes", testLikesBind)
 	t.Run("SchemaMigrations", testSchemaMigrationsBind)
 	t.Run("Users", testUsersBind)
 }
 
 func TestOne(t *testing.T) {
-	t.Run("Likes", testLikesOne)
 	t.Run("SchemaMigrations", testSchemaMigrationsOne)
 	t.Run("Users", testUsersOne)
 }
 
 func TestAll(t *testing.T) {
-	t.Run("Likes", testLikesAll)
 	t.Run("SchemaMigrations", testSchemaMigrationsAll)
 	t.Run("Users", testUsersAll)
 }
 
 func TestCount(t *testing.T) {
-	t.Run("Likes", testLikesCount)
 	t.Run("SchemaMigrations", testSchemaMigrationsCount)
 	t.Run("Users", testUsersCount)
 }
 
 func TestHooks(t *testing.T) {
-	t.Run("Likes", testLikesHooks)
 	t.Run("SchemaMigrations", testSchemaMigrationsHooks)
 	t.Run("Users", testUsersHooks)
 }
 
 func TestInsert(t *testing.T) {
-	t.Run("Likes", testLikesInsert)
-	t.Run("Likes", testLikesInsertWhitelist)
 	t.Run("SchemaMigrations", testSchemaMigrationsInsert)
 	t.Run("SchemaMigrations", testSchemaMigrationsInsertWhitelist)
 	t.Run("Users", testUsersInsert)
@@ -87,31 +74,26 @@ func TestInsert(t *testing.T) {
 }
 
 func TestReload(t *testing.T) {
-	t.Run("Likes", testLikesReload)
 	t.Run("SchemaMigrations", testSchemaMigrationsReload)
 	t.Run("Users", testUsersReload)
 }
 
 func TestReloadAll(t *testing.T) {
-	t.Run("Likes", testLikesReloadAll)
 	t.Run("SchemaMigrations", testSchemaMigrationsReloadAll)
 	t.Run("Users", testUsersReloadAll)
 }
 
 func TestSelect(t *testing.T) {
-	t.Run("Likes", testLikesSelect)
 	t.Run("SchemaMigrations", testSchemaMigrationsSelect)
 	t.Run("Users", testUsersSelect)
 }
 
 func TestUpdate(t *testing.T) {
-	t.Run("Likes", testLikesUpdate)
 	t.Run("SchemaMigrations", testSchemaMigrationsUpdate)
 	t.Run("Users", testUsersUpdate)
 }
 
 func TestSliceUpdateAll(t *testing.T) {
-	t.Run("Likes", testLikesSliceUpdateAll)
 	t.Run("SchemaMigrations", testSchemaMigrationsSliceUpdateAll)
 	t.Run("Users", testUsersSliceUpdateAll)
 }

@@ -27,16 +27,8 @@ CREATE TABLE users (
 CREATE INDEX idx_users_name_birthday ON users(name, birthday);
 CREATE INDEX idx_users_crush ON users(crush_name, crush_birthday);
 
--- 5. トリガーを作成
-CREATE TRIGGER update_users_updated_at
-AFTER UPDATE ON users
-FOR EACH ROW
-BEGIN
-  UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE line_user_id = NEW.line_user_id;
-END;
-
 -- +migrate Down
-DROP TRIGGER IF EXISTS update_users_updated_at;
 DROP INDEX IF EXISTS idx_users_crush;
 DROP INDEX IF EXISTS idx_users_name_birthday;
 DROP TABLE IF EXISTS users;
+

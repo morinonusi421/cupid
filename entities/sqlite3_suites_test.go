@@ -6,8 +6,6 @@ package entities
 import "testing"
 
 func TestUpsert(t *testing.T) {
-	t.Run("Likes", testLikesUpsert)
-
 	t.Run("SchemaMigrations", testSchemaMigrationsUpsert)
 
 	t.Run("Users", testUsersUpsert)

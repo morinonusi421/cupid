@@ -24,47 +24,62 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	LineUserID       null.String `boil:"line_user_id" json:"line_user_id,omitempty" toml:"line_user_id" yaml:"line_user_id,omitempty"`
-	Name             string      `boil:"name" json:"name" toml:"name" yaml:"name"`
-	Birthday         string      `boil:"birthday" json:"birthday" toml:"birthday" yaml:"birthday"`
-	RegistrationStep int64       `boil:"registration_step" json:"registration_step" toml:"registration_step" yaml:"registration_step"`
-	RegisteredAt     string      `boil:"registered_at" json:"registered_at" toml:"registered_at" yaml:"registered_at"`
-	UpdatedAt        string      `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	LineUserID        null.String `boil:"line_user_id" json:"line_user_id,omitempty" toml:"line_user_id" yaml:"line_user_id,omitempty"`
+	Name              string      `boil:"name" json:"name" toml:"name" yaml:"name"`
+	Birthday          string      `boil:"birthday" json:"birthday" toml:"birthday" yaml:"birthday"`
+	RegistrationStep  int64       `boil:"registration_step" json:"registration_step" toml:"registration_step" yaml:"registration_step"`
+	CrushName         null.String `boil:"crush_name" json:"crush_name,omitempty" toml:"crush_name" yaml:"crush_name,omitempty"`
+	CrushBirthday     null.String `boil:"crush_birthday" json:"crush_birthday,omitempty" toml:"crush_birthday" yaml:"crush_birthday,omitempty"`
+	MatchedWithUserID null.String `boil:"matched_with_user_id" json:"matched_with_user_id,omitempty" toml:"matched_with_user_id" yaml:"matched_with_user_id,omitempty"`
+	RegisteredAt      string      `boil:"registered_at" json:"registered_at" toml:"registered_at" yaml:"registered_at"`
+	UpdatedAt         string      `boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 
 	R *userR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var UserColumns = struct {
-	LineUserID       string
-	Name             string
-	Birthday         string
-	RegistrationStep string
-	RegisteredAt     string
-	UpdatedAt        string
+	LineUserID        string
+	Name              string
+	Birthday          string
+	RegistrationStep  string
+	CrushName         string
+	CrushBirthday     string
+	MatchedWithUserID string
+	RegisteredAt      string
+	UpdatedAt         string
 }{
-	LineUserID:       "line_user_id",
-	Name:             "name",
-	Birthday:         "birthday",
-	RegistrationStep: "registration_step",
-	RegisteredAt:     "registered_at",
-	UpdatedAt:        "updated_at",
+	LineUserID:        "line_user_id",
+	Name:              "name",
+	Birthday:          "birthday",
+	RegistrationStep:  "registration_step",
+	CrushName:         "crush_name",
+	CrushBirthday:     "crush_birthday",
+	MatchedWithUserID: "matched_with_user_id",
+	RegisteredAt:      "registered_at",
+	UpdatedAt:         "updated_at",
 }
 
 var UserTableColumns = struct {
-	LineUserID       string
-	Name             string
-	Birthday         string
-	RegistrationStep string
-	RegisteredAt     string
-	UpdatedAt        string
+	LineUserID        string
+	Name              string
+	Birthday          string
+	RegistrationStep  string
+	CrushName         string
+	CrushBirthday     string
+	MatchedWithUserID string
+	RegisteredAt      string
+	UpdatedAt         string
 }{
-	LineUserID:       "users.line_user_id",
-	Name:             "users.name",
-	Birthday:         "users.birthday",
-	RegistrationStep: "users.registration_step",
-	RegisteredAt:     "users.registered_at",
-	UpdatedAt:        "users.updated_at",
+	LineUserID:        "users.line_user_id",
+	Name:              "users.name",
+	Birthday:          "users.birthday",
+	RegistrationStep:  "users.registration_step",
+	CrushName:         "users.crush_name",
+	CrushBirthday:     "users.crush_birthday",
+	MatchedWithUserID: "users.matched_with_user_id",
+	RegisteredAt:      "users.registered_at",
+	UpdatedAt:         "users.updated_at",
 }
 
 // Generated where
@@ -113,32 +128,64 @@ func (w whereHelpernull_String) NIN(slice []string) qm.QueryMod {
 func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
+type whereHelperint64 struct{ field string }
+
+func (w whereHelperint64) EQ(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperint64) NEQ(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperint64) LT(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperint64) LTE(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperint64) GT(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperint64) GTE(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+func (w whereHelperint64) IN(slice []int64) qm.QueryMod {
+	values := make([]any, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
+}
+func (w whereHelperint64) NIN(slice []int64) qm.QueryMod {
+	values := make([]any, 0, len(slice))
+	for _, value := range slice {
+		values = append(values, value)
+	}
+	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
+}
+
 var UserWhere = struct {
-	LineUserID       whereHelpernull_String
-	Name             whereHelperstring
-	Birthday         whereHelperstring
-	RegistrationStep whereHelperint64
-	RegisteredAt     whereHelperstring
-	UpdatedAt        whereHelperstring
+	LineUserID        whereHelpernull_String
+	Name              whereHelperstring
+	Birthday          whereHelperstring
+	RegistrationStep  whereHelperint64
+	CrushName         whereHelpernull_String
+	CrushBirthday     whereHelpernull_String
+	MatchedWithUserID whereHelpernull_String
+	RegisteredAt      whereHelperstring
+	UpdatedAt         whereHelperstring
 }{
-	LineUserID:       whereHelpernull_String{field: "\"users\".\"line_user_id\""},
-	Name:             whereHelperstring{field: "\"users\".\"name\""},
-	Birthday:         whereHelperstring{field: "\"users\".\"birthday\""},
-	RegistrationStep: whereHelperint64{field: "\"users\".\"registration_step\""},
-	RegisteredAt:     whereHelperstring{field: "\"users\".\"registered_at\""},
-	UpdatedAt:        whereHelperstring{field: "\"users\".\"updated_at\""},
+	LineUserID:        whereHelpernull_String{field: "\"users\".\"line_user_id\""},
+	Name:              whereHelperstring{field: "\"users\".\"name\""},
+	Birthday:          whereHelperstring{field: "\"users\".\"birthday\""},
+	RegistrationStep:  whereHelperint64{field: "\"users\".\"registration_step\""},
+	CrushName:         whereHelpernull_String{field: "\"users\".\"crush_name\""},
+	CrushBirthday:     whereHelpernull_String{field: "\"users\".\"crush_birthday\""},
+	MatchedWithUserID: whereHelpernull_String{field: "\"users\".\"matched_with_user_id\""},
+	RegisteredAt:      whereHelperstring{field: "\"users\".\"registered_at\""},
+	UpdatedAt:         whereHelperstring{field: "\"users\".\"updated_at\""},
 }
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	FromUserLike string
+	MatchedWithUser      string
+	MatchedWithUserUsers string
 }{
-	FromUserLike: "FromUserLike",
+	MatchedWithUser:      "MatchedWithUser",
+	MatchedWithUserUsers: "MatchedWithUserUsers",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	FromUserLike *Like `boil:"FromUserLike" json:"FromUserLike" toml:"FromUserLike" yaml:"FromUserLike"`
+	MatchedWithUser      *User     `boil:"MatchedWithUser" json:"MatchedWithUser" toml:"MatchedWithUser" yaml:"MatchedWithUser"`
+	MatchedWithUserUsers UserSlice `boil:"MatchedWithUserUsers" json:"MatchedWithUserUsers" toml:"MatchedWithUserUsers" yaml:"MatchedWithUserUsers"`
 }
 
 // NewStruct creates a new relationship struct
@@ -146,29 +193,45 @@ func (*userR) NewStruct() *userR {
 	return &userR{}
 }
 
-func (o *User) GetFromUserLike() *Like {
+func (o *User) GetMatchedWithUser() *User {
 	if o == nil {
 		return nil
 	}
 
-	return o.R.GetFromUserLike()
+	return o.R.GetMatchedWithUser()
 }
 
-func (r *userR) GetFromUserLike() *Like {
+func (r *userR) GetMatchedWithUser() *User {
 	if r == nil {
 		return nil
 	}
 
-	return r.FromUserLike
+	return r.MatchedWithUser
+}
+
+func (o *User) GetMatchedWithUserUsers() UserSlice {
+	if o == nil {
+		return nil
+	}
+
+	return o.R.GetMatchedWithUserUsers()
+}
+
+func (r *userR) GetMatchedWithUserUsers() UserSlice {
+	if r == nil {
+		return nil
+	}
+
+	return r.MatchedWithUserUsers
 }
 
 // userL is where Load methods for each relationship are stored.
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"line_user_id", "name", "birthday", "registration_step", "registered_at", "updated_at"}
-	userColumnsWithoutDefault = []string{}
-	userColumnsWithDefault    = []string{"line_user_id", "name", "birthday", "registration_step", "registered_at", "updated_at"}
+	userAllColumns            = []string{"line_user_id", "name", "birthday", "registration_step", "crush_name", "crush_birthday", "matched_with_user_id", "registered_at", "updated_at"}
+	userColumnsWithoutDefault = []string{"name", "birthday"}
+	userColumnsWithDefault    = []string{"line_user_id", "registration_step", "crush_name", "crush_birthday", "matched_with_user_id", "registered_at", "updated_at"}
 	userPrimaryKeyColumns     = []string{"line_user_id"}
 	userGeneratedColumns      = []string{}
 )
@@ -478,20 +541,158 @@ func (q userQuery) Exists(ctx context.Context, exec boil.ContextExecutor) (bool,
 	return count > 0, nil
 }
 
-// FromUserLike pointed to by the foreign key.
-func (o *User) FromUserLike(mods ...qm.QueryMod) likeQuery {
+// MatchedWithUser pointed to by the foreign key.
+func (o *User) MatchedWithUser(mods ...qm.QueryMod) userQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"from_user_id\" = ?", o.LineUserID),
+		qm.Where("\"line_user_id\" = ?", o.MatchedWithUserID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	return Likes(queryMods...)
+	return Users(queryMods...)
 }
 
-// LoadFromUserLike allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-1 relationship.
-func (userL) LoadFromUserLike(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser any, mods queries.Applicator) error {
+// MatchedWithUserUsers retrieves all the user's Users with an executor via matched_with_user_id column.
+func (o *User) MatchedWithUserUsers(mods ...qm.QueryMod) userQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"users\".\"matched_with_user_id\"=?", o.LineUserID),
+	)
+
+	return Users(queryMods...)
+}
+
+// LoadMatchedWithUser allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userL) LoadMatchedWithUser(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser any, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		var ok bool
+		object, ok = maybeUser.(*User)
+		if !ok {
+			object = new(User)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeUser)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUser))
+			}
+		}
+	} else {
+		s, ok := maybeUser.(*[]*User)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeUser)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUser))
+			}
+		}
+	}
+
+	args := make(map[any]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		if !queries.IsNil(object.MatchedWithUserID) {
+			args[object.MatchedWithUserID] = struct{}{}
+		}
+
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			if !queries.IsNil(obj.MatchedWithUserID) {
+				args[obj.MatchedWithUserID] = struct{}{}
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	argsSlice := make([]any, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
+	}
+
+	query := NewQuery(
+		qm.From(`users`),
+		qm.WhereIn(`users.line_user_id in ?`, argsSlice...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load User")
+	}
+
+	var resultSlice []*User
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice User")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for users")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.MatchedWithUser = foreign
+		if foreign.R == nil {
+			foreign.R = &userR{}
+		}
+		foreign.R.MatchedWithUserUsers = append(foreign.R.MatchedWithUserUsers, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.MatchedWithUserID, foreign.LineUserID) {
+				local.R.MatchedWithUser = foreign
+				if foreign.R == nil {
+					foreign.R = &userR{}
+				}
+				foreign.R.MatchedWithUserUsers = append(foreign.R.MatchedWithUserUsers, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMatchedWithUserUsers allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadMatchedWithUserUsers(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser any, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -528,7 +729,6 @@ func (userL) LoadFromUserLike(ctx context.Context, e boil.ContextExecutor, singu
 			if obj.R == nil {
 				obj.R = &userR{}
 			}
-
 			args[obj.LineUserID] = struct{}{}
 		}
 	}
@@ -545,8 +745,8 @@ func (userL) LoadFromUserLike(ctx context.Context, e boil.ContextExecutor, singu
 	}
 
 	query := NewQuery(
-		qm.From(`likes`),
-		qm.WhereIn(`likes.from_user_id in ?`, argsSlice...),
+		qm.From(`users`),
+		qm.WhereIn(`users.matched_with_user_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -554,50 +754,47 @@ func (userL) LoadFromUserLike(ctx context.Context, e boil.ContextExecutor, singu
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Like")
+		return errors.Wrap(err, "failed to eager load users")
 	}
 
-	var resultSlice []*Like
+	var resultSlice []*User
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Like")
+		return errors.Wrap(err, "failed to bind eager loaded slice users")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for likes")
+		return errors.Wrap(err, "failed to close results in eager load on users")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for likes")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for users")
 	}
 
-	if len(likeAfterSelectHooks) != 0 {
+	if len(userAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
 			}
 		}
 	}
-
-	if len(resultSlice) == 0 {
+	if singular {
+		object.R.MatchedWithUserUsers = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userR{}
+			}
+			foreign.R.MatchedWithUser = object
+		}
 		return nil
 	}
 
-	if singular {
-		foreign := resultSlice[0]
-		object.R.FromUserLike = foreign
-		if foreign.R == nil {
-			foreign.R = &likeR{}
-		}
-		foreign.R.FromUser = object
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.LineUserID, foreign.FromUserID) {
-				local.R.FromUserLike = foreign
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.LineUserID, foreign.MatchedWithUserID) {
+				local.R.MatchedWithUserUsers = append(local.R.MatchedWithUserUsers, foreign)
 				if foreign.R == nil {
-					foreign.R = &likeR{}
+					foreign.R = &userR{}
 				}
-				foreign.R.FromUser = local
+				foreign.R.MatchedWithUser = local
 				break
 			}
 		}
@@ -606,53 +803,210 @@ func (userL) LoadFromUserLike(ctx context.Context, e boil.ContextExecutor, singu
 	return nil
 }
 
-// SetFromUserLike of the user to the related item.
-// Sets o.R.FromUserLike to related.
-// Adds o to related.R.FromUser.
-func (o *User) SetFromUserLike(ctx context.Context, exec boil.ContextExecutor, insert bool, related *Like) error {
+// SetMatchedWithUser of the user to the related item.
+// Sets o.R.MatchedWithUser to related.
+// Adds o to related.R.MatchedWithUserUsers.
+func (o *User) SetMatchedWithUser(ctx context.Context, exec boil.ContextExecutor, insert bool, related *User) error {
 	var err error
-
 	if insert {
-		queries.Assign(&related.FromUserID, o.LineUserID)
-
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
 			return errors.Wrap(err, "failed to insert into foreign table")
 		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"users\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 0, []string{"matched_with_user_id"}),
+		strmangle.WhereClause("\"", "\"", 0, userPrimaryKeyColumns),
+	)
+	values := []any{related.LineUserID, o.LineUserID}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, updateQuery)
+		fmt.Fprintln(writer, values)
+	}
+	if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.MatchedWithUserID, related.LineUserID)
+	if o.R == nil {
+		o.R = &userR{
+			MatchedWithUser: related,
+		}
 	} else {
-		updateQuery := fmt.Sprintf(
-			"UPDATE \"likes\" SET %s WHERE %s",
-			strmangle.SetParamNames("\"", "\"", 0, []string{"from_user_id"}),
-			strmangle.WhereClause("\"", "\"", 0, likePrimaryKeyColumns),
-		)
-		values := []any{o.LineUserID, related.ID}
+		o.R.MatchedWithUser = related
+	}
 
-		if boil.IsDebug(ctx) {
-			writer := boil.DebugWriterFrom(ctx)
-			fmt.Fprintln(writer, updateQuery)
-			fmt.Fprintln(writer, values)
+	if related.R == nil {
+		related.R = &userR{
+			MatchedWithUserUsers: UserSlice{o},
 		}
-		if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
-			return errors.Wrap(err, "failed to update foreign table")
+	} else {
+		related.R.MatchedWithUserUsers = append(related.R.MatchedWithUserUsers, o)
+	}
+
+	return nil
+}
+
+// RemoveMatchedWithUser relationship.
+// Sets o.R.MatchedWithUser to nil.
+// Removes o from all passed in related items' relationships struct.
+func (o *User) RemoveMatchedWithUser(ctx context.Context, exec boil.ContextExecutor, related *User) error {
+	var err error
+
+	queries.SetScanner(&o.MatchedWithUserID, nil)
+	if _, err = o.Update(ctx, exec, boil.Whitelist("matched_with_user_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.MatchedWithUser = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.MatchedWithUserUsers {
+		if queries.Equal(o.MatchedWithUserID, ri.MatchedWithUserID) {
+			continue
 		}
 
-		queries.Assign(&related.FromUserID, o.LineUserID)
+		ln := len(related.R.MatchedWithUserUsers)
+		if ln > 1 && i < ln-1 {
+			related.R.MatchedWithUserUsers[i] = related.R.MatchedWithUserUsers[ln-1]
+		}
+		related.R.MatchedWithUserUsers = related.R.MatchedWithUserUsers[:ln-1]
+		break
+	}
+	return nil
+}
+
+// AddMatchedWithUserUsers adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.MatchedWithUserUsers.
+// Sets related.R.MatchedWithUser appropriately.
+func (o *User) AddMatchedWithUserUsers(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*User) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.MatchedWithUserID, o.LineUserID)
+			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"users\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 0, []string{"matched_with_user_id"}),
+				strmangle.WhereClause("\"", "\"", 0, userPrimaryKeyColumns),
+			)
+			values := []any{o.LineUserID, rel.LineUserID}
+
+			if boil.IsDebug(ctx) {
+				writer := boil.DebugWriterFrom(ctx)
+				fmt.Fprintln(writer, updateQuery)
+				fmt.Fprintln(writer, values)
+			}
+			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.MatchedWithUserID, o.LineUserID)
+		}
 	}
 
 	if o.R == nil {
 		o.R = &userR{
-			FromUserLike: related,
+			MatchedWithUserUsers: related,
 		}
 	} else {
-		o.R.FromUserLike = related
+		o.R.MatchedWithUserUsers = append(o.R.MatchedWithUserUsers, related...)
 	}
 
-	if related.R == nil {
-		related.R = &likeR{
-			FromUser: o,
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userR{
+				MatchedWithUser: o,
+			}
+		} else {
+			rel.R.MatchedWithUser = o
 		}
-	} else {
-		related.R.FromUser = o
 	}
+	return nil
+}
+
+// SetMatchedWithUserUsers removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.MatchedWithUser's MatchedWithUserUsers accordingly.
+// Replaces o.R.MatchedWithUserUsers with related.
+// Sets related.R.MatchedWithUser's MatchedWithUserUsers accordingly.
+func (o *User) SetMatchedWithUserUsers(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*User) error {
+	query := "update \"users\" set \"matched_with_user_id\" = null where \"matched_with_user_id\" = ?"
+	values := []any{o.LineUserID}
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, query)
+		fmt.Fprintln(writer, values)
+	}
+	_, err := exec.ExecContext(ctx, query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.MatchedWithUserUsers {
+			queries.SetScanner(&rel.MatchedWithUserID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.MatchedWithUser = nil
+		}
+		o.R.MatchedWithUserUsers = nil
+	}
+
+	return o.AddMatchedWithUserUsers(ctx, exec, insert, related...)
+}
+
+// RemoveMatchedWithUserUsers relationships from objects passed in.
+// Removes related items from R.MatchedWithUserUsers (uses pointer comparison, removal does not keep order)
+// Sets related.R.MatchedWithUser.
+func (o *User) RemoveMatchedWithUserUsers(ctx context.Context, exec boil.ContextExecutor, related ...*User) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.MatchedWithUserID, nil)
+		if rel.R != nil {
+			rel.R.MatchedWithUser = nil
+		}
+		if _, err = rel.Update(ctx, exec, boil.Whitelist("matched_with_user_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.MatchedWithUserUsers {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.MatchedWithUserUsers)
+			if ln > 1 && i < ln-1 {
+				o.R.MatchedWithUserUsers[i] = o.R.MatchedWithUserUsers[ln-1]
+			}
+			o.R.MatchedWithUserUsers = o.R.MatchedWithUserUsers[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

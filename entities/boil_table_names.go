@@ -4,11 +4,9 @@
 package entities
 
 var TableNames = struct {
-	Likes            string
 	SchemaMigrations string
 	Users            string
 }{
-	Likes:            "likes",
 	SchemaMigrations: "schema_migrations",
 	Users:            "users",
 }
