@@ -9,29 +9,26 @@ import (
 
 // MatchingService はマッチング処理を行うドメインサービスのインターフェース
 type MatchingService interface {
-	CheckAndUpdateMatch(ctx context.Context, currentUser *model.User, currentLike *model.Like) (matched bool, matchedUser *model.User, err error)
+	CheckAndUpdateMatch(ctx context.Context, currentUser *model.User) (matched bool, matchedUser *model.User, err error)
 }
 
 // matchingService は MatchingService の実装
 type matchingService struct {
 	userRepo repository.UserRepository
-	likeRepo repository.LikeRepository
 }
 
 // NewMatchingService は MatchingService の新しいインスタンスを作成する
-func NewMatchingService(userRepo repository.UserRepository, likeRepo repository.LikeRepository) MatchingService {
+func NewMatchingService(userRepo repository.UserRepository) MatchingService {
 	return &matchingService{
 		userRepo: userRepo,
-		likeRepo: likeRepo,
 	}
 }
 
-// CheckAndUpdateMatch は相互マッチングをチェックし、マッチした場合は両方の matched フラグを更新する
+// CheckAndUpdateMatch は相互マッチングをチェックし、マッチした場合は両方の matched_with_user_id を更新する
 //
 // 処理の流れ:
-// 1. 相手（crush）がユーザーテーブルに存在するかチェック
-// 2. 相手も自分を登録しているかチェック（FindMatchingLike）
-// 3. 両方が真の場合、両方の Like レコードの matched を true に更新
+// 1. 相互にcrushしているユーザーを検索（FindMatchingUser）
+// 2. 両方が真の場合、両方の matched_with_user_id を更新
 //
 // 戻り値:
 //   - matched: マッチングが成立したかどうか
@@ -40,41 +37,29 @@ func NewMatchingService(userRepo repository.UserRepository, likeRepo repository.
 func (s *matchingService) CheckAndUpdateMatch(
 	ctx context.Context,
 	currentUser *model.User,
-	currentLike *model.Like,
 ) (matched bool, matchedUser *model.User, err error) {
-	// 1. 相手がユーザーテーブルに存在するかチェック
-	crushUser, err := s.userRepo.FindByNameAndBirthday(ctx, currentLike.ToName, currentLike.ToBirthday)
+	// 1. 相互にcrushしているユーザーを検索
+	matchedUser, err = s.userRepo.FindMatchingUser(ctx, currentUser)
 	if err != nil {
 		return false, nil, err
 	}
 
-	// 相手が未登録の場合はマッチング成立しない
-	if crushUser == nil {
+	// マッチング相手が見つからない場合
+	if matchedUser == nil {
 		return false, nil, nil
 	}
 
-	// 2. 相手も自分を登録しているかチェック
-	crushLike, err := s.likeRepo.FindMatchingLike(ctx, crushUser.LineID, currentUser.Name, currentUser.Birthday)
-	if err != nil {
+	// 2. 両方の matched_with_user_id を更新
+	currentUser.MatchedWithUserID = matchedUser.LineID
+	matchedUser.MatchedWithUserID = currentUser.LineID
+
+	if err := s.userRepo.Update(ctx, currentUser); err != nil {
 		return false, nil, err
 	}
 
-	// 相手が自分を登録していない場合はマッチング成立しない
-	if crushLike == nil {
-		return false, nil, nil
-	}
-
-	// 3. 両方の Like レコードの matched を true に更新
-	currentLike.MarkAsMatched()
-	crushLike.MarkAsMatched()
-
-	if err := s.likeRepo.UpdateMatched(ctx, currentLike.ID, true); err != nil {
+	if err := s.userRepo.Update(ctx, matchedUser); err != nil {
 		return false, nil, err
 	}
 
-	if err := s.likeRepo.UpdateMatched(ctx, crushLike.ID, true); err != nil {
-		return false, nil, err
-	}
-
-	return true, crushUser, nil
+	return true, matchedUser, nil
 }
