@@ -111,16 +111,15 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.Regis
 
 	// Initialize real repositories
 	userRepo := repository.NewUserRepository(db)
-	likeRepo := repository.NewLikeRepository(db)
 
 	// Initialize mock LIFF verifier for integration tests
 	// This allows us to test LIFF authentication without real LINE API calls
 	mockVerifier := &mockLIFFVerifier{}
 
 	// Initialize real services
-	matchingService := service.NewMatchingService(userRepo, likeRepo)
+	matchingService := service.NewMatchingService(userRepo)
 	// Use registerURL for both user and crush LIFF URLs in tests
-	userService := service.NewUserService(userRepo, likeRepo, registerURL, registerURL, matchingService, lineBotClient)
+	userService := service.NewUserService(userRepo, registerURL, registerURL, matchingService, lineBotClient)
 
 	// Initialize real handlers
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
@@ -268,20 +267,17 @@ func TestIntegration_CrushRegistrationMatch(t *testing.T) {
 
 	ctx := context.Background()
 	userRepo := repository.NewUserRepository(db)
-	likeRepo := repository.NewLikeRepository(db)
 
 	// Create User A
 	userA := &model.User{
 		LineID:           "test-user-a",
 		Name:             "スズキイチロウ",
 		Birthday:         "1988-08-08",
-		RegistrationStep: 0,
+		CrushName:        "コバヤシミキ",
+		CrushBirthday:    "1990-12-25",
+		RegistrationStep: 2, // Both user and crush registered
 	}
 	err := userRepo.Create(ctx, userA)
-	require.NoError(t, err)
-	userA, _ = userRepo.FindByLineID(ctx, "test-user-a")
-	userA.CompleteUserRegistration()
-	err = userRepo.Update(ctx, userA)
 	require.NoError(t, err)
 
 	// Create User B
@@ -289,18 +285,9 @@ func TestIntegration_CrushRegistrationMatch(t *testing.T) {
 		LineID:           "test-user-b",
 		Name:             "コバヤシミキ",
 		Birthday:         "1990-12-25",
-		RegistrationStep: 0,
+		RegistrationStep: 1, // Only user registered, will register crush next
 	}
 	err = userRepo.Create(ctx, userB)
-	require.NoError(t, err)
-	userB, _ = userRepo.FindByLineID(ctx, "test-user-b")
-	userB.CompleteUserRegistration()
-	err = userRepo.Update(ctx, userB)
-	require.NoError(t, err)
-
-	// User A registers User B as crush
-	likeA := model.NewLike("test-user-a", "コバヤシミキ", "1990-12-25")
-	err = likeRepo.Create(ctx, likeA)
 	require.NoError(t, err)
 
 	// User B registers User A as crush (should trigger match) with ID token
