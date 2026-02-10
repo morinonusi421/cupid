@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
-	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -40,11 +39,6 @@ func (m *MockLineBotClient) PushMessage(request *messaging_api.PushMessageReques
 // MockUserService は service.UserService の mock (webhook_test用)
 type MockUserService struct {
 	mock.Mock
-}
-
-func (m *MockUserService) UpdateUser(ctx context.Context, user *model.User) error {
-	args := m.Called(ctx, user)
-	return args.Error(0)
 }
 
 func (m *MockUserService) VerifyLIFFToken(accessToken string) (string, error) {

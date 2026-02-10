@@ -16,9 +16,6 @@ type LikeRepository interface {
 	// Create は新しい好きな人登録を作成（UPSERT）
 	Create(ctx context.Context, like *model.Like) error
 
-	// FindByFromUserID は登録者IDで検索
-	FindByFromUserID(ctx context.Context, fromUserID string) (*model.Like, error)
-
 	// FindMatchingLike は相互マッチングを検索
 	// fromUserIDのユーザーが toName+toBirthday を登録しているか
 	FindMatchingLike(ctx context.Context, fromUserID, toName, toBirthday string) (*model.Like, error)
@@ -65,22 +62,6 @@ func (r *likeRepository) Create(ctx context.Context, like *model.Like) error {
 	// Upsert後に自動採番されたIDをlikeオブジェクトに反映
 	like.ID = entityLike.ID.Int64
 	return nil
-}
-
-// FindByFromUserID は登録者IDで検索
-func (r *likeRepository) FindByFromUserID(ctx context.Context, fromUserID string) (*model.Like, error) {
-	entity, err := entities.Likes(
-		qm.Where("from_user_id = ?", fromUserID),
-	).One(ctx, r.db)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return model.EntityToLike(entity), nil
 }
 
 // FindMatchingLike は相互マッチングを検索

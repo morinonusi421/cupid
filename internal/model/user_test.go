@@ -33,51 +33,11 @@ func TestUser_IsSamePerson(t *testing.T) {
 	})
 }
 
-func TestUser_CanRegisterCrush(t *testing.T) {
-	t.Run("登録ステップ0の場合falseを返す", func(t *testing.T) {
-		user := User{RegistrationStep: 0}
-		result := user.CanRegisterCrush()
-		assert.False(t, result)
-	})
-
-	t.Run("登録ステップ1の場合trueを返す", func(t *testing.T) {
-		user := User{RegistrationStep: 1}
-		result := user.CanRegisterCrush()
-		assert.True(t, result)
-	})
-
-	t.Run("登録ステップ2の場合trueを返す", func(t *testing.T) {
-		user := User{RegistrationStep: 2}
-		result := user.CanRegisterCrush()
-		assert.True(t, result)
-	})
-}
-
 func TestUser_CompleteCrushRegistration(t *testing.T) {
 	t.Run("登録ステップが2に設定される", func(t *testing.T) {
 		user := User{RegistrationStep: 1}
 		user.CompleteCrushRegistration()
 		assert.Equal(t, 2, user.RegistrationStep)
-	})
-}
-
-func TestUser_IsRegistrationComplete(t *testing.T) {
-	t.Run("登録ステップ0の場合falseを返す", func(t *testing.T) {
-		user := User{RegistrationStep: 0}
-		result := user.IsRegistrationComplete()
-		assert.False(t, result)
-	})
-
-	t.Run("登録ステップ1の場合trueを返す", func(t *testing.T) {
-		user := User{RegistrationStep: 1}
-		result := user.IsRegistrationComplete()
-		assert.True(t, result)
-	})
-
-	t.Run("登録ステップ2の場合trueを返す", func(t *testing.T) {
-		user := User{RegistrationStep: 2}
-		result := user.IsRegistrationComplete()
-		assert.True(t, result)
 	})
 }
 

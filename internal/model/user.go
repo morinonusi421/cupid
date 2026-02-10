@@ -21,20 +21,9 @@ func (u *User) IsSamePerson(name, birthday string) bool {
 	return u.Name == name && u.Birthday == birthday
 }
 
-// CanRegisterCrush は、Crush登録が可能かをチェックする
-// ユーザー登録が完了している（RegistrationStep >= 1）必要がある
-func (u *User) CanRegisterCrush() bool {
-	return u.RegistrationStep >= 1
-}
-
 // CompleteCrushRegistration は、Crush登録を完了する
 func (u *User) CompleteCrushRegistration() {
 	u.RegistrationStep = 2
-}
-
-// IsRegistrationComplete は、ユーザー登録が完了しているかをチェックする
-func (u *User) IsRegistrationComplete() bool {
-	return u.RegistrationStep >= 1
 }
 
 // CompleteUserRegistration は、ユーザー登録を完了する

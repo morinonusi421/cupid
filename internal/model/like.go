@@ -57,13 +57,3 @@ func NewLike(fromUserID, toName, toBirthday string) *Like {
 func (l *Like) MarkAsMatched() {
 	l.Matched = true
 }
-
-// IsMatched はマッチング状態を返す
-func (l *Like) IsMatched() bool {
-	return l.Matched
-}
-
-// MatchesCrush は指定された名前と誕生日が一致するかチェックする
-func (l *Like) MatchesCrush(name, birthday string) bool {
-	return l.ToName == name && l.ToBirthday == birthday
-}

@@ -13,7 +13,6 @@ import (
 
 // UserService はユーザーのビジネスロジック層のインターフェース
 type UserService interface {
-	UpdateUser(ctx context.Context, user *model.User) error
 	ProcessTextMessage(ctx context.Context, userID, text string) (string, error)
 	RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error
 	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string) (matched bool, matchedUserName string, err error)
@@ -39,14 +38,6 @@ func NewUserService(userRepo repository.UserRepository, likeRepo repository.Like
 		matchingService: matchingService,
 		lineBotClient:   lineBotClient,
 	}
-}
-
-// UpdateUser は既存のユーザー情報を更新する
-func (s *userService) UpdateUser(ctx context.Context, user *model.User) error {
-	if err := s.userRepo.Update(ctx, user); err != nil {
-		return fmt.Errorf("failed to update user: %w", err)
-	}
-	return nil
 }
 
 // ProcessTextMessage はテキストメッセージを処理して返信テキストを決定する

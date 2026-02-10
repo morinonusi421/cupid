@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -34,11 +33,6 @@ func (m *mockLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
 
 type MockUserServiceForAPI struct {
 	mock.Mock
-}
-
-func (m *MockUserServiceForAPI) UpdateUser(ctx context.Context, user *model.User) error {
-	args := m.Called(ctx, user)
-	return args.Error(0)
 }
 
 func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
