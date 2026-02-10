@@ -21,7 +21,6 @@ type UserService interface {
 
 type userService struct {
 	userRepo        repository.UserRepository
-	likeRepo        repository.LikeRepository
 	userLiffURL     string
 	crushLiffURL    string
 	matchingService MatchingService
@@ -29,10 +28,9 @@ type userService struct {
 }
 
 // NewUserService は UserService の新しいインスタンスを作成する
-func NewUserService(userRepo repository.UserRepository, likeRepo repository.LikeRepository, userLiffURL string, crushLiffURL string, matchingService MatchingService, lineBotClient linebot.Client) UserService {
+func NewUserService(userRepo repository.UserRepository, userLiffURL string, crushLiffURL string, matchingService MatchingService, lineBotClient linebot.Client) UserService {
 	return &userService{
 		userRepo:        userRepo,
-		likeRepo:        likeRepo,
 		userLiffURL:     userLiffURL,
 		crushLiffURL:    crushLiffURL,
 		matchingService: matchingService,
@@ -114,21 +112,20 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		return false, "", fmt.Errorf("%s", errMsg)
 	}
 
-	// 4. 好きな人を登録（factory method使用）
-	like := model.NewLike(userID, crushName, crushBirthday)
-	if err := s.likeRepo.Create(ctx, like); err != nil {
-		return false, "", err
-	}
+	// 4. 好きな人を登録（usersテーブルに直接保存）
+	currentUser.CrushName = crushName
+	currentUser.CrushBirthday = crushBirthday
 
 	// 5. RegistrationStepを2に更新（domain method使用）
 	currentUser.CompleteCrushRegistration()
+
 	if err := s.userRepo.Update(ctx, currentUser); err != nil {
 		return false, "", err
 	}
 
 	// 6. マッチング判定（MatchingService に委譲）
 	var matchedUser *model.User
-	matched, matchedUser, err = s.matchingService.CheckAndUpdateMatch(ctx, currentUser, like)
+	matched, matchedUser, err = s.matchingService.CheckAndUpdateMatch(ctx, currentUser)
 	if err != nil {
 		return false, "", fmt.Errorf("matching check failed: %w", err)
 	}
