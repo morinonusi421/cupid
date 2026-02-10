@@ -51,13 +51,13 @@ func (m *MockUserService) ProcessTextMessage(ctx context.Context, userID, text s
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockUserService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error {
-	args := m.Called(ctx, userID, name, birthday)
+func (m *MockUserService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) error {
+	args := m.Called(ctx, userID, name, birthday, confirmUnmatch)
 	return args.Error(0)
 }
 
-func (m *MockUserService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string) (matched bool, matchedUserName string, err error) {
-	args := m.Called(ctx, userID, crushName, crushBirthday)
+func (m *MockUserService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, err error) {
+	args := m.Called(ctx, userID, crushName, crushBirthday, confirmUnmatch)
 	return args.Bool(0), args.String(1), args.Error(2)
 }
 
