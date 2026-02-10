@@ -67,7 +67,6 @@ func main() {
 
 	// === Repository層 ===
 	userRepo := repository.NewUserRepository(db)
-	likeRepo := repository.NewLikeRepository(db)
 
 	// === LIFF Verifier ===
 	userLiffVerifier := liff.NewVerifier(userLiffChannelID)
@@ -75,8 +74,8 @@ func main() {
 
 	// === Service層 ===
 	lineBotClient := linebot.NewClient(botAPI)
-	matchingService := service.NewMatchingService(userRepo, likeRepo)
-	userService := service.NewUserService(userRepo, likeRepo, userLiffURL, crushLiffURL, matchingService, lineBotClient)
+	matchingService := service.NewMatchingService(userRepo)
+	userService := service.NewUserService(userRepo, userLiffURL, crushLiffURL, matchingService, lineBotClient)
 
 	// === Handler層 ===
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
