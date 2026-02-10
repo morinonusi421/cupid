@@ -17,6 +17,7 @@ type UserRepository interface {
 	FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error)
 	Create(ctx context.Context, user *model.User) error
 	Update(ctx context.Context, user *model.User) error
+	FindMatchingUser(ctx context.Context, currentUser *model.User) (*model.User, error)
 }
 
 type userRepository struct {
@@ -71,26 +72,52 @@ func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 	return err
 }
 
+// FindMatchingUser は相互にcrushしているユーザーを検索する
+func (r *userRepository) FindMatchingUser(ctx context.Context, currentUser *model.User) (*model.User, error) {
+	entityUser, err := entities.Users(
+		qm.Where("name = ? AND birthday = ? AND crush_name = ? AND crush_birthday = ? AND matched_with_user_id IS NULL",
+			currentUser.CrushName,
+			currentUser.CrushBirthday,
+			currentUser.Name,
+			currentUser.Birthday,
+		),
+	).One(ctx, r.db)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return entityToModel(entityUser), nil
+}
+
 // entityToModel は entities.User を model.User に変換する
 func entityToModel(e *entities.User) *model.User {
 	return &model.User{
-		LineID:           e.LineUserID.String,
-		Name:             e.Name,
-		Birthday:         e.Birthday,
-		RegistrationStep: int(e.RegistrationStep),
-		RegisteredAt:     e.RegisteredAt,
-		UpdatedAt:        e.UpdatedAt,
+		LineID:            e.LineUserID.String,
+		Name:              e.Name,
+		Birthday:          e.Birthday,
+		RegistrationStep:  int(e.RegistrationStep),
+		CrushName:         e.CrushName.String,
+		CrushBirthday:     e.CrushBirthday.String,
+		MatchedWithUserID: e.MatchedWithUserID.String,
+		RegisteredAt:      e.RegisteredAt,
+		UpdatedAt:         e.UpdatedAt,
 	}
 }
 
 // modelToEntity は model.User を entities.User に変換する
 func modelToEntity(m *model.User) *entities.User {
 	return &entities.User{
-		LineUserID:       null.StringFrom(m.LineID),
-		Name:             m.Name,
-		Birthday:         m.Birthday,
-		RegistrationStep: int64(m.RegistrationStep),
-		RegisteredAt:     m.RegisteredAt,
-		UpdatedAt:        m.UpdatedAt,
+		LineUserID:        null.StringFrom(m.LineID),
+		Name:              m.Name,
+		Birthday:          m.Birthday,
+		RegistrationStep:  int64(m.RegistrationStep),
+		CrushName:         null.StringFrom(m.CrushName),
+		CrushBirthday:     null.StringFrom(m.CrushBirthday),
+		MatchedWithUserID: null.StringFrom(m.MatchedWithUserID),
+		RegisteredAt:      m.RegisteredAt,
+		UpdatedAt:         m.UpdatedAt,
 	}
 }
