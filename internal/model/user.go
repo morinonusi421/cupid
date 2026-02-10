@@ -8,12 +8,15 @@ import "regexp"
 //   - CanCompleteRegistration(), CompleteRegistration() などの状態遷移
 //   - ドメインロジックをServiceから移動してModelに集約
 type User struct {
-	LineID           string
-	Name             string
-	Birthday         string
-	RegistrationStep int // 0: 未登録, 1: 登録完了
-	RegisteredAt     string
-	UpdatedAt        string
+	LineID             string
+	Name               string
+	Birthday           string
+	RegistrationStep   int // 1: 登録完了（好きな人未登録）, 2: 好きな人登録完了
+	CrushName          string
+	CrushBirthday      string
+	MatchedWithUserID  string
+	RegisteredAt       string
+	UpdatedAt          string
 }
 
 // IsSamePerson は、指定された名前と誕生日が自分と一致するかをチェックする
@@ -24,6 +27,11 @@ func (u *User) IsSamePerson(name, birthday string) bool {
 // CompleteCrushRegistration は、Crush登録を完了する
 func (u *User) CompleteCrushRegistration() {
 	u.RegistrationStep = 2
+}
+
+// IsMatched は、マッチング中かどうかを返す
+func (u *User) IsMatched() bool {
+	return u.MatchedWithUserID != ""
 }
 
 // CompleteUserRegistration は、ユーザー登録を完了する
