@@ -15,7 +15,7 @@ import (
 type UserService interface {
 	ProcessTextMessage(ctx context.Context, userID, text string) (string, error)
 	RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) error
-	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string) (matched bool, matchedUserName string, err error)
+	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, err error)
 	HandleFollowEvent(ctx context.Context, replyToken string) error
 }
 
@@ -92,7 +92,7 @@ func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthd
 }
 
 // RegisterCrush は好きな人を登録し、マッチング判定を行う
-func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string) (matched bool, matchedUserName string, err error) {
+func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, err error) {
 	// 1. 現在のユーザー情報を取得
 	currentUser, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
@@ -102,28 +102,41 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		return false, "", fmt.Errorf("user not found: %s", userID)
 	}
 
-	// 2. 自己登録チェック（domain method使用）
+	// 2. マッチング中かチェック
+	if currentUser.IsMatched() && !confirmUnmatch {
+		return false, "", fmt.Errorf("matched_user_exists")
+	}
+
+	// 3. マッチング解除処理
+	if currentUser.IsMatched() && confirmUnmatch {
+		if err := s.unmatchUsers(ctx, currentUser, currentUser.MatchedWithUserID); err != nil {
+			log.Printf("Failed to unmatch users: %v", err)
+			// エラーをログに記録するが、処理は継続（Crush更新は実施）
+		}
+	}
+
+	// 4. 自己登録チェック（domain method使用）
 	if currentUser.IsSamePerson(crushName, crushBirthday) {
 		return false, "", fmt.Errorf("cannot register yourself")
 	}
 
-	// 3. 名前のバリデーション
+	// 5. 名前のバリデーション
 	if valid, errMsg := model.IsValidName(crushName); !valid {
 		return false, "", fmt.Errorf("%s", errMsg)
 	}
 
-	// 4. 好きな人を登録（usersテーブルに直接保存）
+	// 6. 好きな人を登録（usersテーブルに直接保存）
 	currentUser.CrushName = crushName
 	currentUser.CrushBirthday = crushBirthday
 
-	// 5. RegistrationStepを2に更新（domain method使用）
+	// 7. RegistrationStepを2に更新（domain method使用）
 	currentUser.CompleteCrushRegistration()
 
 	if err := s.userRepo.Update(ctx, currentUser); err != nil {
 		return false, "", err
 	}
 
-	// 6. マッチング判定（MatchingService に委譲）
+	// 8. マッチング判定（MatchingService に委譲）
 	var matchedUser *model.User
 	matched, matchedUser, err = s.matchingService.CheckAndUpdateMatch(ctx, currentUser)
 	if err != nil {
