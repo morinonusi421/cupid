@@ -23,8 +23,9 @@ func NewCrushRegistrationAPIHandler(userService service.UserService, verifier li
 }
 
 type RegisterCrushRequest struct {
-	CrushName     string `json:"crush_name"`
-	CrushBirthday string `json:"crush_birthday"`
+	CrushName      string `json:"crush_name"`
+	CrushBirthday  string `json:"crush_birthday"`
+	ConfirmUnmatch bool   `json:"confirm_unmatch"`
 }
 
 type RegisterCrushResponse struct {
@@ -77,9 +78,19 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 	}
 
 	// サービス呼び出し（user_idはトークンから取得したものを使用）
-	matched, matchedName, err := h.userService.RegisterCrush(r.Context(), userID, req.CrushName, req.CrushBirthday)
+	matched, matchedName, err := h.userService.RegisterCrush(r.Context(), userID, req.CrushName, req.CrushBirthday, req.ConfirmUnmatch)
 	if err != nil {
 		log.Printf("Failed to register crush: %v", err)
+
+		// matched_user_existsエラーの場合は特別なレスポンス
+		if err.Error() == "matched_user_exists" {
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "matched_user_exists",
+				"message": "現在マッチング中です。変更するとマッチングが解除されます。",
+			})
+			return
+		}
 
 		// 自己登録エラーの場合は400を返す
 		if err.Error() == "cannot register yourself" {
