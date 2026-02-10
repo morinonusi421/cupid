@@ -40,35 +40,12 @@ func (m *MockMatchingUserRepository) Update(ctx context.Context, user *model.Use
 	return args.Error(0)
 }
 
-// MockMatchingLikeRepository は MatchingService のテスト用 LikeRepository モック
-type MockMatchingLikeRepository struct {
-	mock.Mock
-}
-
-func (m *MockMatchingLikeRepository) Create(ctx context.Context, like *model.Like) error {
-	args := m.Called(ctx, like)
-	return args.Error(0)
-}
-
-func (m *MockMatchingLikeRepository) FindByFromUserID(ctx context.Context, fromUserID string) (*model.Like, error) {
-	args := m.Called(ctx, fromUserID)
+func (m *MockMatchingUserRepository) FindMatchingUser(ctx context.Context, user *model.User) (*model.User, error) {
+	args := m.Called(ctx, user)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*model.Like), args.Error(1)
-}
-
-func (m *MockMatchingLikeRepository) FindMatchingLike(ctx context.Context, fromUserID, toName, toBirthday string) (*model.Like, error) {
-	args := m.Called(ctx, fromUserID, toName, toBirthday)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*model.Like), args.Error(1)
-}
-
-func (m *MockMatchingLikeRepository) UpdateMatched(ctx context.Context, id int64, matched bool) error {
-	args := m.Called(ctx, id, matched)
-	return args.Error(0)
+	return args.Get(0).(*model.User), args.Error(1)
 }
 
 // TestMatchingService_CheckAndUpdateMatch_NoMatch_CrushNotRegistered は
@@ -76,30 +53,29 @@ func (m *MockMatchingLikeRepository) UpdateMatched(ctx context.Context, id int64
 func TestMatchingService_CheckAndUpdateMatch_NoMatch_CrushNotRegistered(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo := new(MockMatchingUserRepository)
-	mockLikeRepo := new(MockMatchingLikeRepository)
 
 	// Setup
 	currentUser := &model.User{
-		LineID:   "user1",
-		Name:     "Alice",
-		Birthday: "1990-01-01",
+		LineID:       "user1",
+		Name:         "Alice",
+		Birthday:     "1990-01-01",
+		CrushName:    "Bob",
+		CrushBirthday: "1995-05-05",
 	}
-	currentLike := model.NewLike("user1", "Bob", "1995-05-05")
 
-	// 相手（Bob）がユーザーテーブルに未登録
-	mockUserRepo.On("FindByNameAndBirthday", ctx, "Bob", "1995-05-05").
+	// FindMatchingUser が nil を返す（相手が未登録）
+	mockUserRepo.On("FindMatchingUser", ctx, currentUser).
 		Return(nil, nil)
 
 	// Execute
-	service := NewMatchingService(mockUserRepo, mockLikeRepo)
-	matched, matchedUserName, err := service.CheckAndUpdateMatch(ctx, currentUser, currentLike)
+	service := NewMatchingService(mockUserRepo)
+	matched, matchedUser, err := service.CheckAndUpdateMatch(ctx, currentUser)
 
 	// Assert
 	assert.NoError(t, err)
 	assert.False(t, matched)
-	assert.Empty(t, matchedUserName)
+	assert.Nil(t, matchedUser)
 	mockUserRepo.AssertExpectations(t)
-	mockLikeRepo.AssertExpectations(t)
 }
 
 // TestMatchingService_CheckAndUpdateMatch_NoMatch_CrushNotLikeBack は
@@ -107,40 +83,29 @@ func TestMatchingService_CheckAndUpdateMatch_NoMatch_CrushNotRegistered(t *testi
 func TestMatchingService_CheckAndUpdateMatch_NoMatch_CrushNotLikeBack(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo := new(MockMatchingUserRepository)
-	mockLikeRepo := new(MockMatchingLikeRepository)
 
 	// Setup
 	currentUser := &model.User{
-		LineID:   "user1",
-		Name:     "Alice",
-		Birthday: "1990-01-01",
-	}
-	currentLike := model.NewLike("user1", "Bob", "1995-05-05")
-
-	crushUser := &model.User{
-		LineID:   "user2",
-		Name:     "Bob",
-		Birthday: "1995-05-05",
+		LineID:       "user1",
+		Name:         "Alice",
+		Birthday:     "1990-01-01",
+		CrushName:    "Bob",
+		CrushBirthday: "1995-05-05",
 	}
 
-	// 相手（Bob）はユーザー登録済み
-	mockUserRepo.On("FindByNameAndBirthday", ctx, "Bob", "1995-05-05").
-		Return(crushUser, nil)
-
-	// しかし相手は自分（Alice）を登録していない
-	mockLikeRepo.On("FindMatchingLike", ctx, "user2", "Alice", "1990-01-01").
+	// FindMatchingUser が nil を返す（相手は自分を登録していない）
+	mockUserRepo.On("FindMatchingUser", ctx, currentUser).
 		Return(nil, nil)
 
 	// Execute
-	service := NewMatchingService(mockUserRepo, mockLikeRepo)
-	matched, matchedUserName, err := service.CheckAndUpdateMatch(ctx, currentUser, currentLike)
+	service := NewMatchingService(mockUserRepo)
+	matched, matchedUser, err := service.CheckAndUpdateMatch(ctx, currentUser)
 
 	// Assert
 	assert.NoError(t, err)
 	assert.False(t, matched)
-	assert.Empty(t, matchedUserName)
+	assert.Nil(t, matchedUser)
 	mockUserRepo.AssertExpectations(t)
-	mockLikeRepo.AssertExpectations(t)
 }
 
 // TestMatchingService_CheckAndUpdateMatch_Match は
@@ -148,48 +113,43 @@ func TestMatchingService_CheckAndUpdateMatch_NoMatch_CrushNotLikeBack(t *testing
 func TestMatchingService_CheckAndUpdateMatch_Match(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo := new(MockMatchingUserRepository)
-	mockLikeRepo := new(MockMatchingLikeRepository)
 
 	// Setup
 	currentUser := &model.User{
-		LineID:   "user1",
-		Name:     "Alice",
-		Birthday: "1990-01-01",
-	}
-	currentLike := model.NewLike("user1", "Bob", "1995-05-05")
-	currentLike.ID = 1
-
-	crushUser := &model.User{
-		LineID:   "user2",
-		Name:     "Bob",
-		Birthday: "1995-05-05",
+		LineID:       "user1",
+		Name:         "Alice",
+		Birthday:     "1990-01-01",
+		CrushName:    "Bob",
+		CrushBirthday: "1995-05-05",
 	}
 
-	crushLike := model.NewLike("user2", "Alice", "1990-01-01")
-	crushLike.ID = 2
+	matchedUser := &model.User{
+		LineID:       "user2",
+		Name:         "Bob",
+		Birthday:     "1995-05-05",
+		CrushName:    "Alice",
+		CrushBirthday: "1990-01-01",
+	}
 
-	// 相手（Bob）はユーザー登録済み
-	mockUserRepo.On("FindByNameAndBirthday", ctx, "Bob", "1995-05-05").
-		Return(crushUser, nil)
+	// FindMatchingUser がマッチング相手を返す
+	mockUserRepo.On("FindMatchingUser", ctx, currentUser).
+		Return(matchedUser, nil)
 
-	// 相手も自分（Alice）を登録している
-	mockLikeRepo.On("FindMatchingLike", ctx, "user2", "Alice", "1990-01-01").
-		Return(crushLike, nil)
-
-	// 両方の matched フラグを更新
-	mockLikeRepo.On("UpdateMatched", ctx, int64(1), true).Return(nil)
-	mockLikeRepo.On("UpdateMatched", ctx, int64(2), true).Return(nil)
+	// 両方の matched_with_user_id を更新
+	mockUserRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
+		return (u.LineID == "user1" && u.MatchedWithUserID == "user2") ||
+			(u.LineID == "user2" && u.MatchedWithUserID == "user1")
+	})).Return(nil).Times(2)
 
 	// Execute
-	service := NewMatchingService(mockUserRepo, mockLikeRepo)
-	matched, matchedUser, err := service.CheckAndUpdateMatch(ctx, currentUser, currentLike)
+	service := NewMatchingService(mockUserRepo)
+	matched, resultUser, err := service.CheckAndUpdateMatch(ctx, currentUser)
 
 	// Assert
 	assert.NoError(t, err)
 	assert.True(t, matched)
-	assert.NotNil(t, matchedUser)
-	assert.Equal(t, "Bob", matchedUser.Name)
-	assert.Equal(t, "user2", matchedUser.LineID)
+	assert.NotNil(t, resultUser)
+	assert.Equal(t, "Bob", resultUser.Name)
+	assert.Equal(t, "user2", resultUser.LineID)
 	mockUserRepo.AssertExpectations(t)
-	mockLikeRepo.AssertExpectations(t)
 }
