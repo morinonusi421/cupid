@@ -14,7 +14,7 @@ import (
 // UserService はユーザーのビジネスロジック層のインターフェース
 type UserService interface {
 	ProcessTextMessage(ctx context.Context, userID, text string) (string, error)
-	RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error
+	RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) error
 	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string) (matched bool, matchedUserName string, err error)
 	HandleFollowEvent(ctx context.Context, replyToken string) error
 }
@@ -69,7 +69,7 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 }
 
 // RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する
-func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string) error {
+func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) error {
 	// 1. バリデーション
 	if ok, errMsg := model.IsValidName(name); !ok {
 		return fmt.Errorf("%s", errMsg)
@@ -87,7 +87,7 @@ func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthd
 		return s.registerNewUser(ctx, userID, name, birthday)
 	} else {
 		// 再登録（情報更新）
-		return s.updateUserInfo(ctx, user, name, birthday)
+		return s.updateUserInfo(ctx, user, name, birthday, confirmUnmatch)
 	}
 }
 
@@ -186,22 +186,35 @@ func (s *userService) registerNewUser(ctx context.Context, userID, name, birthda
 }
 
 // updateUserInfo は再登録時に既存ユーザーの情報を更新する
-func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name, birthday string) error {
-	// 1. ユーザー情報を更新
+func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name, birthday string, confirmUnmatch bool) error {
+	// 1. マッチング中かチェック
+	if user.IsMatched() && !confirmUnmatch {
+		return fmt.Errorf("matched_user_exists")
+	}
+
+	// 2. マッチング解除処理
+	if user.IsMatched() && confirmUnmatch {
+		if err := s.unmatchUsers(ctx, user, user.MatchedWithUserID); err != nil {
+			log.Printf("Failed to unmatch users: %v", err)
+			// エラーをログに記録するが、処理は継続（情報更新は実施）
+		}
+	}
+
+	// 3. ユーザー情報を更新
 	user.Name = name
 	user.Birthday = birthday
 
-	// 2. registration_step が 0 の場合のみ 1 に更新（通常はありえないが念のため）
+	// 4. registration_step が 0 の場合のみ 1 に更新（通常はありえないが念のため）
 	if user.RegistrationStep == 0 {
 		user.CompleteUserRegistration()
 	}
 
-	// 3. DBに保存
+	// 5. DBに保存
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	// 4. 更新完了メッセージを送信
+	// 6. 更新完了メッセージを送信
 	if err := s.sendUserInfoUpdateConfirmation(ctx, user); err != nil {
 		log.Printf("Failed to send update confirmation to %s: %v", user.LineID, err)
 		// エラーをログに記録するが、更新処理は成功として扱う
