@@ -32,32 +32,22 @@ func setupTestDB(t *testing.T) *sql.DB {
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
-	// スキーマを作成（migration SQLから抽出）
+	// スキーマを作成（最新のマイグレーションから）
 	schema := `
 		CREATE TABLE users (
 		  line_user_id TEXT PRIMARY KEY,
 		  name TEXT NOT NULL DEFAULT '',
 		  birthday TEXT NOT NULL DEFAULT '',
 		  registration_step INTEGER NOT NULL DEFAULT 0,
-		  temp_crush_name TEXT,
+		  crush_name TEXT NOT NULL DEFAULT '',
+		  crush_birthday TEXT NOT NULL DEFAULT '',
+		  matched_with_user_id TEXT DEFAULT NULL,
 		  registered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 
 		CREATE INDEX idx_users_name_birthday ON users(name, birthday);
-
-		CREATE TABLE likes (
-		  id INTEGER PRIMARY KEY AUTOINCREMENT,
-		  from_user_id TEXT NOT NULL,
-		  to_name TEXT NOT NULL,
-		  to_birthday TEXT NOT NULL,
-		  matched INTEGER NOT NULL DEFAULT 0,
-		  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		  FOREIGN KEY (from_user_id) REFERENCES users(line_user_id),
-		  UNIQUE(from_user_id)
-		);
-
-		CREATE INDEX idx_likes_to_name_birthday ON likes(to_name, to_birthday);
+		CREATE INDEX idx_users_crush_name_birthday ON users(crush_name, crush_birthday);
 
 		CREATE TRIGGER update_users_updated_at
 		AFTER UPDATE ON users
