@@ -320,3 +320,63 @@ func (s *userService) sendCrushRegistrationComplete(ctx context.Context, user *m
 	_, err := s.lineBotClient.PushMessage(request)
 	return err
 }
+
+// unmatchUsers はマッチングを解除し、両方のユーザーに通知を送信する
+func (s *userService) unmatchUsers(ctx context.Context, initiatorUser *model.User, partnerUserID string) error {
+	// 相手のユーザー情報を取得
+	partnerUser, err := s.userRepo.FindByLineID(ctx, partnerUserID)
+	if err != nil {
+		return fmt.Errorf("failed to find partner user: %w", err)
+	}
+	if partnerUser == nil {
+		return fmt.Errorf("partner user not found: %s", partnerUserID)
+	}
+
+	// 両方の matched_with_user_id を NULL に
+	initiatorUser.MatchedWithUserID = ""
+	partnerUser.MatchedWithUserID = ""
+
+	if err := s.userRepo.Update(ctx, initiatorUser); err != nil {
+		return fmt.Errorf("failed to update initiator user: %w", err)
+	}
+
+	if err := s.userRepo.Update(ctx, partnerUser); err != nil {
+		return fmt.Errorf("failed to update partner user: %w", err)
+	}
+
+	// 両方のユーザーに解除通知を送信
+	if err := s.sendUnmatchNotification(ctx, initiatorUser, partnerUser, true); err != nil {
+		log.Printf("Failed to send unmatch notification to initiator %s: %v", initiatorUser.LineID, err)
+	}
+
+	if err := s.sendUnmatchNotification(ctx, partnerUser, initiatorUser, false); err != nil {
+		log.Printf("Failed to send unmatch notification to partner %s: %v", partnerUser.LineID, err)
+	}
+
+	return nil
+}
+
+// sendUnmatchNotification はマッチング解除時にLINE Push通知を送信する
+func (s *userService) sendUnmatchNotification(ctx context.Context, toUser *model.User, partnerUser *model.User, isInitiator bool) error {
+	var reason string
+	if isInitiator {
+		reason = "あなたが情報を変更しました"
+	} else {
+		reason = "相手が情報を変更しました"
+	}
+
+	message := fmt.Sprintf("マッチングが解除されました。\n\n理由：%s\n相手：%s", reason, partnerUser.Name)
+
+	request := &messaging_api.PushMessageRequest{
+		To: toUser.LineID,
+		Messages: []messaging_api.MessageInterface{
+			messaging_api.TextMessage{
+				Text: message,
+			},
+		},
+		NotificationDisabled: false,
+	}
+
+	_, err := s.lineBotClient.PushMessage(request)
+	return err
+}
