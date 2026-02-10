@@ -23,8 +23,9 @@ func NewRegistrationAPIHandler(userService service.UserService, verifier liff.Ve
 }
 
 type RegisterRequest struct {
-	Name     string `json:"name"`
-	Birthday string `json:"birthday"`
+	Name           string `json:"name"`
+	Birthday       string `json:"birthday"`
+	ConfirmUnmatch bool   `json:"confirm_unmatch"`
 }
 
 func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +54,7 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// リクエストボディからname, birthdayのみ取得
+	// リクエストボディからname, birthday, confirm_unmatchを取得
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Failed to decode request: %v", err)
@@ -63,8 +64,21 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 	}
 
 	// user_idはトークンから取得したものを使用
-	if err := h.userService.RegisterFromLIFF(r.Context(), userID, req.Name, req.Birthday); err != nil {
+	if err := h.userService.RegisterFromLIFF(r.Context(), userID, req.Name, req.Birthday, req.ConfirmUnmatch); err != nil {
 		log.Printf("Failed to register user: %v", err)
+
+		// matched_user_existsエラーの場合は特別なレスポンス
+		if err.Error() == "matched_user_exists" {
+			// 相手の名前を取得するためにユーザー情報を取得
+			// TODO: サービスからエラーと一緒に相手の名前を返すようにリファクタリング
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "matched_user_exists",
+				"message": "現在マッチング中です。変更するとマッチングが解除されます。",
+			})
+			return
+		}
+
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
