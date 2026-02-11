@@ -62,6 +62,7 @@
 **【重要】現在は本番検証段階のため、本番用LIFF IDを使用すること**
 - `.env`の`LINE_LIFF_USER_CHANNEL_ID`と`LINE_LIFF_CRUSH_CHANNEL_ID`は本番用を設定
 - `static/liff/register.js`と`static/crush/register.js`のLIFF_IDも本番用を使用
+- **リッチメニューのURLも本番用を設定すること**（LINE公式アカウント管理画面から）
 
 ### チャネルID
 - **開発用**: `2009059074`
@@ -102,6 +103,22 @@
 - **開発用**: `https://cupid-linebot.click/crush/register.html`
 - **審査用**: （自動反映）
 - **本番用**: （自動反映）
+
+### リッチメニュー設定
+
+LINE公式アカウントの管理画面から設定。**必ず本番用URLを使用すること。**
+
+**本番用URL（現在の設定）:**
+- 自分の情報を登録/編集: `https://miniapp.line.me/2009059076-kBsUXYIC`
+- 想い人の情報を登録/編集: `https://miniapp.line.me/2009070891-iIdvFKtI`
+
+**開発用URL（参考）:**
+- 自分の情報を登録/編集: `https://miniapp.line.me/2009059074-aX6pc41R`
+- 想い人の情報を登録/編集: `https://miniapp.line.me/2009070889-qZo1cdq6`
+
+**注意:**
+- リッチメニューのURLが開発用になっていると、サーバー側の認証が失敗する
+- 「LINE認証に失敗しました」エラーが出る場合は、リッチメニューのURLを確認
 
 ### TODO
 - [ ] 好きな人登録フォーム用のLIFF URL作成（後回し）
