@@ -76,8 +76,8 @@ func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 func (r *userRepository) FindMatchingUser(ctx context.Context, currentUser *model.User) (*model.User, error) {
 	entityUser, err := entities.Users(
 		qm.Where("name = ? AND birthday = ? AND crush_name = ? AND crush_birthday = ? AND matched_with_user_id IS NULL",
-			currentUser.CrushName,
-			currentUser.CrushBirthday,
+			currentUser.CrushName.String,
+			currentUser.CrushBirthday.String,
 			currentUser.Name,
 			currentUser.Birthday,
 		),
