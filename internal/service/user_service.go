@@ -15,7 +15,7 @@ import (
 
 // UserService はユーザーのビジネスロジック層のインターフェース
 type UserService interface {
-	ProcessTextMessage(ctx context.Context, userID, text string) (replyText string, quickReplyURL string, quickReplyLabel string, err error)
+	ProcessTextMessage(ctx context.Context, userID string) (replyText string, quickReplyURL string, quickReplyLabel string, err error)
 	RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error)
 	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error)
 	HandleFollowEvent(ctx context.Context, replyToken string) error
@@ -42,7 +42,7 @@ func NewUserService(userRepo repository.UserRepository, userLiffURL string, crus
 
 // ProcessTextMessage はテキストメッセージを処理して返信テキスト、QuickReply情報を決定する
 // quickReplyURL, quickReplyLabel が空文字列の場合はQuickReplyなし
-func (s *userService) ProcessTextMessage(ctx context.Context, userID, text string) (replyText string, quickReplyURL string, quickReplyLabel string, err error) {
+func (s *userService) ProcessTextMessage(ctx context.Context, userID string) (replyText string, quickReplyURL string, quickReplyLabel string, err error) {
 	// DBからユーザーを検索（createはしない）
 	user, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
@@ -159,19 +159,19 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 	// マッチした場合、両方のユーザーにLINE通知を送信
 	if matched {
 		// 現在のユーザーに通知
-		if err := s.sendMatchNotification(ctx, currentUser, matchedUser); err != nil {
+		if err := s.sendMatchNotification(currentUser, matchedUser); err != nil {
 			log.Printf("Failed to send match notification to %s: %v", currentUser.LineID, err)
 			// エラーをログに記録するが、処理は継続
 		}
 
 		// 相手ユーザーに通知
-		if err := s.sendMatchNotification(ctx, matchedUser, currentUser); err != nil {
+		if err := s.sendMatchNotification(matchedUser, currentUser); err != nil {
 			log.Printf("Failed to send match notification to %s: %v", matchedUser.LineID, err)
 			// エラーをログに記録するが、処理は継続
 		}
 	} else {
 		// マッチしなかった場合も登録完了を通知
-		if err := s.sendCrushRegistrationComplete(ctx, currentUser, isFirstCrushRegistration); err != nil {
+		if err := s.sendCrushRegistrationComplete(currentUser, isFirstCrushRegistration); err != nil {
 			log.Printf("Failed to send crush registration complete notification to %s: %v", currentUser.LineID, err)
 			// エラーをログに記録するが、処理は継続
 		}
@@ -202,7 +202,7 @@ func (s *userService) registerNewUser(ctx context.Context, userID, name, birthda
 	}
 
 	// 3. 好きな人登録を促すメッセージを送信
-	if err := s.sendCrushRegistrationPrompt(ctx, user); err != nil {
+	if err := s.sendCrushRegistrationPrompt(user); err != nil {
 		log.Printf("Failed to send crush registration prompt to %s: %v", user.LineID, err)
 		// エラーをログに記録するが、登録処理は成功として扱う
 	}
@@ -242,7 +242,7 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 	}
 
 	// 6. 更新完了メッセージを送信
-	if err := s.sendUserInfoUpdateConfirmation(ctx, user); err != nil {
+	if err := s.sendUserInfoUpdateConfirmation(user); err != nil {
 		log.Printf("Failed to send update confirmation to %s: %v", user.LineID, err)
 		// エラーをログに記録するが、更新処理は成功として扱う
 	}
@@ -254,7 +254,7 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *userService) sendMatchNotification(ctx context.Context, toUser *model.User, matchedWithUser *model.User) error {
+func (s *userService) sendMatchNotification(toUser *model.User, matchedWithUser *model.User) error {
 	request := &messaging_api.PushMessageRequest{
 		To: toUser.LineID,
 		Messages: []messaging_api.MessageInterface{
@@ -302,7 +302,7 @@ func (s *userService) HandleFollowEvent(ctx context.Context, replyToken string) 
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *model.User) error {
+func (s *userService) sendCrushRegistrationPrompt(user *model.User) error {
 	request := &messaging_api.PushMessageRequest{
 		To: user.LineID,
 		Messages: []messaging_api.MessageInterface{
@@ -335,7 +335,7 @@ func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *mod
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *userService) sendUserInfoUpdateConfirmation(ctx context.Context, user *model.User) error {
+func (s *userService) sendUserInfoUpdateConfirmation(user *model.User) error {
 	request := &messaging_api.PushMessageRequest{
 		To: user.LineID,
 		Messages: []messaging_api.MessageInterface{
@@ -357,7 +357,7 @@ func (s *userService) sendUserInfoUpdateConfirmation(ctx context.Context, user *
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *userService) sendCrushRegistrationComplete(ctx context.Context, user *model.User, isFirstRegistration bool) error {
+func (s *userService) sendCrushRegistrationComplete(user *model.User, isFirstRegistration bool) error {
 	var messageText string
 	if isFirstRegistration {
 		messageText = message.CrushRegistrationCompleteFirst
@@ -406,11 +406,11 @@ func (s *userService) unmatchUsers(ctx context.Context, initiatorUser *model.Use
 	}
 
 	// 両方のユーザーに解除通知を送信
-	if err := s.sendUnmatchNotification(ctx, initiatorUser, partnerUser, true); err != nil {
+	if err := s.sendUnmatchNotification(initiatorUser, partnerUser, true); err != nil {
 		log.Printf("Failed to send unmatch notification to initiator %s: %v", initiatorUser.LineID, err)
 	}
 
-	if err := s.sendUnmatchNotification(ctx, partnerUser, initiatorUser, false); err != nil {
+	if err := s.sendUnmatchNotification(partnerUser, initiatorUser, false); err != nil {
 		log.Printf("Failed to send unmatch notification to partner %s: %v", partnerUser.LineID, err)
 	}
 
@@ -421,7 +421,7 @@ func (s *userService) unmatchUsers(ctx context.Context, initiatorUser *model.Use
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *userService) sendUnmatchNotification(ctx context.Context, toUser *model.User, partnerUser *model.User, isInitiator bool) error {
+func (s *userService) sendUnmatchNotification(toUser *model.User, partnerUser *model.User, isInitiator bool) error {
 	var messageText string
 	if isInitiator {
 		messageText = message.UnmatchNotificationInitiator(partnerUser.Name)

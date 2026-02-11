@@ -35,8 +35,8 @@ type MockUserServiceForAPI struct {
 	mock.Mock
 }
 
-func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID, text string) (string, string, string, error) {
-	args := m.Called(ctx, userID, text)
+func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID string) (string, string, string, error) {
+	args := m.Called(ctx, userID)
 	return args.String(0), args.String(1), args.String(2), args.Error(3)
 }
 

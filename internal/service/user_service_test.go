@@ -99,7 +99,7 @@ func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
 
-	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
+	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123")
 
 	assert.NoError(t, err)
 	assert.Equal(t, message.RegistrationStep1Prompt(crushLiffURL), replyText)
@@ -127,7 +127,7 @@ func TestUserService_ProcessTextMessage_Step2_CrushReregistration(t *testing.T) 
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
 
-	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
+	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123")
 
 	assert.NoError(t, err)
 	assert.Equal(t, message.AlreadyRegisteredMessage, replyText)
@@ -145,7 +145,7 @@ func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(nil, errors.New("db error"))
 
-	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123", "test")
+	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to find user")
@@ -165,7 +165,7 @@ func TestUserService_ProcessTextMessage_UnregisteredUser(t *testing.T) {
 	// FindByLineID が nil を返す（ユーザー未登録）
 	mockRepo.On("FindByLineID", ctx, "U-new-user").Return(nil, nil)
 
-	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U-new-user", "こんにちは")
+	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U-new-user")
 
 	assert.NoError(t, err)
 	assert.Equal(t, message.UnregisteredUserPrompt(userLiffURL), replyText)

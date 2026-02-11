@@ -73,7 +73,7 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		case webhook.MessageEvent:
 			// テキストメッセージの場合
-			switch message := e.Message.(type) {
+			switch e.Message.(type) {
 			case webhook.TextMessageContent:
 				// userIDを取得
 				var userID string
@@ -86,7 +86,7 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// UserServiceで処理
-				replyText, quickReplyURL, quickReplyLabel, err := h.userService.ProcessTextMessage(r.Context(), userID, message.Text)
+				replyText, quickReplyURL, quickReplyLabel, err := h.userService.ProcessTextMessage(r.Context(), userID)
 				if err != nil {
 					log.Printf("Failed to process message: %v", err)
 					replyText = "エラーが発生しました。もう一度試してください。"
