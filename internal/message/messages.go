@@ -70,3 +70,12 @@ func UnmatchNotificationInitiator(partnerName string) string {
 func UnmatchNotificationPartner(partnerName string) string {
 	return fmt.Sprintf("あうぅ...マッチングが解除されちゃいました💦\n\n理由：相手が情報を変更しました\nお相手：%s さん\n\nでも大丈夫ですっ！キューピッドちゃん、また新しい恋を応援しますね♡", partnerName)
 }
+
+// ========================================
+// 6. エラーメッセージ
+// ========================================
+
+// CrushRegistrationUserNotFound は未登録ユーザーが好きな人登録を試みた時のエラーメッセージを生成する
+func CrushRegistrationUserNotFound(userLiffURL string) string {
+	return fmt.Sprintf("あうぅ...先に自分の情報を登録してくださいっ💦\n\nまずは下のリンクから登録をお願いしますね✨\n\n%s", userLiffURL)
+}

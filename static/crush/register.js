@@ -135,6 +135,21 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
         if (!response.ok) {
             const errorData = await response.json();
 
+            // user_not_foundの場合は自分の情報登録を促す
+            if (errorData.error === 'user_not_found') {
+                showLoading(false);
+                showMessage(errorData.message || 'あうぅ...先に自分の情報を登録してくださいっ💦', 'error');
+                submitButton.disabled = false;
+
+                // ユーザー登録URLがあれば、3秒後に自動的に遷移
+                if (errorData.user_liff_url) {
+                    setTimeout(() => {
+                        window.location.href = errorData.user_liff_url;
+                    }, 3000);
+                }
+                return;
+            }
+
             // matched_user_existsの場合は確認ダイアログを表示
             if (errorData.error === 'matched_user_exists') {
                 showLoading(false);

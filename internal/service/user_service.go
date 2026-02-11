@@ -79,7 +79,7 @@ func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthd
 	}
 	// 見つかったユーザーが他人（LineIDが違う）の場合はエラー
 	if existingUser != nil && existingUser.LineID != userID {
-		return false, fmt.Errorf("duplicate_user")
+		return false, ErrDuplicateUser
 	}
 
 	// 3. ユーザー検索
@@ -112,12 +112,12 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		return false, "", false, err
 	}
 	if currentUser == nil {
-		return false, "", false, fmt.Errorf("user not found: %s", userID)
+		return false, "", false, ErrUserNotFound
 	}
 
 	// 2. マッチング中かチェック
 	if currentUser.IsMatched() && !confirmUnmatch {
-		return false, "", false, fmt.Errorf("matched_user_exists")
+		return false, "", false, ErrMatchedUserExists
 	}
 
 	// 3. マッチング解除処理
@@ -130,7 +130,7 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 
 	// 4. 自己登録チェック（domain method使用）
 	if currentUser.IsSamePerson(crushName, crushBirthday) {
-		return false, "", false, fmt.Errorf("cannot register yourself")
+		return false, "", false, ErrCannotRegisterYourself
 	}
 
 	// 5. 名前のバリデーション
@@ -221,7 +221,7 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 
 	// 2. マッチング中かチェック
 	if user.IsMatched() && !confirmUnmatch {
-		return fmt.Errorf("matched_user_exists")
+		return ErrMatchedUserExists
 	}
 
 	// 3. マッチング解除処理

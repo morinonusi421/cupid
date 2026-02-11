@@ -80,7 +80,7 @@ func main() {
 	// === Handler層 ===
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
 	registrationAPIHandler := handler.NewRegistrationAPIHandler(userService, userLiffVerifier)
-	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, crushLiffVerifier)
+	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, crushLiffVerifier, userLiffURL)
 
 	// === ルーティング設定 ===
 	// ヘルスチェック

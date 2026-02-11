@@ -2,23 +2,27 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
 
 	"github.com/morinonusi421/cupid/internal/liff"
+	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/service"
 )
 
 type CrushRegistrationAPIHandler struct {
-	userService service.UserService
-	verifier    liff.Verifier
+	userService  service.UserService
+	verifier     liff.Verifier
+	userLiffURL  string
 }
 
-func NewCrushRegistrationAPIHandler(userService service.UserService, verifier liff.Verifier) *CrushRegistrationAPIHandler {
+func NewCrushRegistrationAPIHandler(userService service.UserService, verifier liff.Verifier, userLiffURL string) *CrushRegistrationAPIHandler {
 	return &CrushRegistrationAPIHandler{
-		userService: userService,
-		verifier:    verifier,
+		userService:  userService,
+		verifier:     verifier,
+		userLiffURL:  userLiffURL,
 	}
 }
 
@@ -29,9 +33,9 @@ type RegisterCrushRequest struct {
 }
 
 type RegisterCrushResponse struct {
-	Status  string `json:"status"`
-	Matched bool   `json:"matched"`
-	Message string `json:"message"`
+	Status                string `json:"status"`
+	Matched               bool   `json:"matched"`
+	IsFirstRegistration   bool   `json:"is_first_registration"`
 }
 
 func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *http.Request) {
@@ -82,8 +86,19 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 	if err != nil {
 		log.Printf("Failed to register crush: %v", err)
 
+		// user_not_foundエラーの場合は特別なレスポンス（ユーザー登録を促す）
+		if errors.Is(err, service.ErrUserNotFound) {
+			w.WriteHeader(http.StatusPreconditionRequired) // 428 Precondition Required
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":         "user_not_found",
+				"message":       message.CrushRegistrationUserNotFound(h.userLiffURL),
+				"user_liff_url": h.userLiffURL,
+			})
+			return
+		}
+
 		// matched_user_existsエラーの場合は特別なレスポンス
-		if err.Error() == "matched_user_exists" {
+		if errors.Is(err, service.ErrMatchedUserExists) {
 			w.WriteHeader(http.StatusConflict)
 			json.NewEncoder(w).Encode(map[string]string{
 				"error":   "matched_user_exists",
@@ -93,7 +108,7 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 		}
 
 		// 自己登録エラーの場合は400を返す
-		if err.Error() == "cannot register yourself" {
+		if errors.Is(err, service.ErrCannotRegisterYourself) {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "自分自身は登録できません"})
 			return
@@ -105,20 +120,16 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 	}
 
 	// レスポンス作成
-	var message string
-	if matched {
-		message = matchedName + "さんとマッチしました！💘"
-	} else {
-		message = "登録しました。相手があなたを登録したらマッチングします。"
-	}
-
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":                   "ok",
-		"matched":                  matched,
-		"message":                  message,
-		"is_first_registration":    isFirstCrushRegistration,
+	json.NewEncoder(w).Encode(RegisterCrushResponse{
+		Status:              "ok",
+		Matched:             matched,
+		IsFirstRegistration: isFirstCrushRegistration,
 	})
 
-	log.Printf("Crush registration successful for user %s: crush=%s, matched=%t", userID, req.CrushName, matched)
+	if matched {
+		log.Printf("Crush registration successful for user %s: crush=%s, matched=%t, matched_with=%s", userID, req.CrushName, matched, matchedName)
+	} else {
+		log.Printf("Crush registration successful for user %s: crush=%s, matched=%t", userID, req.CrushName, matched)
+	}
 }

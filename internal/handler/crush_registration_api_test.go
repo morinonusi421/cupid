@@ -3,11 +3,11 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -33,7 +33,7 @@ func (m *mockCrushLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
 func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
 	mockVerifier := &mockCrushLIFFVerifier{}
-	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier)
+	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier, "https://example.com/register")
 
 	// Mock RegisterCrush to return no match
 	mockUserService.On("RegisterCrush", mock.Anything, "U_TEST", "佐藤花子", "1992-02-02", false).Return(false, "", true, nil)
@@ -63,7 +63,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 
 	assert.Equal(t, "ok", resp.Status)
 	assert.False(t, resp.Matched)
-	assert.Equal(t, "登録しました。相手があなたを登録したらマッチングします。", resp.Message)
+	assert.True(t, resp.IsFirstRegistration)
 
 	mockUserService.AssertExpectations(t)
 }
@@ -71,11 +71,10 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 func TestCrushRegistrationAPIHandler_RegisterCrush_SelfRegistrationError(t *testing.T) {
 	mockUserService := new(MockUserServiceForAPI)
 	mockVerifier := &mockCrushLIFFVerifier{}
-	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier)
+	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier, "https://example.com/register")
 
 	// Mock RegisterCrush to return self-registration error
-	selfRegError := errors.New("cannot register yourself")
-	mockUserService.On("RegisterCrush", mock.Anything, "U_SELF", "山田太郎", "1990-01-01", false).Return(false, "", false, selfRegError)
+	mockUserService.On("RegisterCrush", mock.Anything, "U_SELF", "山田太郎", "1990-01-01", false).Return(false, "", false, service.ErrCannotRegisterYourself)
 
 	reqBody := RegisterCrushRequest{
 		CrushName:     "山田太郎",
