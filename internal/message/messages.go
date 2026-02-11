@@ -15,10 +15,8 @@ const FollowGreeting = "わぁっ♡ 友達追加ありがとうございます�
 // JoinGroupGreeting はグループに招待された時の挨拶メッセージ
 const JoinGroupGreeting = "わぁっ♡ グループに招待してくれてありがとうございますっ！\n\nキューピッドちゃんは相思相愛を見つけるお手伝いをするBotです🏹💕\n\n【使い方】\n1. キューピッドちゃんを友達追加してください\n2. 個チャで自分の情報を登録\n3. 好きな人の情報を登録\n\nお互いが相手を登録していたら、両思いをお知らせしますっ♡\n\nまずはキューピッドちゃんを友達追加して、個チャでやりとりしてくださいね✨"
 
-// UnregisteredUserPrompt は未登録ユーザーへの登録案内メッセージを生成する
-func UnregisteredUserPrompt(liffURL string) string {
-	return fmt.Sprintf("登録がまだみたいですねっ💕\n\n下のリンクから登録してくださいっ✨\n\n%s", liffURL)
-}
+// UnregisteredUserPrompt は未登録ユーザーへの登録案内メッセージ
+const UnregisteredUserPrompt = "登録がまだみたいですねっ💕\n\n下のボタンから登録してくださいっ✨"
 
 // ========================================
 // 2. ユーザー登録フロー
@@ -27,10 +25,8 @@ func UnregisteredUserPrompt(liffURL string) string {
 // UserRegistrationComplete はユーザー登録完了時のメッセージ
 const UserRegistrationComplete = "やったぁ✨ 登録完了ですっ♡\n\n次は、好きな人を登録してくださいねっ💘\n\n下のボタンから登録できますよ〜！\n\nキューピッドちゃん、ドキドキわくわくしながらお待ちしてます💕"
 
-// RegistrationStep1Prompt はユーザー登録完了後の好きな人登録案内メッセージを生成する
-func RegistrationStep1Prompt(crushLiffURL string) string {
-	return fmt.Sprintf("次は、好きな人を登録してくださいねっ💘\n\nキューピッドちゃん、ドキドキわくわくしながらお待ちしてます♡\n\n%s", crushLiffURL)
-}
+// RegistrationStep1Prompt はユーザー登録完了後の好きな人登録案内メッセージ
+const RegistrationStep1Prompt = "次は、好きな人を登録してくださいねっ💘\n\nキューピッドちゃん、ドキドキわくわくしながらお待ちしてます♡"
 
 // ========================================
 // 3. 好きな人登録フロー

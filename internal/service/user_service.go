@@ -52,13 +52,13 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID string) (re
 	// ユーザーが未登録の場合
 	if user == nil {
 		// ユーザー登録フォームへの案内
-		return message.UnregisteredUserPrompt(s.userLiffURL), s.userLiffURL, "登録する", nil
+		return message.UnregisteredUserPrompt, s.userLiffURL, "登録する", nil
 	}
 
 	// 登録済みの場合、好きな人の登録状態に応じて処理分岐
 	if !user.HasCrush() {
 		// ユーザー登録完了済み - 好きな人の登録フォームを案内
-		return message.RegistrationStep1Prompt(s.crushLiffURL), s.crushLiffURL, "好きな人を登録", nil
+		return message.RegistrationStep1Prompt, s.crushLiffURL, "好きな人を登録", nil
 	}
 
 	// 好きな人登録完了済み - 再登録を案内（QuickReplyなし）

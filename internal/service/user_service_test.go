@@ -102,7 +102,7 @@ func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123")
 
 	assert.NoError(t, err)
-	assert.Equal(t, message.RegistrationStep1Prompt(crushLiffURL), replyText)
+	assert.Equal(t, message.RegistrationStep1Prompt, replyText)
 	assert.Equal(t, crushLiffURL, quickReplyURL)
 	assert.Equal(t, "好きな人を登録", quickReplyLabel)
 	mockRepo.AssertNotCalled(t, "Update")
@@ -168,7 +168,7 @@ func TestUserService_ProcessTextMessage_UnregisteredUser(t *testing.T) {
 	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U-new-user")
 
 	assert.NoError(t, err)
-	assert.Equal(t, message.UnregisteredUserPrompt(userLiffURL), replyText)
+	assert.Equal(t, message.UnregisteredUserPrompt, replyText)
 	assert.Equal(t, userLiffURL, quickReplyURL)
 	assert.Equal(t, "登録する", quickReplyLabel)
 	mockRepo.AssertExpectations(t)
