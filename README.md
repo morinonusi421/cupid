@@ -174,12 +174,6 @@ CREATE INDEX idx_users_crush ON users(crush_name, crush_birthday);
 | `registered_at` | TEXT | 登録日時 |
 | `updated_at` | TEXT | 更新日時（自動更新） |
 
-#### 設計思想
-
-- **YAGNI原則**: 1人のユーザーは1人の好きな人のみ登録可能
-- **シンプル設計**: likesテーブルを廃止し、usersテーブルに統合
-- **マッチング判定**: `crush_name`/`crush_birthday` と `name`/`birthday` の相互一致で判定
-
 ---
 
 ## 🔌 API仕様
@@ -507,16 +501,6 @@ sudo journalctl -u cupid | grep "ERROR"
 
 ---
 
-## 🎓 設計ドキュメント
-
-詳細な設計ドキュメントは `docs/plans/` に格納。
-
-- **[2026-02-10-likes-migration-design.md](docs/plans/2026-02-10-likes-migration-design.md)**: likesテーブル削除とusersテーブル統合の設計
-- **[2026-02-10-likes-migration-implementation.md](docs/plans/2026-02-10-likes-migration-implementation.md)**: 実装計画（21タスク）
-- **[2026-02-10-register-from-liff-refactoring-design.md](docs/plans/2026-02-10-register-from-liff-refactoring-design.md)**: RegisterFromLIFFリファクタリング設計
-
----
-
 ## 🔒 セキュリティ
 
 ### 認証・認可
@@ -524,31 +508,3 @@ sudo journalctl -u cupid | grep "ERROR"
 - **LIFF ID Token検証**: LINE Platform発行のID Tokenを検証してユーザーIDを取得
 - **Webhook署名検証**: LINE Platform署名を検証して正当性を確認
 
-### プライバシー保護
-
-- **匿名性**: 相思相愛でない限り、相手に情報は通知されない
-- **最小限のデータ保存**: 名前・誕生日のみ保存
-- **データ暗号化**: HTTPS通信で全データ暗号化
-
----
-
-## 📜 ライセンス
-
-MIT License
-
----
-
-## 🤝 貢献
-
-Issue・Pull Requestを歓迎します。
-
----
-
-## 📧 サポート
-
-- **Issue**: [GitHub Issues](https://github.com/morinonusi421/cupid/issues)
-- **ドキュメント**: `docs/` ディレクトリ
-
----
-
-**Cupid** - 相思相愛を見つけるLINE Bot 💘
