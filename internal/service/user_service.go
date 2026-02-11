@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/aarondl/null/v8"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/linebot"
 	"github.com/morinonusi421/cupid/internal/model"
@@ -109,7 +110,7 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 
 	// 3. マッチング解除処理
 	if currentUser.IsMatched() && confirmUnmatch {
-		if err := s.unmatchUsers(ctx, currentUser, currentUser.MatchedWithUserID); err != nil {
+		if err := s.unmatchUsers(ctx, currentUser, currentUser.MatchedWithUserID.String); err != nil {
 			log.Printf("Failed to unmatch users: %v", err)
 			// エラーをログに記録するが、処理は継続（Crush更新は実施）
 		}
@@ -126,8 +127,8 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 	}
 
 	// 6. 好きな人を登録（usersテーブルに直接保存）
-	currentUser.CrushName = crushName
-	currentUser.CrushBirthday = crushBirthday
+	currentUser.CrushName = null.StringFrom(crushName)
+	currentUser.CrushBirthday = null.StringFrom(crushBirthday)
 
 	// 7. RegistrationStepを2に更新（domain method使用）
 	currentUser.CompleteCrushRegistration()
@@ -207,7 +208,7 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 
 	// 2. マッチング解除処理
 	if user.IsMatched() && confirmUnmatch {
-		if err := s.unmatchUsers(ctx, user, user.MatchedWithUserID); err != nil {
+		if err := s.unmatchUsers(ctx, user, user.MatchedWithUserID.String); err != nil {
 			log.Printf("Failed to unmatch users: %v", err)
 			// エラーをログに記録するが、処理は継続（情報更新は実施）
 		}
@@ -359,8 +360,8 @@ func (s *userService) unmatchUsers(ctx context.Context, initiatorUser *model.Use
 	}
 
 	// 両方の matched_with_user_id を NULL に
-	initiatorUser.MatchedWithUserID = ""
-	partnerUser.MatchedWithUserID = ""
+	initiatorUser.MatchedWithUserID = null.String{Valid: false}
+	partnerUser.MatchedWithUserID = null.String{Valid: false}
 
 	if err := s.userRepo.Update(ctx, initiatorUser); err != nil {
 		return fmt.Errorf("failed to update initiator user: %w", err)

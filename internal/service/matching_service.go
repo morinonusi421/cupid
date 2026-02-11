@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/aarondl/null/v8"
 	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/morinonusi421/cupid/internal/repository"
 )
@@ -50,8 +51,8 @@ func (s *matchingService) CheckAndUpdateMatch(
 	}
 
 	// 2. 両方の matched_with_user_id を更新
-	currentUser.MatchedWithUserID = matchedUser.LineID
-	matchedUser.MatchedWithUserID = currentUser.LineID
+	currentUser.MatchedWithUserID = null.StringFrom(matchedUser.LineID)
+	matchedUser.MatchedWithUserID = null.StringFrom(currentUser.LineID)
 
 	if err := s.userRepo.Update(ctx, currentUser); err != nil {
 		return false, nil, err

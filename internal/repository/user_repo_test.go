@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/morinonusi421/cupid/internal/model"
+	migrate "github.com/rubenv/sql-migrate"
 	_ "modernc.org/sqlite"
 )
 
@@ -32,34 +33,14 @@ func setupTestDB(t *testing.T) *sql.DB {
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
-	// スキーマを作成（最新のマイグレーションから）
-	schema := `
-		CREATE TABLE users (
-		  line_user_id TEXT PRIMARY KEY,
-		  name TEXT NOT NULL DEFAULT '',
-		  birthday TEXT NOT NULL DEFAULT '',
-		  registration_step INTEGER NOT NULL DEFAULT 0,
-		  crush_name TEXT NOT NULL DEFAULT '',
-		  crush_birthday TEXT NOT NULL DEFAULT '',
-		  matched_with_user_id TEXT DEFAULT NULL,
-		  registered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-		);
-
-		CREATE INDEX idx_users_name_birthday ON users(name, birthday);
-		CREATE INDEX idx_users_crush_name_birthday ON users(crush_name, crush_birthday);
-
-		CREATE TRIGGER update_users_updated_at
-		AFTER UPDATE ON users
-		FOR EACH ROW
-		BEGIN
-		  UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE line_user_id = NEW.line_user_id;
-		END;
-	`
-
-	if _, err := db.Exec(schema); err != nil {
+	// マイグレーションを実行（本番と同じスキーマを使用）
+	migrations := &migrate.FileMigrationSource{
+		Dir: "../../db/migrations",
+	}
+	_, err = migrate.Exec(db, "sqlite3", migrations, migrate.Up)
+	if err != nil {
 		db.Close()
-		t.Fatalf("Failed to create schema: %v", err)
+		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	return db

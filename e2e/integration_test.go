@@ -14,6 +14,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/aarondl/null/v8"
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/handler"
@@ -273,8 +274,8 @@ func TestIntegration_CrushRegistrationMatch(t *testing.T) {
 		LineID:           "test-user-a",
 		Name:             "スズキイチロウ",
 		Birthday:         "1988-08-08",
-		CrushName:        "コバヤシミキ",
-		CrushBirthday:    "1990-12-25",
+		CrushName:        null.StringFrom("コバヤシミキ"),
+		CrushBirthday:    null.StringFrom("1990-12-25"),
 		RegistrationStep: 2, // Both user and crush registered
 	}
 	err := userRepo.Create(ctx, userA)

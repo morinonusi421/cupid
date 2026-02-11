@@ -1,6 +1,10 @@
 package model
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/aarondl/null/v8"
+)
 
 // User はユーザーのドメインモデル
 // TODO: Model層の充実化 - Validationメソッドとbusiness logicを追加
@@ -11,10 +15,10 @@ type User struct {
 	LineID             string
 	Name               string
 	Birthday           string
-	RegistrationStep   int    // 1: 登録完了（好きな人未登録）, 2: 好きな人登録完了
-	CrushName          string
-	CrushBirthday      string
-	MatchedWithUserID  string // マッチング相手のLINE ID（空文字列=未マッチ）
+	RegistrationStep   int         // 1: 登録完了（好きな人未登録）, 2: 好きな人登録完了
+	CrushName          null.String // 好きな人の名前（NULL=未設定）
+	CrushBirthday      null.String // 好きな人の誕生日（NULL=未設定）
+	MatchedWithUserID  null.String // マッチング相手のLINE ID（NULL=未マッチ）
 	RegisteredAt       string
 	UpdatedAt          string
 }
@@ -31,7 +35,7 @@ func (u *User) CompleteCrushRegistration() {
 
 // IsMatched は、マッチング中かどうかを返す
 func (u *User) IsMatched() bool {
-	return u.MatchedWithUserID != ""
+	return u.MatchedWithUserID.Valid
 }
 
 // CompleteUserRegistration は、ユーザー登録を完了する

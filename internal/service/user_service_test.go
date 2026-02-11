@@ -308,16 +308,16 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 	// User.Update が呼ばれることを期待（CrushName, CrushBirthday, RegistrationStep=2）
 	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U_A" &&
-			u.CrushName == "サトウハナコ" &&
-			u.CrushBirthday == "1992-02-02" &&
+			u.CrushName.String == "サトウハナコ" &&
+			u.CrushBirthday.String == "1992-02-02" &&
 			u.RegistrationStep == 2
 	})).Return(nil)
 
 	// MatchingService.CheckAndUpdateMatch がマッチなしを返す
 	mockMatchingService.On("CheckAndUpdateMatch", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U_A" &&
-			u.CrushName == "サトウハナコ" &&
-			u.CrushBirthday == "1992-02-02"
+			u.CrushName.String == "サトウハナコ" &&
+			u.CrushBirthday.String == "1992-02-02"
 	})).Return(false, nil, nil)
 
 	// PushMessage が登録完了メッセージで呼ばれることを期待
@@ -409,8 +409,8 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	// User.Update が呼ばれることを期待（CrushName, CrushBirthday, RegistrationStep=2）
 	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U_B" &&
-			u.CrushName == "ヤマダタロウ" &&
-			u.CrushBirthday == "1990-01-01" &&
+			u.CrushName.String == "ヤマダタロウ" &&
+			u.CrushBirthday.String == "1990-01-01" &&
 			u.RegistrationStep == 2
 	})).Return(nil)
 
@@ -422,8 +422,8 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	}
 	mockMatchingService.On("CheckAndUpdateMatch", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U_B" &&
-			u.CrushName == "ヤマダタロウ" &&
-			u.CrushBirthday == "1990-01-01"
+			u.CrushName.String == "ヤマダタロウ" &&
+			u.CrushBirthday.String == "1990-01-01"
 	})).Return(true, matchedUser, nil)
 
 	// PushMessage が2回呼ばれることを期待（現在のユーザーと相手ユーザー）
@@ -461,8 +461,8 @@ func TestUserService_RegisterCrush_Matched_NotificationFails(t *testing.T) {
 	// User.Update が呼ばれることを期待（CrushName, CrushBirthday, RegistrationStep=2）
 	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U_B" &&
-			u.CrushName == "ヤマダタロウ" &&
-			u.CrushBirthday == "1990-01-01" &&
+			u.CrushName.String == "ヤマダタロウ" &&
+			u.CrushBirthday.String == "1990-01-01" &&
 			u.RegistrationStep == 2
 	})).Return(nil)
 
@@ -474,8 +474,8 @@ func TestUserService_RegisterCrush_Matched_NotificationFails(t *testing.T) {
 	}
 	mockMatchingService.On("CheckAndUpdateMatch", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U_B" &&
-			u.CrushName == "ヤマダタロウ" &&
-			u.CrushBirthday == "1990-01-01"
+			u.CrushName.String == "ヤマダタロウ" &&
+			u.CrushBirthday.String == "1990-01-01"
 	})).Return(true, matchedUser, nil)
 
 	// PushMessage が2回呼ばれるがエラーを返す

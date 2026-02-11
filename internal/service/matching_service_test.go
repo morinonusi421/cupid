@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aarondl/null/v8"
 	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -59,8 +60,8 @@ func TestMatchingService_CheckAndUpdateMatch_NoMatch_CrushNotRegistered(t *testi
 		LineID:       "user1",
 		Name:         "Alice",
 		Birthday:     "1990-01-01",
-		CrushName:    "Bob",
-		CrushBirthday: "1995-05-05",
+		CrushName:    null.StringFrom("Bob"),
+		CrushBirthday: null.StringFrom("1995-05-05"),
 	}
 
 	// FindMatchingUser が nil を返す（相手が未登録）
@@ -89,8 +90,8 @@ func TestMatchingService_CheckAndUpdateMatch_NoMatch_CrushNotLikeBack(t *testing
 		LineID:       "user1",
 		Name:         "Alice",
 		Birthday:     "1990-01-01",
-		CrushName:    "Bob",
-		CrushBirthday: "1995-05-05",
+		CrushName:    null.StringFrom("Bob"),
+		CrushBirthday: null.StringFrom("1995-05-05"),
 	}
 
 	// FindMatchingUser が nil を返す（相手は自分を登録していない）
@@ -119,16 +120,16 @@ func TestMatchingService_CheckAndUpdateMatch_Match(t *testing.T) {
 		LineID:       "user1",
 		Name:         "Alice",
 		Birthday:     "1990-01-01",
-		CrushName:    "Bob",
-		CrushBirthday: "1995-05-05",
+		CrushName:    null.StringFrom("Bob"),
+		CrushBirthday: null.StringFrom("1995-05-05"),
 	}
 
 	matchedUser := &model.User{
 		LineID:       "user2",
 		Name:         "Bob",
 		Birthday:     "1995-05-05",
-		CrushName:    "Alice",
-		CrushBirthday: "1990-01-01",
+		CrushName:    null.StringFrom("Alice"),
+		CrushBirthday: null.StringFrom("1990-01-01"),
 	}
 
 	// FindMatchingUser がマッチング相手を返す
@@ -137,8 +138,8 @@ func TestMatchingService_CheckAndUpdateMatch_Match(t *testing.T) {
 
 	// 両方の matched_with_user_id を更新
 	mockUserRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
-		return (u.LineID == "user1" && u.MatchedWithUserID == "user2") ||
-			(u.LineID == "user2" && u.MatchedWithUserID == "user1")
+		return (u.LineID == "user1" && u.MatchedWithUserID.String == "user2") ||
+			(u.LineID == "user2" && u.MatchedWithUserID.String == "user1")
 	})).Return(nil).Times(2)
 
 	// Execute
