@@ -148,6 +148,11 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
                 return;
             }
 
+            // duplicate_userの場合は特別なエラーメッセージ
+            if (errorData.error === 'duplicate_user') {
+                throw new Error(errorData.message || '同じ名前・誕生日のユーザーが既に登録されています。');
+            }
+
             throw new Error(errorData.error || '登録に失敗しました。');
         }
 

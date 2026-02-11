@@ -76,13 +76,23 @@ func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthd
 		return false, fmt.Errorf("%s", errMsg)
 	}
 
-	// 2. ユーザー検索
+	// 2. 重複チェック（既存ユーザーと名前・誕生日が被っていないか）
+	existingUser, err := s.userRepo.FindByNameAndBirthday(ctx, name, birthday)
+	if err != nil {
+		return false, fmt.Errorf("failed to check duplicate user: %w", err)
+	}
+	// 見つかったユーザーが他人（LineIDが違う）の場合はエラー
+	if existingUser != nil && existingUser.LineID != userID {
+		return false, fmt.Errorf("duplicate_user")
+	}
+
+	// 3. ユーザー検索
 	user, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
 		return false, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	// 3. 初回登録 vs 再登録で分岐
+	// 4. 初回登録 vs 再登録で分岐
 	if user == nil {
 		// 初回登録
 		if err := s.registerNewUser(ctx, userID, name, birthday); err != nil {

@@ -80,6 +80,16 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 			return
 		}
 
+		// duplicate_userエラーの場合は特別なレスポンス
+		if err.Error() == "duplicate_user" {
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "duplicate_user",
+				"message": "同じ名前・誕生日のユーザーが既に登録されています。",
+			})
+			return
+		}
+
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
