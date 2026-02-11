@@ -265,6 +265,9 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 }
 
 // sendMatchNotification はマッチ成立時にLINE Push通知を送信する
+//
+// 【重要】有償メッセージ（無料プランでは月200通まで）
+// Push APIを使用するため、LINE Messaging APIの有償カウント対象
 func (s *userService) sendMatchNotification(ctx context.Context, toUser *model.User, matchedWithUser *model.User) error {
 	request := &messaging_api.PushMessageRequest{
 		To: toUser.LineID,
@@ -277,6 +280,9 @@ func (s *userService) sendMatchNotification(ctx context.Context, toUser *model.U
 	}
 
 	_, err := s.lineBotClient.PushMessage(request)
+	if err != nil {
+		log.Printf("[ERROR] Failed to send match notification (paid message): %v", err)
+	}
 	return err
 }
 
@@ -307,6 +313,9 @@ func (s *userService) HandleFollowEvent(ctx context.Context, replyToken string) 
 }
 
 // sendCrushRegistrationPrompt はユーザー登録完了後に好きな人登録を促すメッセージを送信する
+//
+// 【重要】有償メッセージ（無料プランでは月200通まで）
+// Push APIを使用するため、LINE Messaging APIの有償カウント対象
 func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *model.User) error {
 	request := &messaging_api.PushMessageRequest{
 		To: user.LineID,
@@ -330,10 +339,16 @@ func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *mod
 	}
 
 	_, err := s.lineBotClient.PushMessage(request)
+	if err != nil {
+		log.Printf("[ERROR] Failed to send crush registration prompt (paid message): %v", err)
+	}
 	return err
 }
 
 // sendUserInfoUpdateConfirmation は情報更新完了のメッセージを送信する
+//
+// 【重要】有償メッセージ（無料プランでは月200通まで）
+// Push APIを使用するため、LINE Messaging APIの有償カウント対象
 func (s *userService) sendUserInfoUpdateConfirmation(ctx context.Context, user *model.User) error {
 	request := &messaging_api.PushMessageRequest{
 		To: user.LineID,
@@ -346,10 +361,16 @@ func (s *userService) sendUserInfoUpdateConfirmation(ctx context.Context, user *
 	}
 
 	_, err := s.lineBotClient.PushMessage(request)
+	if err != nil {
+		log.Printf("[ERROR] Failed to send user info update confirmation (paid message): %v", err)
+	}
 	return err
 }
 
 // sendCrushRegistrationComplete は好きな人登録完了時（マッチなし）のメッセージを送信する
+//
+// 【重要】有償メッセージ（無料プランでは月200通まで）
+// Push APIを使用するため、LINE Messaging APIの有償カウント対象
 func (s *userService) sendCrushRegistrationComplete(ctx context.Context, user *model.User, isFirstRegistration bool) error {
 	var messageText string
 	if isFirstRegistration {
@@ -369,6 +390,9 @@ func (s *userService) sendCrushRegistrationComplete(ctx context.Context, user *m
 	}
 
 	_, err := s.lineBotClient.PushMessage(request)
+	if err != nil {
+		log.Printf("[ERROR] Failed to send crush registration complete (paid message): %v", err)
+	}
 	return err
 }
 
@@ -408,6 +432,9 @@ func (s *userService) unmatchUsers(ctx context.Context, initiatorUser *model.Use
 }
 
 // sendUnmatchNotification はマッチング解除時にLINE Push通知を送信する
+//
+// 【重要】有償メッセージ（無料プランでは月200通まで）
+// Push APIを使用するため、LINE Messaging APIの有償カウント対象
 func (s *userService) sendUnmatchNotification(ctx context.Context, toUser *model.User, partnerUser *model.User, isInitiator bool) error {
 	var messageText string
 	if isInitiator {
@@ -427,5 +454,8 @@ func (s *userService) sendUnmatchNotification(ctx context.Context, toUser *model
 	}
 
 	_, err := s.lineBotClient.PushMessage(request)
+	if err != nil {
+		log.Printf("[ERROR] Failed to send unmatch notification (paid message): %v", err)
+	}
 	return err
 }
