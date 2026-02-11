@@ -133,16 +133,20 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
         });
 
         if (!response.ok) {
+            console.log('[DEBUG] Response not OK, status:', response.status);
             const errorData = await response.json();
+            console.log('[DEBUG] Error data:', errorData);
 
             // user_not_foundの場合は自分の情報登録を促す
             if (errorData.error === 'user_not_found') {
+                console.log('[DEBUG] Matched user_not_found error');
                 showLoading(false);
                 showMessage(errorData.message || 'あうぅ...先に自分の情報を登録してくださいっ💦', 'error');
                 submitButton.disabled = false;
 
                 // ユーザー登録URLがあれば、3秒後に自動的に遷移
                 if (errorData.user_liff_url) {
+                    console.log('[DEBUG] Will redirect to:', errorData.user_liff_url);
                     setTimeout(() => {
                         window.location.href = errorData.user_liff_url;
                     }, 3000);
