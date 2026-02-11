@@ -15,7 +15,7 @@ import (
 
 // UserService はユーザーのビジネスロジック層のインターフェース
 type UserService interface {
-	ProcessTextMessage(ctx context.Context, userID, text string) (string, error)
+	ProcessTextMessage(ctx context.Context, userID, text string) (replyText string, quickReplyURL string, quickReplyLabel string, err error)
 	RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error)
 	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error)
 	HandleFollowEvent(ctx context.Context, replyToken string) error
@@ -40,28 +40,29 @@ func NewUserService(userRepo repository.UserRepository, userLiffURL string, crus
 	}
 }
 
-// ProcessTextMessage はテキストメッセージを処理して返信テキストを決定する
-func (s *userService) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
+// ProcessTextMessage はテキストメッセージを処理して返信テキスト、QuickReply情報を決定する
+// quickReplyURL, quickReplyLabel が空文字列の場合はQuickReplyなし
+func (s *userService) ProcessTextMessage(ctx context.Context, userID, text string) (replyText string, quickReplyURL string, quickReplyLabel string, err error) {
 	// DBからユーザーを検索（createはしない）
 	user, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
-		return "", fmt.Errorf("failed to find user: %w", err)
+		return "", "", "", fmt.Errorf("failed to find user: %w", err)
 	}
 
 	// ユーザーが未登録の場合
 	if user == nil {
-		// LIFFフォームへの案内（DB登録はしない）
-		return message.UnregisteredUserPrompt(s.userLiffURL), nil
+		// ユーザー登録フォームへの案内
+		return message.UnregisteredUserPrompt(s.userLiffURL), s.userLiffURL, "登録する", nil
 	}
 
 	// 登録済みの場合、好きな人の登録状態に応じて処理分岐
 	if !user.HasCrush() {
-		// ユーザー登録完了済み - 好きな人の登録を案内（LIFF URL）
-		return message.RegistrationStep1Prompt(s.crushLiffURL), nil
+		// ユーザー登録完了済み - 好きな人の登録フォームを案内
+		return message.RegistrationStep1Prompt(s.crushLiffURL), s.crushLiffURL, "好きな人を登録", nil
 	}
 
-	// 好きな人登録完了済み - 再登録を案内（LIFF URL）
-	return message.AlreadyRegisteredMessage, nil
+	// 好きな人登録完了済み - 再登録を案内（QuickReplyなし）
+	return message.AlreadyRegisteredMessage, "", "", nil
 }
 
 // RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する

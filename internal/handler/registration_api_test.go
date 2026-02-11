@@ -35,9 +35,9 @@ type MockUserServiceForAPI struct {
 	mock.Mock
 }
 
-func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
+func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID, text string) (string, string, string, error) {
 	args := m.Called(ctx, userID, text)
-	return args.String(0), args.Error(1)
+	return args.String(0), args.String(1), args.String(2), args.Error(3)
 }
 
 func (m *MockUserServiceForAPI) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (bool, error) {

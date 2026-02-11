@@ -86,20 +86,39 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// UserServiceで処理
-				replyText, err := h.userService.ProcessTextMessage(r.Context(), userID, message.Text)
+				replyText, quickReplyURL, quickReplyLabel, err := h.userService.ProcessTextMessage(r.Context(), userID, message.Text)
 				if err != nil {
 					log.Printf("Failed to process message: %v", err)
 					replyText = "エラーが発生しました。もう一度試してください。"
+					quickReplyURL = ""
+					quickReplyLabel = ""
 				}
 
 				// LINE APIで返信
+				textMessage := messaging_api.TextMessage{
+					Text: replyText,
+				}
+
+				// QuickReplyがある場合は追加
+				if quickReplyURL != "" && quickReplyLabel != "" {
+					textMessage.QuickReply = &messaging_api.QuickReply{
+						Items: []messaging_api.QuickReplyItem{
+							{
+								Type: "action",
+								Action: &messaging_api.UriAction{
+									Label: quickReplyLabel,
+									Uri:   quickReplyURL,
+								},
+							},
+						},
+					}
+				}
+
 				_, err = h.bot.ReplyMessage(
 					&messaging_api.ReplyMessageRequest{
 						ReplyToken: e.ReplyToken,
 						Messages: []messaging_api.MessageInterface{
-							messaging_api.TextMessage{
-								Text: replyText,
-							},
+							textMessage,
 						},
 					},
 				)

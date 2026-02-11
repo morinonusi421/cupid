@@ -99,10 +99,12 @@ func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
 
-	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
+	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
 
 	assert.NoError(t, err)
 	assert.Equal(t, message.RegistrationStep1Prompt(crushLiffURL), replyText)
+	assert.Equal(t, crushLiffURL, quickReplyURL)
+	assert.Equal(t, "好きな人を登録", quickReplyLabel)
 	mockRepo.AssertNotCalled(t, "Update")
 }
 
@@ -125,10 +127,12 @@ func TestUserService_ProcessTextMessage_Step2_CrushReregistration(t *testing.T) 
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
 
-	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
+	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
 
 	assert.NoError(t, err)
 	assert.Equal(t, message.AlreadyRegisteredMessage, replyText)
+	assert.Equal(t, "", quickReplyURL) // 全て登録済みの場合はQuickReplyなし
+	assert.Equal(t, "", quickReplyLabel)
 	mockRepo.AssertNotCalled(t, "Update")
 }
 
@@ -141,11 +145,13 @@ func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(nil, errors.New("db error"))
 
-	replyText, err := service.ProcessTextMessage(ctx, "U123", "test")
+	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U123", "test")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to find user")
 	assert.Empty(t, replyText)
+	assert.Empty(t, quickReplyURL)
+	assert.Empty(t, quickReplyLabel)
 }
 
 func TestUserService_ProcessTextMessage_UnregisteredUser(t *testing.T) {
@@ -159,10 +165,12 @@ func TestUserService_ProcessTextMessage_UnregisteredUser(t *testing.T) {
 	// FindByLineID が nil を返す（ユーザー未登録）
 	mockRepo.On("FindByLineID", ctx, "U-new-user").Return(nil, nil)
 
-	replyText, err := service.ProcessTextMessage(ctx, "U-new-user", "こんにちは")
+	replyText, quickReplyURL, quickReplyLabel, err := service.ProcessTextMessage(ctx, "U-new-user", "こんにちは")
 
 	assert.NoError(t, err)
 	assert.Equal(t, message.UnregisteredUserPrompt(userLiffURL), replyText)
+	assert.Equal(t, userLiffURL, quickReplyURL)
+	assert.Equal(t, "登録する", quickReplyLabel)
 	mockRepo.AssertExpectations(t)
 }
 
@@ -241,9 +249,9 @@ func TestUserService_RegisterFromLIFF_InvalidName(t *testing.T) {
 	ctx := context.Background()
 
 	user := &model.User{
-		LineID:           "U123",
-		Name:             "",
-		Birthday:         "",
+		LineID:   "U123",
+		Name:     "",
+		Birthday: "",
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -266,9 +274,9 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 	ctx := context.Background()
 
 	currentUser := &model.User{
-		LineID:           "U_A",
-		Name:             "ヤマダタロウ",
-		Birthday:         "1990-01-01",
+		LineID:   "U_A",
+		Name:     "ヤマダタロウ",
+		Birthday: "1990-01-01",
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -311,9 +319,9 @@ func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
 	ctx := context.Background()
 
 	user := &model.User{
-		LineID:           "U_SELF",
-		Name:             "ヤマダタロウ",
-		Birthday:         "1990-01-01",
+		LineID:   "U_SELF",
+		Name:     "ヤマダタロウ",
+		Birthday: "1990-01-01",
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -337,9 +345,9 @@ func TestUserService_RegisterCrush_InvalidCrushName(t *testing.T) {
 	ctx := context.Background()
 
 	user := &model.User{
-		LineID:           "U_INVALID",
-		Name:             "ヤマダタロウ",
-		Birthday:         "2000-01-15",
+		LineID:   "U_INVALID",
+		Name:     "ヤマダタロウ",
+		Birthday: "2000-01-15",
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -363,9 +371,9 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 	ctx := context.Background()
 
 	currentUser := &model.User{
-		LineID:           "U_B",
-		Name:             "サトウハナコ",
-		Birthday:         "1992-02-02",
+		LineID:   "U_B",
+		Name:     "サトウハナコ",
+		Birthday: "1992-02-02",
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -413,9 +421,9 @@ func TestUserService_RegisterCrush_Matched_NotificationFails(t *testing.T) {
 	ctx := context.Background()
 
 	currentUser := &model.User{
-		LineID:           "U_B",
-		Name:             "サトウハナコ",
-		Birthday:         "1992-02-02",
+		LineID:   "U_B",
+		Name:     "サトウハナコ",
+		Birthday: "1992-02-02",
 	}
 
 	// FindByLineID が既存ユーザーを返す

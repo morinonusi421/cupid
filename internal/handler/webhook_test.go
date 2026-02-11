@@ -46,9 +46,9 @@ func (m *MockUserService) VerifyLIFFToken(accessToken string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockUserService) ProcessTextMessage(ctx context.Context, userID, text string) (string, error) {
+func (m *MockUserService) ProcessTextMessage(ctx context.Context, userID, text string) (string, string, string, error) {
 	args := m.Called(ctx, userID, text)
-	return args.String(0), args.Error(1)
+	return args.String(0), args.String(1), args.String(2), args.Error(3)
 }
 
 func (m *MockUserService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (bool, error) {
@@ -110,9 +110,9 @@ func TestWebhookHandler_Handle_TextMessage(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Line-Signature", signature)
 
-	// Mock: ProcessTextMessage が呼ばれて返信テキストを返すことを期待
+	// Mock: ProcessTextMessage が呼ばれて返信テキストとQuickReply情報を返すことを期待
 	mockUserService.On("ProcessTextMessage", mock.Anything, "U-test-user", "こんにちは").
-		Return("こんにちは", nil)
+		Return("こんにちは", "", "", nil)
 
 	// Mock: ReplyMessage が呼ばれることを期待
 	mockBot.On("ReplyMessage", mock.MatchedBy(func(r *messaging_api.ReplyMessageRequest) bool {
