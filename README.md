@@ -142,32 +142,13 @@ cupid/
 
 相思相愛マッチングの全情報を管理。
 
-```sql
-CREATE TABLE users (
-  line_user_id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  birthday TEXT NOT NULL,
-  registration_step INTEGER NOT NULL DEFAULT 1,
-  crush_name TEXT,
-  crush_birthday TEXT,
-  matched_with_user_id TEXT,
-  registered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (matched_with_user_id) REFERENCES users(line_user_id)
-);
-
-CREATE INDEX idx_users_name_birthday ON users(name, birthday);
-CREATE INDEX idx_users_crush ON users(crush_name, crush_birthday);
-```
-
 #### フィールド説明
 
 | フィールド | 型 | 説明 |
-|-----------|---|------|
+|--------|---|------|
 | `line_user_id` | TEXT | LINE ユーザーID（主キー） |
 | `name` | TEXT | ユーザーの名前（全角カタカナ） |
 | `birthday` | TEXT | 誕生日（YYYY-MM-DD） |
-| `registration_step` | INTEGER | 登録ステップ（1: ユーザー登録完了, 2: 好きな人登録完了） |
 | `crush_name` | TEXT | 好きな人の名前（NULL可） |
 | `crush_birthday` | TEXT | 好きな人の誕生日（NULL可） |
 | `matched_with_user_id` | TEXT | マッチング相手のLINE ID（NULL=未マッチ） |
