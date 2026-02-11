@@ -63,7 +63,7 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 		return fmt.Sprintf("次に、好きな人を登録してください💘\n\n%s", s.crushLiffURL), nil
 	case 2:
 		// 好きな人登録完了済み - 再登録を案内（LIFF URL）
-		return fmt.Sprintf("登録済みです。好きな人を変更する場合は下のリンクから再登録できます。\n\n%s", s.crushLiffURL), nil
+		return fmt.Sprintf("正しく登録完了しています。マッチングが成立したらお知らせします。情報の更新は画面下のメニューからできます。\n"), nil
 	default:
 		return "", fmt.Errorf("invalid registration step: %d", user.RegistrationStep)
 	}
