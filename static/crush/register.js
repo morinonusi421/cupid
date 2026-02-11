@@ -104,8 +104,9 @@ function setupForm() {
 
 /**
  * 好きな人登録
+ * @param {boolean} confirmUnmatch - マッチング解除を確認済みかどうか
  */
-async function registerCrush(name, birthday) {
+async function registerCrush(name, birthday, confirmUnmatch = false) {
     try {
         showLoading(true);
         submitButton.disabled = true;
@@ -126,12 +127,27 @@ async function registerCrush(name, birthday) {
             },
             body: JSON.stringify({
                 crush_name: name,
-                crush_birthday: birthday
+                crush_birthday: birthday,
+                confirm_unmatch: confirmUnmatch
             })
         });
 
         if (!response.ok) {
             const errorData = await response.json();
+
+            // matched_user_existsの場合は確認ダイアログを表示
+            if (errorData.error === 'matched_user_exists') {
+                showLoading(false);
+                const confirmed = confirm(errorData.message + '\n\n本当に変更しますか？');
+                if (confirmed) {
+                    // 確認済みで再度リクエスト
+                    await registerCrush(name, birthday, true);
+                } else {
+                    submitButton.disabled = false;
+                }
+                return;
+            }
+
             throw new Error(errorData.error || '登録に失敗しました。');
         }
 
