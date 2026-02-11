@@ -54,12 +54,11 @@ func TestUserRepository_Create(t *testing.T) {
 	ctx := context.Background()
 
 	user := &model.User{
-		LineID:           "U123456789",
-		Name:             "Test User",
-		Birthday:         "1990-01-01",
-		RegistrationStep: 2,
-		RegisteredAt:     "2026-01-23 00:00:00",
-		UpdatedAt:        "2026-01-23 00:00:00",
+		LineID:       "U123456789",
+		Name:         "Test User",
+		Birthday:     "1990-01-01",
+		RegisteredAt: "2026-01-23 00:00:00",
+		UpdatedAt:    "2026-01-23 00:00:00",
 	}
 
 	// ユーザーを作成
@@ -84,10 +83,6 @@ func TestUserRepository_Create(t *testing.T) {
 
 	if found.Birthday != "1990-01-01" {
 		t.Errorf("Expected birthday '1990-01-01', got '%s'", found.Birthday)
-	}
-
-	if found.RegistrationStep != 2 {
-		t.Errorf("Expected registration_step 2, got %d", found.RegistrationStep)
 	}
 }
 
@@ -118,12 +113,11 @@ func TestUserRepository_Update(t *testing.T) {
 
 	// ユーザーを作成
 	user := &model.User{
-		LineID:           "U987654321",
-		Name:             "Original Name",
-		Birthday:         "1985-05-15",
-		RegistrationStep: 1,
-		RegisteredAt:     "2026-01-23 00:00:00",
-		UpdatedAt:        "2026-01-23 00:00:00",
+		LineID:       "U987654321",
+		Name:         "Original Name",
+		Birthday:     "1985-05-15",
+		RegisteredAt: "2026-01-23 00:00:00",
+		UpdatedAt:    "2026-01-23 00:00:00",
 	}
 
 	err := repo.Create(ctx, user)
@@ -133,7 +127,6 @@ func TestUserRepository_Update(t *testing.T) {
 
 	// ユーザー情報を更新
 	user.Name = "Updated Name"
-	user.RegistrationStep = 2
 
 	err = repo.Update(ctx, user)
 	if err != nil {
@@ -149,10 +142,6 @@ func TestUserRepository_Update(t *testing.T) {
 	if found.Name != "Updated Name" {
 		t.Errorf("Expected name 'Updated Name', got '%s'", found.Name)
 	}
-
-	if found.RegistrationStep != 2 {
-		t.Errorf("Expected registration_step 2, got %d", found.RegistrationStep)
-	}
 }
 
 func TestUserRepository_FindByNameAndBirthday(t *testing.T) {
@@ -163,10 +152,9 @@ func TestUserRepository_FindByNameAndBirthday(t *testing.T) {
 
 	// テストユーザーを作成
 	user := &model.User{
-		LineID:           "U_FIND_TEST",
-		Name:             "山田太郎",
-		Birthday:         "1990-01-01",
-		RegistrationStep: 1,
+		LineID:   "U_FIND_TEST",
+		Name:     "山田太郎",
+		Birthday: "1990-01-01",
 	}
 	if err := repo.Create(context.Background(), user); err != nil {
 		t.Fatal(err)

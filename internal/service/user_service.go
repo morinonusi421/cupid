@@ -54,20 +54,14 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 		return message.UnregisteredUserPrompt(s.userLiffURL), nil
 	}
 
-	// 登録済みの場合、registration_step に応じて処理分岐
-	switch user.RegistrationStep {
-	case 0:
-		// DB登録済みなのに registration_step が 0 は異常な状態
-		return "", fmt.Errorf("invalid state: user exists but registration_step is 0 (user_id: %s)", userID)
-	case 1:
+	// 登録済みの場合、好きな人の登録状態に応じて処理分岐
+	if !user.HasCrush() {
 		// ユーザー登録完了済み - 好きな人の登録を案内（LIFF URL）
 		return message.RegistrationStep1Prompt(s.crushLiffURL), nil
-	case 2:
-		// 好きな人登録完了済み - 再登録を案内（LIFF URL）
-		return message.AlreadyRegisteredMessage, nil
-	default:
-		return "", fmt.Errorf("invalid registration step: %d", user.RegistrationStep)
 	}
+
+	// 好きな人登録完了済み - 再登録を案内（LIFF URL）
+	return message.AlreadyRegisteredMessage, nil
 }
 
 // RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する
@@ -143,15 +137,12 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		return false, "", false, fmt.Errorf("%s", errMsg)
 	}
 
-	// 6. 初回登録か再登録かを判定（RegistrationStepを変更する前に）
-	isFirstCrushRegistration = currentUser.RegistrationStep == 1
+	// 6. 初回登録か再登録かを判定（好きな人を登録する前に）
+	isFirstCrushRegistration = !currentUser.HasCrush()
 
 	// 7. 好きな人を登録（usersテーブルに直接保存）
 	currentUser.CrushName = null.StringFrom(crushName)
 	currentUser.CrushBirthday = null.StringFrom(crushBirthday)
-
-	// 8. RegistrationStepを2に更新（domain method使用）
-	currentUser.CompleteCrushRegistration()
 
 	if err := s.userRepo.Update(ctx, currentUser); err != nil {
 		return false, "", false, err
@@ -197,12 +188,11 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 func (s *userService) registerNewUser(ctx context.Context, userID, name, birthday string) error {
 	// 1. 完全なユーザーオブジェクトを作成
 	user := &model.User{
-		LineID:           userID,
-		Name:             name,
-		Birthday:         birthday,
-		RegistrationStep: 1,  // 最初から登録完了状態
-		RegisteredAt:     "", // DBのDEFAULT（現在時刻）を使用
-		UpdatedAt:        "", // DBのDEFAULT（現在時刻）を使用
+		LineID:       userID,
+		Name:         name,
+		Birthday:     birthday,
+		RegisteredAt: "", // DBのDEFAULT（現在時刻）を使用
+		UpdatedAt:    "", // DBのDEFAULT（現在時刻）を使用
 	}
 
 	// 2. DBに保存
@@ -244,11 +234,6 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 	// 4. ユーザー情報を更新
 	user.Name = name
 	user.Birthday = birthday
-
-	// 4. registration_step が 0 の場合のみ 1 に更新（通常はありえないが念のため）
-	if user.RegistrationStep == 0 {
-		user.CompleteUserRegistration()
-	}
 
 	// 5. DBに保存
 	if err := s.userRepo.Update(ctx, user); err != nil {

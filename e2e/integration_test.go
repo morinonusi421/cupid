@@ -247,7 +247,7 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 	assert.NotNil(t, user)
 	assert.Equal(t, "ヤマダタロウ", user.Name)
 	assert.Equal(t, "1990-01-01", user.Birthday)
-	assert.Equal(t, 1, user.RegistrationStep)
+	// RegistrationStepは削除されたため検証不要
 }
 
 func TestIntegration_CrushRegistrationNoMatch(t *testing.T) {

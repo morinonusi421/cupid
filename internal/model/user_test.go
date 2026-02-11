@@ -3,6 +3,7 @@ package model
 import (
 	"testing"
 
+	"github.com/aarondl/null/v8"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,19 +34,37 @@ func TestUser_IsSamePerson(t *testing.T) {
 	})
 }
 
-func TestUser_CompleteCrushRegistration(t *testing.T) {
-	t.Run("登録ステップが2に設定される", func(t *testing.T) {
-		user := User{RegistrationStep: 1}
-		user.CompleteCrushRegistration()
-		assert.Equal(t, 2, user.RegistrationStep)
+func TestUser_HasCrush(t *testing.T) {
+	t.Run("好きな人が登録されている場合trueを返す", func(t *testing.T) {
+		user := User{
+			CrushName:     null.StringFrom("タナカハナコ"),
+			CrushBirthday: null.StringFrom("1990-05-05"),
+		}
+		assert.True(t, user.HasCrush())
 	})
-}
 
-func TestUser_CompleteUserRegistration(t *testing.T) {
-	t.Run("登録ステップが1に設定される", func(t *testing.T) {
-		user := User{RegistrationStep: 0}
-		user.CompleteUserRegistration()
-		assert.Equal(t, 1, user.RegistrationStep)
+	t.Run("好きな人が登録されていない場合falseを返す", func(t *testing.T) {
+		user := User{
+			CrushName:     null.String{Valid: false},
+			CrushBirthday: null.String{Valid: false},
+		}
+		assert.False(t, user.HasCrush())
+	})
+
+	t.Run("名前のみ登録されている場合falseを返す", func(t *testing.T) {
+		user := User{
+			CrushName:     null.StringFrom("タナカハナコ"),
+			CrushBirthday: null.String{Valid: false},
+		}
+		assert.False(t, user.HasCrush())
+	})
+
+	t.Run("誕生日のみ登録されている場合falseを返す", func(t *testing.T) {
+		user := User{
+			CrushName:     null.String{Valid: false},
+			CrushBirthday: null.StringFrom("1990-05-05"),
+		}
+		assert.False(t, user.HasCrush())
 	})
 }
 

@@ -15,7 +15,6 @@ type User struct {
 	LineID             string
 	Name               string
 	Birthday           string
-	RegistrationStep   int         // 1: 登録完了（好きな人未登録）, 2: 好きな人登録完了
 	CrushName          null.String // 好きな人の名前（NULL=未設定）
 	CrushBirthday      null.String // 好きな人の誕生日（NULL=未設定）
 	MatchedWithUserID  null.String // マッチング相手のLINE ID（NULL=未マッチ）
@@ -28,19 +27,14 @@ func (u *User) IsSamePerson(name, birthday string) bool {
 	return u.Name == name && u.Birthday == birthday
 }
 
-// CompleteCrushRegistration は、Crush登録を完了する
-func (u *User) CompleteCrushRegistration() {
-	u.RegistrationStep = 2
-}
-
 // IsMatched は、マッチング中かどうかを返す
 func (u *User) IsMatched() bool {
 	return u.MatchedWithUserID.Valid
 }
 
-// CompleteUserRegistration は、ユーザー登録を完了する
-func (u *User) CompleteUserRegistration() {
-	u.RegistrationStep = 1
+// HasCrush は、好きな人が登録されているかを返す
+func (u *User) HasCrush() bool {
+	return u.CrushName.Valid && u.CrushBirthday.Valid
 }
 
 // IsValidName は名前が有効なカタカナ文字列かをチェックする

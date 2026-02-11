@@ -27,7 +27,6 @@ type User struct {
 	LineUserID        null.String `boil:"line_user_id" json:"line_user_id,omitempty" toml:"line_user_id" yaml:"line_user_id,omitempty"`
 	Name              string      `boil:"name" json:"name" toml:"name" yaml:"name"`
 	Birthday          string      `boil:"birthday" json:"birthday" toml:"birthday" yaml:"birthday"`
-	RegistrationStep  int64       `boil:"registration_step" json:"registration_step" toml:"registration_step" yaml:"registration_step"`
 	CrushName         null.String `boil:"crush_name" json:"crush_name,omitempty" toml:"crush_name" yaml:"crush_name,omitempty"`
 	CrushBirthday     null.String `boil:"crush_birthday" json:"crush_birthday,omitempty" toml:"crush_birthday" yaml:"crush_birthday,omitempty"`
 	MatchedWithUserID null.String `boil:"matched_with_user_id" json:"matched_with_user_id,omitempty" toml:"matched_with_user_id" yaml:"matched_with_user_id,omitempty"`
@@ -42,7 +41,6 @@ var UserColumns = struct {
 	LineUserID        string
 	Name              string
 	Birthday          string
-	RegistrationStep  string
 	CrushName         string
 	CrushBirthday     string
 	MatchedWithUserID string
@@ -52,7 +50,6 @@ var UserColumns = struct {
 	LineUserID:        "line_user_id",
 	Name:              "name",
 	Birthday:          "birthday",
-	RegistrationStep:  "registration_step",
 	CrushName:         "crush_name",
 	CrushBirthday:     "crush_birthday",
 	MatchedWithUserID: "matched_with_user_id",
@@ -64,7 +61,6 @@ var UserTableColumns = struct {
 	LineUserID        string
 	Name              string
 	Birthday          string
-	RegistrationStep  string
 	CrushName         string
 	CrushBirthday     string
 	MatchedWithUserID string
@@ -74,7 +70,6 @@ var UserTableColumns = struct {
 	LineUserID:        "users.line_user_id",
 	Name:              "users.name",
 	Birthday:          "users.birthday",
-	RegistrationStep:  "users.registration_step",
 	CrushName:         "users.crush_name",
 	CrushBirthday:     "users.crush_birthday",
 	MatchedWithUserID: "users.matched_with_user_id",
@@ -128,34 +123,10 @@ func (w whereHelpernull_String) NIN(slice []string) qm.QueryMod {
 func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
 func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
-type whereHelperint64 struct{ field string }
-
-func (w whereHelperint64) EQ(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelperint64) NEQ(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
-func (w whereHelperint64) LT(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelperint64) LTE(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
-func (w whereHelperint64) GT(x int64) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelperint64) GTE(x int64) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
-func (w whereHelperint64) IN(slice []int64) qm.QueryMod {
-	values := make([]any, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
-}
-func (w whereHelperint64) NIN(slice []int64) qm.QueryMod {
-	values := make([]any, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
-}
-
 var UserWhere = struct {
 	LineUserID        whereHelpernull_String
 	Name              whereHelperstring
 	Birthday          whereHelperstring
-	RegistrationStep  whereHelperint64
 	CrushName         whereHelpernull_String
 	CrushBirthday     whereHelpernull_String
 	MatchedWithUserID whereHelpernull_String
@@ -165,7 +136,6 @@ var UserWhere = struct {
 	LineUserID:        whereHelpernull_String{field: "\"users\".\"line_user_id\""},
 	Name:              whereHelperstring{field: "\"users\".\"name\""},
 	Birthday:          whereHelperstring{field: "\"users\".\"birthday\""},
-	RegistrationStep:  whereHelperint64{field: "\"users\".\"registration_step\""},
 	CrushName:         whereHelpernull_String{field: "\"users\".\"crush_name\""},
 	CrushBirthday:     whereHelpernull_String{field: "\"users\".\"crush_birthday\""},
 	MatchedWithUserID: whereHelpernull_String{field: "\"users\".\"matched_with_user_id\""},
@@ -229,9 +199,9 @@ func (r *userR) GetMatchedWithUserUsers() UserSlice {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"line_user_id", "name", "birthday", "registration_step", "crush_name", "crush_birthday", "matched_with_user_id", "registered_at", "updated_at"}
+	userAllColumns            = []string{"line_user_id", "name", "birthday", "crush_name", "crush_birthday", "matched_with_user_id", "registered_at", "updated_at"}
 	userColumnsWithoutDefault = []string{"name", "birthday"}
-	userColumnsWithDefault    = []string{"line_user_id", "registration_step", "crush_name", "crush_birthday", "matched_with_user_id", "registered_at", "updated_at"}
+	userColumnsWithDefault    = []string{"line_user_id", "crush_name", "crush_birthday", "matched_with_user_id", "registered_at", "updated_at"}
 	userPrimaryKeyColumns     = []string{"line_user_id"}
 	userGeneratedColumns      = []string{}
 )

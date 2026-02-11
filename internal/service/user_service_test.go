@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/aarondl/null/v8"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/model"
@@ -81,32 +82,6 @@ func (m *MockLineBotClient) PushMessage(request *messaging_api.PushMessageReques
 
 // ProcessTextMessage tests
 
-func TestUserService_ProcessTextMessage_Step0_InvalidState(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := new(MockMatchingService)
-	mockLineBotClient := new(MockLineBotClient)
-	service := NewUserService(mockRepo, "", "", mockMatchingService, mockLineBotClient)
-	ctx := context.Background()
-
-	user := &model.User{
-		LineID:           "U123",
-		Name:             "",
-		Birthday:         "",
-		RegistrationStep: 0,
-	}
-
-	// FindByLineID が既存ユーザーを返す（異常な状態：DB登録済みなのに registration_step が 0）
-	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
-
-	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid state")
-	assert.Contains(t, err.Error(), "registration_step is 0")
-	assert.Empty(t, replyText)
-	mockRepo.AssertExpectations(t)
-}
-
 func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	mockMatchingService := new(MockMatchingService)
@@ -116,10 +91,10 @@ func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 	ctx := context.Background()
 
 	user := &model.User{
-		LineID:           "U123",
-		Name:             "テスト太郎",
-		Birthday:         "2000-01-15",
-		RegistrationStep: 1,
+		LineID:   "U123",
+		Name:     "テスト太郎",
+		Birthday: "2000-01-15",
+		// CrushName未設定 = 好きな人未登録
 	}
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
@@ -140,10 +115,12 @@ func TestUserService_ProcessTextMessage_Step2_CrushReregistration(t *testing.T) 
 	ctx := context.Background()
 
 	user := &model.User{
-		LineID:           "U123",
-		Name:             "テスト太郎",
-		Birthday:         "2000-01-15",
-		RegistrationStep: 2,
+		LineID:        "U123",
+		Name:          "テスト太郎",
+		Birthday:      "2000-01-15",
+		CrushName:     null.StringFrom("テスト花子"),
+		CrushBirthday: null.StringFrom("2001-05-20"),
+		// CrushName設定済み = 好きな人登録済み
 	}
 
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
@@ -200,12 +177,11 @@ func TestUserService_RegisterFromLIFF_NewUser(t *testing.T) {
 	// FindByLineID が nil を返す（ユーザー未登録）
 	mockRepo.On("FindByLineID", ctx, "U-new-user").Return(nil, nil)
 
-	// Create が呼ばれることを期待（RegistrationStep=1で作成）
+	// Create が呼ばれることを期待
 	mockRepo.On("Create", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U-new-user" &&
 			u.Name == "テストタロウ" &&
-			u.Birthday == "2000-01-15" &&
-			u.RegistrationStep == 1
+			u.Birthday == "2000-01-15"
 	})).Return(nil)
 
 	// PushMessage が好きな人登録を促すメッセージで呼ばれることを期待
@@ -228,11 +204,10 @@ func TestUserService_RegisterFromLIFF_UpdateExisting(t *testing.T) {
 	ctx := context.Background()
 
 	existingUser := &model.User{
-		LineID:           "U-existing",
-		Name:             "旧ナマエ",
-		Birthday:         "2000-01-01",
-		RegistrationStep: 1,
-		RegisteredAt:     "2024-01-01 00:00:00",
+		LineID:       "U-existing",
+		Name:         "旧ナマエ",
+		Birthday:     "2000-01-01",
+		RegisteredAt: "2024-01-01 00:00:00",
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -269,7 +244,6 @@ func TestUserService_RegisterFromLIFF_InvalidName(t *testing.T) {
 		LineID:           "U123",
 		Name:             "",
 		Birthday:         "",
-		RegistrationStep: 0,
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -295,7 +269,6 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 		LineID:           "U_A",
 		Name:             "ヤマダタロウ",
 		Birthday:         "1990-01-01",
-		RegistrationStep: 1,
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -305,8 +278,7 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U_A" &&
 			u.CrushName.String == "サトウハナコ" &&
-			u.CrushBirthday.String == "1992-02-02" &&
-			u.RegistrationStep == 2
+			u.CrushBirthday.String == "1992-02-02"
 	})).Return(nil)
 
 	// MatchingService.CheckAndUpdateMatch がマッチなしを返す
@@ -342,7 +314,6 @@ func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
 		LineID:           "U_SELF",
 		Name:             "ヤマダタロウ",
 		Birthday:         "1990-01-01",
-		RegistrationStep: 1,
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -369,7 +340,6 @@ func TestUserService_RegisterCrush_InvalidCrushName(t *testing.T) {
 		LineID:           "U_INVALID",
 		Name:             "ヤマダタロウ",
 		Birthday:         "2000-01-15",
-		RegistrationStep: 1,
 	}
 
 	// FindByLineID が既存ユーザーを返す
@@ -396,18 +366,16 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 		LineID:           "U_B",
 		Name:             "サトウハナコ",
 		Birthday:         "1992-02-02",
-		RegistrationStep: 1,
 	}
 
 	// FindByLineID が既存ユーザーを返す
 	mockRepo.On("FindByLineID", ctx, "U_B").Return(currentUser, nil)
 
-	// User.Update が呼ばれることを期待（CrushName, CrushBirthday, RegistrationStep=2）
+	// User.Update が呼ばれることを期待（CrushName, CrushBirthday）
 	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U_B" &&
 			u.CrushName.String == "ヤマダタロウ" &&
-			u.CrushBirthday.String == "1990-01-01" &&
-			u.RegistrationStep == 2
+			u.CrushBirthday.String == "1990-01-01"
 	})).Return(nil)
 
 	// MatchingService.CheckAndUpdateMatch がマッチを返す
@@ -448,18 +416,16 @@ func TestUserService_RegisterCrush_Matched_NotificationFails(t *testing.T) {
 		LineID:           "U_B",
 		Name:             "サトウハナコ",
 		Birthday:         "1992-02-02",
-		RegistrationStep: 1,
 	}
 
 	// FindByLineID が既存ユーザーを返す
 	mockRepo.On("FindByLineID", ctx, "U_B").Return(currentUser, nil)
 
-	// User.Update が呼ばれることを期待（CrushName, CrushBirthday, RegistrationStep=2）
+	// User.Update が呼ばれることを期待（CrushName, CrushBirthday）
 	mockRepo.On("Update", ctx, mock.MatchedBy(func(u *model.User) bool {
 		return u.LineID == "U_B" &&
 			u.CrushName.String == "ヤマダタロウ" &&
-			u.CrushBirthday.String == "1990-01-01" &&
-			u.RegistrationStep == 2
+			u.CrushBirthday.String == "1990-01-01"
 	})).Return(nil)
 
 	// MatchingService.CheckAndUpdateMatch がマッチを返す
