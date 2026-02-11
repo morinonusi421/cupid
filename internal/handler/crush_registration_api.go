@@ -85,9 +85,11 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 	matched, matchedName, isFirstCrushRegistration, err := h.userService.RegisterCrush(r.Context(), userID, req.CrushName, req.CrushBirthday, req.ConfirmUnmatch)
 	if err != nil {
 		log.Printf("Failed to register crush: %v", err)
+		log.Printf("[DEBUG] Error type: %T, ErrUserNotFound: %v, errors.Is result: %v", err, service.ErrUserNotFound, errors.Is(err, service.ErrUserNotFound))
 
 		// user_not_foundエラーの場合は特別なレスポンス（ユーザー登録を促す）
 		if errors.Is(err, service.ErrUserNotFound) {
+			log.Printf("[DEBUG] Matched ErrUserNotFound, returning 428")
 			w.WriteHeader(http.StatusPreconditionRequired) // 428 Precondition Required
 			json.NewEncoder(w).Encode(map[string]string{
 				"error":         "user_not_found",
