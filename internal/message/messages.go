@@ -26,12 +26,9 @@ const (
 	CrushRegistrationCompleteFirst = "わぁっ♡ 好きな人の登録が完了しましたっ💘\n\n相思相愛が成立したら、キューピッドちゃんがすぐにお知らせしますね✨\n\nドキドキしながら待っててくださいっ！\n\nキューピッドちゃん、応援してます〜♡"
 
 	// CrushRegistrationCompleteUpdate は好きな人の情報更新時のメッセージ
-	CrushRegistrationCompleteUpdate = "了解ですっ✨ 好きな人の情報を更新しましたっ♡\n\n新しい相手と相思相愛が成立したら、お知らせしますね💕\n\nキューピッドちゃん、精一杯サポートしますっ！"
+	CrushRegistrationCompleteUpdate = "好きな人の情報を更新しましたっ♡\n\n新しい相手と相思相愛が成立したら、お知らせしますね💕\n\nキューピッドちゃん、精一杯サポートしますっ！"
 
-	// UserInfoUpdateConfirmation は情報更新完了時のメッセージ
-	UserInfoUpdateConfirmation = "完了ですっ✨ 情報を更新しましたよ♡\n\nキューピッドちゃん、ばっちり覚えましたっ💕"
-
-	// AlreadyRegisteredMessage は登録済みユーザーへのメッセージ
+	// AlreadyRegisteredMessage は登録済みユーザーから何か送られてきたときの応答メッセージ
 	AlreadyRegisteredMessage = "もう登録完了していますよ〜✨\n\nマッチングが成立したら、キューピッドちゃんがすぐにお知らせしますねっ♡\n\n情報の更新は画面下のメニューからできます💕"
 )
 
