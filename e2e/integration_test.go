@@ -14,12 +14,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aarondl/null/v8"
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/handler"
 	"github.com/morinonusi421/cupid/internal/linebot"
-	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/morinonusi421/cupid/internal/repository"
 	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/morinonusi421/cupid/pkg/database"
@@ -153,6 +151,50 @@ func sendWebhook(t *testing.T, handler *handler.WebhookHandler, events []interfa
 	return rec
 }
 
+// registerUserViaAPI registers a user via API (true E2E)
+func registerUserViaAPI(t *testing.T, handler *handler.RegistrationAPIHandler, userID, name, birthday string) {
+	reqBody := map[string]interface{}{
+		"name":     name,
+		"birthday": birthday,
+	}
+	body, err := json.Marshal(reqBody)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer test-token-"+userID)
+
+	rec := httptest.NewRecorder()
+	handler.Register(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code, "User registration should succeed")
+}
+
+// registerCrushViaAPI registers a crush via API (true E2E) and returns the response
+func registerCrushViaAPI(t *testing.T, handler *handler.CrushRegistrationAPIHandler, userID, crushName, crushBirthday string) map[string]interface{} {
+	reqBody := map[string]interface{}{
+		"crush_name":     crushName,
+		"crush_birthday": crushBirthday,
+	}
+	body, err := json.Marshal(reqBody)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/register-crush", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer test-token-"+userID)
+
+	rec := httptest.NewRecorder()
+	handler.RegisterCrush(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code, "Crush registration should succeed")
+
+	var response map[string]interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	return response
+}
+
 func TestIntegration_UserRegistrationFlow(t *testing.T) {
 	if channelSecret == "" {
 		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
@@ -213,49 +255,19 @@ func TestIntegration_CrushRegistrationNoMatch(t *testing.T) {
 		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
 	}
 
-	_, _, crushHandler, db := setupTestEnvironment(t)
+	_, registrationHandler, crushHandler, db := setupTestEnvironment(t)
 	defer db.Close()
 
-	ctx := context.Background()
+	userID := "test-user-002"
 
-	// Create a test user
-	userRepo := repository.NewUserRepository(db)
-	user := &model.User{
-		LineID:           "test-user-002",
-		Name:             "タナカハナコ",
-		Birthday:         "1995-05-05",
-		RegistrationStep: 0,
-	}
-	err := userRepo.Create(ctx, user)
-	require.NoError(t, err)
+	// Step 1: Register user via API (true E2E)
+	registerUserViaAPI(t, registrationHandler, userID, "タナカハナコ", "1995-05-05")
 
-	// Update to step 1
-	user, _ = userRepo.FindByLineID(ctx, "test-user-002")
-	user.CompleteUserRegistration()
-	err = userRepo.Update(ctx, user)
-	require.NoError(t, err)
+	// Step 2: Register crush (no matching user exists) via API
+	response := registerCrushViaAPI(t, crushHandler, userID, "サトウケンタ", "1992-03-15")
 
-	// Register crush (no matching) with ID token
-	crushReq := map[string]interface{}{
-		"crush_name":     "サトウケンタ",
-		"crush_birthday": "1992-03-15",
-	}
-	body, err := json.Marshal(crushReq)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/crush/register", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-token-test-user-002") // Mock ID token
-
-	rec := httptest.NewRecorder()
-	crushHandler.RegisterCrush(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var response map[string]interface{}
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
-	require.NoError(t, err)
-	assert.False(t, response["matched"].(bool))
+	// Step 3: Verify no match occurred
+	assert.False(t, response["matched"].(bool), "Should not match when no matching user exists")
 }
 
 func TestIntegration_CrushRegistrationMatch(t *testing.T) {
@@ -263,55 +275,39 @@ func TestIntegration_CrushRegistrationMatch(t *testing.T) {
 		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
 	}
 
-	_, _, crushHandler, db := setupTestEnvironment(t)
+	_, registrationHandler, crushHandler, db := setupTestEnvironment(t)
 	defer db.Close()
 
 	ctx := context.Background()
 	userRepo := repository.NewUserRepository(db)
 
-	// Create User A
-	userA := &model.User{
-		LineID:           "test-user-a",
-		Name:             "スズキイチロウ",
-		Birthday:         "1988-08-08",
-		CrushName:        null.StringFrom("コバヤシミキ"),
-		CrushBirthday:    null.StringFrom("1990-12-25"),
-		RegistrationStep: 2, // Both user and crush registered
-	}
-	err := userRepo.Create(ctx, userA)
+	userAID := "test-user-a"
+	userBID := "test-user-b"
+
+	// Step 1: User A registers via API (true E2E)
+	registerUserViaAPI(t, registrationHandler, userAID, "スズキイチロウ", "1988-08-08")
+
+	// Step 2: User A registers crush (User B) via API
+	responseA := registerCrushViaAPI(t, crushHandler, userAID, "コバヤシミキ", "1990-12-25")
+	assert.False(t, responseA["matched"].(bool), "User A should not match yet (User B not registered)")
+
+	// Step 3: User B registers via API (true E2E)
+	registerUserViaAPI(t, registrationHandler, userBID, "コバヤシミキ", "1990-12-25")
+
+	// Step 4: User B registers crush (User A) via API - should trigger match
+	responseB := registerCrushViaAPI(t, crushHandler, userBID, "スズキイチロウ", "1988-08-08")
+	assert.True(t, responseB["matched"].(bool), "User B should match with User A")
+
+	// Step 5: Verify both users have matched_with_user_id set in DB
+	userA, err := userRepo.FindByLineID(ctx, userAID)
 	require.NoError(t, err)
+	assert.True(t, userA.MatchedWithUserID.Valid, "User A should have matched_with_user_id set")
+	assert.Equal(t, userBID, userA.MatchedWithUserID.String, "User A should be matched with User B")
 
-	// Create User B
-	userB := &model.User{
-		LineID:           "test-user-b",
-		Name:             "コバヤシミキ",
-		Birthday:         "1990-12-25",
-		RegistrationStep: 1, // Only user registered, will register crush next
-	}
-	err = userRepo.Create(ctx, userB)
+	userB, err := userRepo.FindByLineID(ctx, userBID)
 	require.NoError(t, err)
-
-	// User B registers User A as crush (should trigger match) with ID token
-	crushReq := map[string]interface{}{
-		"crush_name":     "スズキイチロウ",
-		"crush_birthday": "1988-08-08",
-	}
-	body, err := json.Marshal(crushReq)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/crush/register", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-token-test-user-b") // Mock ID token
-
-	rec := httptest.NewRecorder()
-	crushHandler.RegisterCrush(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var response map[string]interface{}
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
-	require.NoError(t, err)
-	assert.True(t, response["matched"].(bool))
+	assert.True(t, userB.MatchedWithUserID.Valid, "User B should have matched_with_user_id set")
+	assert.Equal(t, userAID, userB.MatchedWithUserID.String, "User B should be matched with User A")
 }
 
 func TestIntegration_ValidationError(t *testing.T) {
