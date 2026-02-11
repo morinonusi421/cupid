@@ -210,12 +210,19 @@ func (s *userService) registerNewUser(ctx context.Context, userID, name, birthda
 
 // updateUserInfo は再登録時に既存ユーザーの情報を更新する
 func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name, birthday string, confirmUnmatch bool) error {
-	// 1. マッチング中かチェック
+	// 1. 自己登録チェック（好きな人と同じ名前・誕生日にならないか）
+	if user.CrushName.Valid && user.CrushBirthday.Valid {
+		if user.CrushName.String == name && user.CrushBirthday.String == birthday {
+			return fmt.Errorf("自分自身は登録できません")
+		}
+	}
+
+	// 2. マッチング中かチェック
 	if user.IsMatched() && !confirmUnmatch {
 		return fmt.Errorf("matched_user_exists")
 	}
 
-	// 2. マッチング解除処理
+	// 3. マッチング解除処理
 	if user.IsMatched() && confirmUnmatch {
 		if err := s.unmatchUsers(ctx, user, user.MatchedWithUserID.String); err != nil {
 			log.Printf("Failed to unmatch users: %v", err)
@@ -223,7 +230,7 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 		}
 	}
 
-	// 3. ユーザー情報を更新
+	// 4. ユーザー情報を更新
 	user.Name = name
 	user.Birthday = birthday
 
