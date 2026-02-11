@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
+	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -126,8 +127,7 @@ func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
 
 	assert.NoError(t, err)
-	assert.Contains(t, replyText, "次に、好きな人を登録してください")
-	assert.Contains(t, replyText, "https://miniapp.line.me/2009070891-iIdvFKtI")
+	assert.Equal(t, message.RegistrationStep1Prompt(crushLiffURL), replyText)
 	mockRepo.AssertNotCalled(t, "Update")
 }
 
@@ -151,9 +151,7 @@ func TestUserService_ProcessTextMessage_Step2_CrushReregistration(t *testing.T) 
 	replyText, err := service.ProcessTextMessage(ctx, "U123", "こんにちは")
 
 	assert.NoError(t, err)
-	assert.Contains(t, replyText, "登録済みです")
-	assert.Contains(t, replyText, "好きな人を変更する場合は")
-	assert.Contains(t, replyText, "https://miniapp.line.me/2009070891-iIdvFKtI")
+	assert.Equal(t, message.AlreadyRegisteredMessage, replyText)
 	mockRepo.AssertNotCalled(t, "Update")
 }
 
@@ -187,9 +185,7 @@ func TestUserService_ProcessTextMessage_UnregisteredUser(t *testing.T) {
 	replyText, err := service.ProcessTextMessage(ctx, "U-new-user", "こんにちは")
 
 	assert.NoError(t, err)
-	assert.Contains(t, replyText, "初めまして")
-	assert.Contains(t, replyText, "下のリンクから登録してね")
-	assert.Contains(t, replyText, userLiffURL)
+	assert.Equal(t, message.UnregisteredUserPrompt(userLiffURL), replyText)
 	mockRepo.AssertExpectations(t)
 }
 
