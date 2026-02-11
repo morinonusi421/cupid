@@ -1,4 +1,4 @@
-.PHONY: help build test test-integration generate deploy status logs restart reset-db-local reset-db migrate-up migrate-down migrate-status
+.PHONY: help build test test-integration generate deploy status logs restart reset-db-local reset-db migrate-up migrate-down migrate-status add-test-user
 
 help:
 	@echo "Available commands:"
@@ -15,6 +15,7 @@ help:
 	@echo "  make restart        - Restart service on EC2"
 	@echo "  make reset-db-local - Reset local database (cupid.db)"
 	@echo "  make reset-db       - Reset database on EC2 (WARNING: destructive)"
+	@echo "  make add-test-user  - Add test user to production DB (interactive)"
 
 build:
 	go build -o cupid ./cmd/server
@@ -63,3 +64,25 @@ migrate-down:
 
 migrate-status:
 	sql-migrate status -config=db/dbconfig.yml
+
+add-test-user:
+	@echo "=== Add Test User to Production DB ==="
+	@read -p "Name (カタカナ, 例: タナカタロウ): " name; \
+	read -p "Birthday (YYYY-MM-DD, 例: 2000-01-15): " birthday; \
+	read -p "LINE User ID (例: test123): " line_user_id; \
+	read -p "Crush Name (カタカナ, 例: ヤマダハナコ): " crush_name; \
+	read -p "Crush Birthday (YYYY-MM-DD, 例: 2000-05-20): " crush_birthday; \
+	echo ""; \
+	echo "Adding test user:"; \
+	echo "  Name: $$name"; \
+	echo "  Birthday: $$birthday"; \
+	echo "  LINE User ID: $$line_user_id"; \
+	echo "  Crush: $$crush_name ($$crush_birthday)"; \
+	echo ""; \
+	read -p "Proceed? (yes/no): " confirm; \
+	if [ "$$confirm" != "yes" ]; then \
+		echo "Aborted."; \
+		exit 1; \
+	fi; \
+	ssh cupid-bot "sqlite3 ~/cupid/cupid.db \"INSERT INTO users (line_user_id, name, birthday, registration_step, crush_name, crush_birthday, matched_with_user_id, registered_at, updated_at) VALUES ('$$line_user_id', '$$name', '$$birthday', 2, '$$crush_name', '$$crush_birthday', '', datetime('now'), datetime('now'));\""; \
+	echo "✅ Test user added successfully"
