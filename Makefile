@@ -84,5 +84,5 @@ add-test-user:
 		echo "Aborted."; \
 		exit 1; \
 	fi; \
-	ssh cupid-bot "sqlite3 ~/cupid/cupid.db \"INSERT INTO users (line_user_id, name, birthday, registration_step, crush_name, crush_birthday, matched_with_user_id, registered_at, updated_at) VALUES ('$$line_user_id', '$$name', '$$birthday', 2, '$$crush_name', '$$crush_birthday', '', datetime('now'), datetime('now'));\""; \
+	ssh cupid-bot "sqlite3 ~/cupid/cupid.db \"INSERT INTO users (line_user_id, name, birthday, registration_step, crush_name, crush_birthday, matched_with_user_id, registered_at, updated_at) VALUES ('$$line_user_id', '$$name', '$$birthday', 2, '$$crush_name', '$$crush_birthday', NULL, datetime('now'), datetime('now'));\""; \
 	echo "✅ Test user added successfully"
