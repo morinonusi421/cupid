@@ -28,6 +28,9 @@ const (
 	// CrushRegistrationCompleteUpdate は好きな人の情報更新時のメッセージ
 	CrushRegistrationCompleteUpdate = "好きな人の情報を更新しましたっ♡\n\n新しい相手と相思相愛が成立したら、お知らせしますね💕\n\nキューピッドちゃん、精一杯サポートしますっ！"
 
+	// UserInfoUpdateConfirmation は情報更新完了時のメッセージ
+	UserInfoUpdateConfirmation = "完了ですっ✨ 情報を更新しましたよ♡\n\nキューピッドちゃん、ばっちり覚えましたっ💕"
+
 	// AlreadyRegisteredMessage は登録済みユーザーから何か送られてきたときの応答メッセージ
 	AlreadyRegisteredMessage = "もう登録完了していますよ〜✨\n\nマッチングが成立したら、キューピッドちゃんがすぐにお知らせしますねっ♡\n\n情報の更新は画面下のメニューからできます💕"
 )
@@ -52,7 +55,7 @@ func UnmatchNotificationPartner(partnerName string) string {
 // 未登録ユーザーへの案内
 // UnregisteredUserPrompt は未登録ユーザーへの登録案内メッセージを生成する
 func UnregisteredUserPrompt(liffURL string) string {
-	return fmt.Sprintf("わぁっ♡ 初めましてですねっ！\n\nキューピッドちゃんは相思相愛を見つけるお手伝いをするBotなんです💕\n\n恋のキューピッドとして、精一杯サポートさせていただきますね✨\n\n下のリンクから登録してください〜！\n\n%s", liffURL)
+	return fmt.Sprintf("登録がまだみたいですねっ💕\n\n下のリンクから登録してくださいっ✨\n\n%s", liffURL)
 }
 
 // RegistrationStep1Prompt はユーザー登録完了後の好きな人登録案内メッセージを生成する
