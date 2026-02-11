@@ -8,6 +8,7 @@ import (
 	"github.com/aarondl/null/v8"
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/linebot"
+	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/morinonusi421/cupid/internal/repository"
 )
@@ -50,7 +51,7 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 	// ユーザーが未登録の場合
 	if user == nil {
 		// LIFFフォームへの案内（DB登録はしない）
-		return fmt.Sprintf("初めまして！💘\n\n下のリンクから登録してね。\n\n%s", s.userLiffURL), nil
+		return message.UnregisteredUserPrompt(s.userLiffURL), nil
 	}
 
 	// 登録済みの場合、registration_step に応じて処理分岐
@@ -60,10 +61,10 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 		return "", fmt.Errorf("invalid state: user exists but registration_step is 0 (user_id: %s)", userID)
 	case 1:
 		// ユーザー登録完了済み - 好きな人の登録を案内（LIFF URL）
-		return fmt.Sprintf("次に、好きな人を登録してください💘\n\n%s", s.crushLiffURL), nil
+		return message.RegistrationStep1Prompt(s.crushLiffURL), nil
 	case 2:
 		// 好きな人登録完了済み - 再登録を案内（LIFF URL）
-		return fmt.Sprintf("正しく登録完了しています。マッチングが成立したらお知らせします。情報の更新は画面下のメニューからできます。\n"), nil
+		return message.AlreadyRegisteredMessage, nil
 	default:
 		return "", fmt.Errorf("invalid registration step: %d", user.RegistrationStep)
 	}
@@ -265,13 +266,11 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 
 // sendMatchNotification はマッチ成立時にLINE Push通知を送信する
 func (s *userService) sendMatchNotification(ctx context.Context, toUser *model.User, matchedWithUser *model.User) error {
-	message := fmt.Sprintf("相思相愛が成立しました！\n相手：%s", matchedWithUser.Name)
-
 	request := &messaging_api.PushMessageRequest{
 		To: toUser.LineID,
 		Messages: []messaging_api.MessageInterface{
 			messaging_api.TextMessage{
-				Text: message,
+				Text: message.MatchNotification(matchedWithUser.Name),
 			},
 		},
 		NotificationDisabled: false,
@@ -283,13 +282,11 @@ func (s *userService) sendMatchNotification(ctx context.Context, toUser *model.U
 
 // HandleFollowEvent はFollowイベント時の挨拶メッセージ（QuickReply付き）を送信する
 func (s *userService) HandleFollowEvent(ctx context.Context, replyToken string) error {
-	greetingText := "友達追加ありがとう！\nCupidは相思相愛を見つけるお手伝いをするよ。\n\nまずは下のボタンから登録してね。"
-
 	request := &messaging_api.ReplyMessageRequest{
 		ReplyToken: replyToken,
 		Messages: []messaging_api.MessageInterface{
 			messaging_api.TextMessage{
-				Text: greetingText,
+				Text: message.FollowGreeting,
 				QuickReply: &messaging_api.QuickReply{
 					Items: []messaging_api.QuickReplyItem{
 						{
@@ -311,13 +308,11 @@ func (s *userService) HandleFollowEvent(ctx context.Context, replyToken string) 
 
 // sendCrushRegistrationPrompt はユーザー登録完了後に好きな人登録を促すメッセージを送信する
 func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *model.User) error {
-	message := "登録完了！\n\n次に、好きな人を登録してね💘\n下のボタンから登録できるよ。"
-
 	request := &messaging_api.PushMessageRequest{
 		To: user.LineID,
 		Messages: []messaging_api.MessageInterface{
 			messaging_api.TextMessage{
-				Text: message,
+				Text: message.UserRegistrationComplete,
 				QuickReply: &messaging_api.QuickReply{
 					Items: []messaging_api.QuickReplyItem{
 						{
@@ -340,13 +335,11 @@ func (s *userService) sendCrushRegistrationPrompt(ctx context.Context, user *mod
 
 // sendUserInfoUpdateConfirmation は情報更新完了のメッセージを送信する
 func (s *userService) sendUserInfoUpdateConfirmation(ctx context.Context, user *model.User) error {
-	message := "情報を更新しました✨"
-
 	request := &messaging_api.PushMessageRequest{
 		To: user.LineID,
 		Messages: []messaging_api.MessageInterface{
 			messaging_api.TextMessage{
-				Text: message,
+				Text: message.UserInfoUpdateConfirmation,
 			},
 		},
 		NotificationDisabled: false,
@@ -358,18 +351,18 @@ func (s *userService) sendUserInfoUpdateConfirmation(ctx context.Context, user *
 
 // sendCrushRegistrationComplete は好きな人登録完了時（マッチなし）のメッセージを送信する
 func (s *userService) sendCrushRegistrationComplete(ctx context.Context, user *model.User, isFirstRegistration bool) error {
-	var message string
+	var messageText string
 	if isFirstRegistration {
-		message = "好きな人の登録が完了しました💘\n\n相思相愛が成立したら、お知らせするね。"
+		messageText = message.CrushRegistrationCompleteFirst
 	} else {
-		message = "好きな人の情報を更新しました✨\n\n新しい相手と相思相愛が成立したら、お知らせするね。"
+		messageText = message.CrushRegistrationCompleteUpdate
 	}
 
 	request := &messaging_api.PushMessageRequest{
 		To: user.LineID,
 		Messages: []messaging_api.MessageInterface{
 			messaging_api.TextMessage{
-				Text: message,
+				Text: messageText,
 			},
 		},
 		NotificationDisabled: false,
@@ -416,20 +409,18 @@ func (s *userService) unmatchUsers(ctx context.Context, initiatorUser *model.Use
 
 // sendUnmatchNotification はマッチング解除時にLINE Push通知を送信する
 func (s *userService) sendUnmatchNotification(ctx context.Context, toUser *model.User, partnerUser *model.User, isInitiator bool) error {
-	var reason string
+	var messageText string
 	if isInitiator {
-		reason = "あなたが情報を変更しました"
+		messageText = message.UnmatchNotificationInitiator(partnerUser.Name)
 	} else {
-		reason = "相手が情報を変更しました"
+		messageText = message.UnmatchNotificationPartner(partnerUser.Name)
 	}
-
-	message := fmt.Sprintf("マッチングが解除されました。\n\n理由：%s\n相手：%s", reason, partnerUser.Name)
 
 	request := &messaging_api.PushMessageRequest{
 		To: toUser.LineID,
 		Messages: []messaging_api.MessageInterface{
 			messaging_api.TextMessage{
-				Text: message,
+				Text: messageText,
 			},
 		},
 		NotificationDisabled: false,

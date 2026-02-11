@@ -22,7 +22,7 @@ function validateName(name) {
     if (length < 2 || length > 20) {
         return {
             valid: false,
-            message: '名前は2〜20文字で入力してください'
+            message: 'あうぅ...名前は2〜20文字で入力してくださいっ💦'
         };
     }
 
@@ -31,7 +31,7 @@ function validateName(name) {
     if (!katakanaRegex.test(trimmed)) {
         return {
             valid: false,
-            message: '名前はカタカナフルネーム(空白なし)で入力してください（例: ヤマダタロウ）'
+            message: '名前はカタカナフルネーム(空白なし)で入力してくださいねっ✨（例: ヤマダタロウ）'
         };
     }
 
@@ -51,7 +51,7 @@ window.addEventListener('load', async () => {
         setupForm(); // ログイン済みならフォーム表示
     } catch (error) {
         console.error('LIFF initialization failed', error);
-        showMessage('LINE認証に失敗しました。再度お試しください。', 'error');
+        showMessage('あうぅ...LINE認証に失敗しちゃいました💦 もう一度試してくださいっ', 'error');
     }
 });
 
@@ -81,7 +81,7 @@ function setupForm() {
 
         // バリデーション
         if (!name) {
-            showMessage('名前を入力してください。', 'error');
+            showMessage('あうぅ...名前を入力してくださいっ💦', 'error');
             return;
         }
 
@@ -93,7 +93,7 @@ function setupForm() {
         }
 
         if (!birthday) {
-            showMessage('生年月日を入力してください。', 'error');
+            showMessage('あうぅ...生年月日を入力してくださいっ💦', 'error');
             return;
         }
 
@@ -159,14 +159,14 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
         // 成功 - 初回/再登録でメッセージを変える
         const data = await response.json();
         if (data.is_first_registration) {
-            showMessage('登録が完了しました！LINEに戻って話しかけてね。', 'success');
+            showMessage('やったぁ✨ 登録完了ですっ♡ LINEに戻ってくださいねっ！', 'success');
         } else {
-            showMessage('情報を更新しました！LINEに戻って確認してね。', 'success');
+            showMessage('完了ですっ✨ 情報を更新しましたよ♡ LINEに戻ってくださいねっ！', 'success');
         }
 
     } catch (error) {
         console.error('Registration failed', error);
-        showMessage(error.message || '登録に失敗しました。', 'error');
+        showMessage(error.message || 'あうぅ...登録に失敗しちゃいました💦 もう一度試してくださいっ', 'error');
         submitButton.disabled = false;
     } finally {
         showLoading(false);

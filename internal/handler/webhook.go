@@ -7,6 +7,7 @@ import (
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/line/line-bot-sdk-go/v8/linebot/webhook"
 	"github.com/morinonusi421/cupid/internal/linebot"
+	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/service"
 )
 
@@ -54,13 +55,12 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		case webhook.JoinEvent:
 			// グループに招待された時の挨拶メッセージを送信
-			replyMessage := "こんにちは！Cupidです🏹\n\n私は相思相愛を見つけるお手伝いをするBotです。\n\n【使い方】\n1. 私を友達追加してください\n2. 個チャで自分の情報を登録\n3. 好きな人の情報を登録\n\nお互いが相手を登録していたら、両思いをお知らせします！\n\nまずは私を友達追加して、個チャでやりとりしてください😊"
 			_, err = h.bot.ReplyMessage(
 				&messaging_api.ReplyMessageRequest{
 					ReplyToken: e.ReplyToken,
 					Messages: []messaging_api.MessageInterface{
 						messaging_api.TextMessage{
-							Text: replyMessage,
+							Text: message.JoinGroupGreeting,
 						},
 					},
 				},
