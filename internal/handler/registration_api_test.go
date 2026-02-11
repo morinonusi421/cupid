@@ -40,14 +40,14 @@ func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID, 
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockUserServiceForAPI) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) error {
+func (m *MockUserServiceForAPI) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (bool, error) {
 	args := m.Called(ctx, userID, name, birthday, confirmUnmatch)
-	return args.Error(0)
+	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockUserServiceForAPI) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, err error) {
+func (m *MockUserServiceForAPI) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error) {
 	args := m.Called(ctx, userID, crushName, crushBirthday, confirmUnmatch)
-	return args.Bool(0), args.String(1), args.Error(2)
+	return args.Bool(0), args.String(1), args.Bool(2), args.Error(3)
 }
 
 func (m *MockUserServiceForAPI) HandleFollowEvent(ctx context.Context, replyToken string) error {
@@ -61,7 +61,7 @@ func TestRegistrationAPI_Register_Success(t *testing.T) {
 	handler := NewRegistrationAPIHandler(mockUserService, mockVerifier)
 
 	// Mock RegisterFromLIFF to succeed
-	mockUserService.On("RegisterFromLIFF", mock.Anything, "U-test-user", "田中太郎", "2000-01-15", false).Return(nil)
+	mockUserService.On("RegisterFromLIFF", mock.Anything, "U-test-user", "田中太郎", "2000-01-15", false).Return(true, nil)
 
 	reqBody := map[string]string{
 		"name":     "田中太郎",

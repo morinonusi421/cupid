@@ -78,7 +78,7 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 	}
 
 	// サービス呼び出し（user_idはトークンから取得したものを使用）
-	matched, matchedName, err := h.userService.RegisterCrush(r.Context(), userID, req.CrushName, req.CrushBirthday, req.ConfirmUnmatch)
+	matched, matchedName, isFirstCrushRegistration, err := h.userService.RegisterCrush(r.Context(), userID, req.CrushName, req.CrushBirthday, req.ConfirmUnmatch)
 	if err != nil {
 		log.Printf("Failed to register crush: %v", err)
 
@@ -113,10 +113,11 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(RegisterCrushResponse{
-		Status:  "ok",
-		Matched: matched,
-		Message: message,
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":                   "ok",
+		"matched":                  matched,
+		"message":                  message,
+		"is_first_registration":    isFirstCrushRegistration,
 	})
 
 	log.Printf("Crush registration successful for user %s: crush=%s, matched=%t", userID, req.CrushName, matched)

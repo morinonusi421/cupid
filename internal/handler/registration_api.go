@@ -64,7 +64,8 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 	}
 
 	// user_idはトークンから取得したものを使用
-	if err := h.userService.RegisterFromLIFF(r.Context(), userID, req.Name, req.Birthday, req.ConfirmUnmatch); err != nil {
+	isFirstRegistration, err := h.userService.RegisterFromLIFF(r.Context(), userID, req.Name, req.Birthday, req.ConfirmUnmatch)
+	if err != nil {
 		log.Printf("Failed to register user: %v", err)
 
 		// matched_user_existsエラーの場合は特別なレスポンス
@@ -87,5 +88,8 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 	log.Printf("Registration successful for user %s: name=%s, birthday=%s", userID, req.Name, req.Birthday)
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":               "ok",
+		"is_first_registration": isFirstRegistration,
+	})
 }

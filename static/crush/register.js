@@ -151,8 +151,13 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
             throw new Error(errorData.error || '登録に失敗しました。');
         }
 
-        // 成功
-        showMessage('登録が完了しました！結果はLINEでお知らせします。', 'success');
+        // 成功 - 初回/再登録でメッセージを変える
+        const data = await response.json();
+        if (data.is_first_registration) {
+            showMessage('登録が完了しました！結果はLINEでお知らせします。', 'success');
+        } else {
+            showMessage('情報を更新しました！結果はLINEでお知らせします。', 'success');
+        }
 
     } catch (error) {
         console.error('Registration failed', error);

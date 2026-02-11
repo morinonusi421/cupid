@@ -15,8 +15,8 @@ import (
 // UserService はユーザーのビジネスロジック層のインターフェース
 type UserService interface {
 	ProcessTextMessage(ctx context.Context, userID, text string) (string, error)
-	RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) error
-	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, err error)
+	RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error)
+	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error)
 	HandleFollowEvent(ctx context.Context, replyToken string) error
 }
 
@@ -70,42 +70,48 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID, text strin
 }
 
 // RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する
-func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) error {
+func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error) {
 	// 1. バリデーション
 	if ok, errMsg := model.IsValidName(name); !ok {
-		return fmt.Errorf("%s", errMsg)
+		return false, fmt.Errorf("%s", errMsg)
 	}
 
 	// 2. ユーザー検索
 	user, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to find user: %w", err)
+		return false, fmt.Errorf("failed to find user: %w", err)
 	}
 
 	// 3. 初回登録 vs 再登録で分岐
 	if user == nil {
 		// 初回登録
-		return s.registerNewUser(ctx, userID, name, birthday)
+		if err := s.registerNewUser(ctx, userID, name, birthday); err != nil {
+			return false, err
+		}
+		return true, nil
 	} else {
 		// 再登録（情報更新）
-		return s.updateUserInfo(ctx, user, name, birthday, confirmUnmatch)
+		if err := s.updateUserInfo(ctx, user, name, birthday, confirmUnmatch); err != nil {
+			return false, err
+		}
+		return false, nil
 	}
 }
 
 // RegisterCrush は好きな人を登録し、マッチング判定を行う
-func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, err error) {
+func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error) {
 	// 1. 現在のユーザー情報を取得
 	currentUser, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
-		return false, "", err
+		return false, "", false, err
 	}
 	if currentUser == nil {
-		return false, "", fmt.Errorf("user not found: %s", userID)
+		return false, "", false, fmt.Errorf("user not found: %s", userID)
 	}
 
 	// 2. マッチング中かチェック
 	if currentUser.IsMatched() && !confirmUnmatch {
-		return false, "", fmt.Errorf("matched_user_exists")
+		return false, "", false, fmt.Errorf("matched_user_exists")
 	}
 
 	// 3. マッチング解除処理
@@ -118,30 +124,33 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 
 	// 4. 自己登録チェック（domain method使用）
 	if currentUser.IsSamePerson(crushName, crushBirthday) {
-		return false, "", fmt.Errorf("cannot register yourself")
+		return false, "", false, fmt.Errorf("cannot register yourself")
 	}
 
 	// 5. 名前のバリデーション
 	if valid, errMsg := model.IsValidName(crushName); !valid {
-		return false, "", fmt.Errorf("%s", errMsg)
+		return false, "", false, fmt.Errorf("%s", errMsg)
 	}
 
-	// 6. 好きな人を登録（usersテーブルに直接保存）
+	// 6. 初回登録か再登録かを判定（RegistrationStepを変更する前に）
+	isFirstCrushRegistration = currentUser.RegistrationStep == 1
+
+	// 7. 好きな人を登録（usersテーブルに直接保存）
 	currentUser.CrushName = null.StringFrom(crushName)
 	currentUser.CrushBirthday = null.StringFrom(crushBirthday)
 
-	// 7. RegistrationStepを2に更新（domain method使用）
+	// 8. RegistrationStepを2に更新（domain method使用）
 	currentUser.CompleteCrushRegistration()
 
 	if err := s.userRepo.Update(ctx, currentUser); err != nil {
-		return false, "", err
+		return false, "", false, err
 	}
 
-	// 8. マッチング判定（MatchingService に委譲）
+	// 9. マッチング判定（MatchingService に委譲）
 	var matchedUser *model.User
 	matched, matchedUser, err = s.matchingService.CheckAndUpdateMatch(ctx, currentUser)
 	if err != nil {
-		return false, "", fmt.Errorf("matching check failed: %w", err)
+		return false, "", false, fmt.Errorf("matching check failed: %w", err)
 	}
 
 	// マッチした場合、両方のユーザーにLINE通知を送信
@@ -159,7 +168,7 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		}
 	} else {
 		// マッチしなかった場合も登録完了を通知
-		if err := s.sendCrushRegistrationComplete(ctx, currentUser); err != nil {
+		if err := s.sendCrushRegistrationComplete(ctx, currentUser, isFirstCrushRegistration); err != nil {
 			log.Printf("Failed to send crush registration complete notification to %s: %v", currentUser.LineID, err)
 			// エラーをログに記録するが、処理は継続
 		}
@@ -170,7 +179,7 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		matchedUserName = matchedUser.Name
 	}
 
-	return matched, matchedUserName, nil
+	return matched, matchedUserName, isFirstCrushRegistration, nil
 }
 
 // registerNewUser は初回登録時に新規ユーザーを作成する
@@ -331,8 +340,13 @@ func (s *userService) sendUserInfoUpdateConfirmation(ctx context.Context, user *
 }
 
 // sendCrushRegistrationComplete は好きな人登録完了時（マッチなし）のメッセージを送信する
-func (s *userService) sendCrushRegistrationComplete(ctx context.Context, user *model.User) error {
-	message := "好きな人の登録が完了しました💘\n\n相思相愛が成立したら、お知らせするね。"
+func (s *userService) sendCrushRegistrationComplete(ctx context.Context, user *model.User, isFirstRegistration bool) error {
+	var message string
+	if isFirstRegistration {
+		message = "好きな人の登録が完了しました💘\n\n相思相愛が成立したら、お知らせするね。"
+	} else {
+		message = "好きな人の情報を更新しました✨\n\n新しい相手と相思相愛が成立したら、お知らせするね。"
+	}
 
 	request := &messaging_api.PushMessageRequest{
 		To: user.LineID,

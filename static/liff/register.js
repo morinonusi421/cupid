@@ -151,8 +151,13 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
             throw new Error(errorData.error || '登録に失敗しました。');
         }
 
-        // 成功
-        showMessage('登録が完了しました！LINEに戻って話しかけてね。', 'success');
+        // 成功 - 初回/再登録でメッセージを変える
+        const data = await response.json();
+        if (data.is_first_registration) {
+            showMessage('登録が完了しました！LINEに戻って話しかけてね。', 'success');
+        } else {
+            showMessage('情報を更新しました！LINEに戻って確認してね。', 'success');
+        }
 
     } catch (error) {
         console.error('Registration failed', error);
