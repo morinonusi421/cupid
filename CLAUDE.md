@@ -96,7 +96,7 @@
 
 **【重要】現在は本番検証段階のため、本番用LIFF IDを使用すること**
 - `.env`の`LINE_LIFF_USER_CHANNEL_ID`と`LINE_LIFF_CRUSH_CHANNEL_ID`は本番用を設定
-- `static/liff/register.js`と`static/crush/register.js`のLIFF_IDも本番用を使用
+- `static/user/register.js`と`static/crush/register.js`のLIFF_IDも本番用を使用
 - **リッチメニューのURLも本番用を設定すること**（LINE公式アカウント管理画面から）
 
 ### チャネルID
@@ -115,7 +115,7 @@
 - **本番用**: `2009059076-kBsUXYIC`
 
 ### エンドポイントURL（ユーザー登録用）
-- **開発用**: `https://cupid-linebot.click/liff/register.html`
+- **開発用**: `https://cupid-linebot.click/user/register.html`
 - **審査用**: （自動反映）
 - **本番用**: （自動反映）
 
