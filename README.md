@@ -172,7 +172,7 @@ LINE Platformからのイベントを受信。
 
 ### ユーザー登録API
 
-**Endpoint**: `POST /api/register`
+**Endpoint**: `POST /api/register-user`
 
 LIFF経由でユーザー情報を登録。
 

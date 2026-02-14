@@ -85,7 +85,7 @@ func (m *mockLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
 	return "", nil
 }
 
-func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.RegistrationAPIHandler, *handler.CrushRegistrationAPIHandler, *sql.DB) {
+func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.UserRegistrationAPIHandler, *handler.CrushRegistrationAPIHandler, *sql.DB) {
 	// Initialize real database
 	db, err := database.InitDB(testDBFile)
 	require.NoError(t, err)
@@ -122,10 +122,10 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.Regis
 
 	// Initialize real handlers
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
-	registrationAPIHandler := handler.NewRegistrationAPIHandler(userService, mockVerifier)
+	userRegistrationAPIHandler := handler.NewUserRegistrationAPIHandler(userService, mockVerifier)
 	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, mockVerifier, registerURL)
 
-	return webhookHandler, registrationAPIHandler, crushRegistrationAPIHandler, db
+	return webhookHandler, userRegistrationAPIHandler, crushRegistrationAPIHandler, db
 }
 
 func generateSignature(body []byte) string {
@@ -152,7 +152,7 @@ func sendWebhook(t *testing.T, handler *handler.WebhookHandler, events []interfa
 }
 
 // registerUserViaAPI registers a user via API (true E2E)
-func registerUserViaAPI(t *testing.T, handler *handler.RegistrationAPIHandler, userID, name, birthday string) {
+func registerUserViaAPI(t *testing.T, handler *handler.UserRegistrationAPIHandler, userID, name, birthday string) {
 	reqBody := map[string]interface{}{
 		"name":     name,
 		"birthday": birthday,
@@ -160,7 +160,7 @@ func registerUserViaAPI(t *testing.T, handler *handler.RegistrationAPIHandler, u
 	body, err := json.Marshal(reqBody)
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer test-token-"+userID)
 
@@ -179,7 +179,7 @@ func registerCrushViaAPI(t *testing.T, handler *handler.CrushRegistrationAPIHand
 	body, err := json.Marshal(reqBody)
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/register-crush", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/register-user-crush", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer test-token-"+userID)
 
@@ -231,7 +231,7 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 	body, err := json.Marshal(registrationReq)
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer test-token-"+userID) // Mock ID token
 
@@ -346,7 +346,7 @@ func TestIntegration_ValidationError(t *testing.T) {
 			body, err := json.Marshal(tt.requestBody)
 			require.NoError(t, err)
 
-			req := httptest.NewRequest(http.MethodPost, "/api/register", bytes.NewReader(body))
+			req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer test-token-test-user") // Mock ID token
 

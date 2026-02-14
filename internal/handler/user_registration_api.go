@@ -10,25 +10,30 @@ import (
 	"github.com/morinonusi421/cupid/internal/service"
 )
 
-type RegistrationAPIHandler struct {
+type UserRegistrationAPIHandler struct {
 	userService service.UserService
 	verifier    liff.Verifier
 }
 
-func NewRegistrationAPIHandler(userService service.UserService, verifier liff.Verifier) *RegistrationAPIHandler {
-	return &RegistrationAPIHandler{
+func NewUserRegistrationAPIHandler(userService service.UserService, verifier liff.Verifier) *UserRegistrationAPIHandler {
+	return &UserRegistrationAPIHandler{
 		userService: userService,
 		verifier:    verifier,
 	}
 }
 
-type RegisterRequest struct {
+type RegisterUserRequest struct {
 	Name           string `json:"name"`
 	Birthday       string `json:"birthday"`
 	ConfirmUnmatch bool   `json:"confirm_unmatch"`
 }
 
-func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request) {
+type RegisterUserResponse struct {
+	Status              string `json:"status"`
+	IsFirstRegistration bool   `json:"is_first_registration"`
+}
+
+func (h *UserRegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// Authorizationヘッダーからトークン取得
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
@@ -55,7 +60,7 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 	}
 
 	// リクエストボディからname, birthday, confirm_unmatchを取得
-	var req RegisterRequest
+	var req RegisterUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Failed to decode request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -98,8 +103,8 @@ func (h *RegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Request
 	log.Printf("Registration successful for user %s: name=%s, birthday=%s", userID, req.Name, req.Birthday)
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":               "ok",
-		"is_first_registration": isFirstRegistration,
+	json.NewEncoder(w).Encode(RegisterUserResponse{
+		Status:              "ok",
+		IsFirstRegistration: isFirstRegistration,
 	})
 }

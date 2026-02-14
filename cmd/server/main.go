@@ -79,7 +79,7 @@ func main() {
 
 	// === Handler層 ===
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
-	registrationAPIHandler := handler.NewRegistrationAPIHandler(userService, userLiffVerifier)
+	userRegistrationAPIHandler := handler.NewUserRegistrationAPIHandler(userService, userLiffVerifier)
 	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, crushLiffVerifier, userLiffURL)
 
 	// === ルーティング設定 ===
@@ -92,7 +92,7 @@ func main() {
 	http.HandleFunc("/webhook", webhookHandler.Handle)
 
 	// Registration API
-	http.HandleFunc("/api/register", registrationAPIHandler.Register)
+	http.HandleFunc("/api/register-user", userRegistrationAPIHandler.Register)
 	http.HandleFunc("/api/register-crush", crushRegistrationAPIHandler.RegisterCrush)
 
 	// 静的ファイル配信（/user/, /crush/）はNginxで直接処理されるため、ここでは設定しない

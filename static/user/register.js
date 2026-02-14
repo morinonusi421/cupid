@@ -119,7 +119,7 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
         }
 
         // API呼び出し
-        const response = await fetch('/api/register', {
+        const response = await fetch('/api/register-user', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
