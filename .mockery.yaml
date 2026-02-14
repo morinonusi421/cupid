@@ -1,0 +1,15 @@
+with-expecter: true
+dir: "{{.InterfaceDir}}/mocks"
+filename: "{{.InterfaceName}}.go"
+outpkg: mocks
+resolve-type-alias: false
+disable-version-string: true
+issue-845-fix: true
+packages:
+  github.com/morinonusi421/cupid/internal/service:
+    interfaces:
+      UserService:
+      MatchingService:
+  github.com/morinonusi421/cupid/internal/repository:
+    interfaces:
+      UserRepository:

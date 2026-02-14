@@ -1,4 +1,4 @@
-.PHONY: help build test test-integration generate deploy status logs restart reset-db-local reset-db migrate-up migrate-down migrate-status add-test-user db-copy db-cli db-open
+.PHONY: help build test test-integration generate mocks deploy status logs restart reset-db-local reset-db migrate-up migrate-down migrate-status add-test-user db-copy db-cli db-open
 
 help:
 	@echo "Available commands:"
@@ -6,6 +6,7 @@ help:
 	@echo "  make test           - Run tests (excluding entities/)"
 	@echo "  make test-integration - Run backend integration tests (e2e/)"
 	@echo "  make generate       - Generate entities from DB schema (sqlboiler)"
+	@echo "  make mocks          - Generate mocks from interfaces (mockery)"
 	@echo "  make migrate-up     - Run database migrations (local)"
 	@echo "  make migrate-down   - Rollback last migration (local)"
 	@echo "  make migrate-status - Show migration status (local)"
@@ -31,6 +32,9 @@ test-integration:
 
 generate:
 	sqlboiler sqlite3 --no-auto-timestamps
+
+mocks:
+	mockery
 
 deploy:
 	ssh cupid-bot "bash -l -c 'cd ~/cupid && git pull && sql-migrate up -config=db/dbconfig.yml && go build -o cupid ./cmd/server && sudo systemctl restart cupid && sudo systemctl status cupid'"

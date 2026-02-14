@@ -213,6 +213,27 @@ LINE公式アカウントの管理画面から設定。**必ず本番用URLを�
   - 理由: sqlboiler-sqlite3のfKeyDestroyer正規表現にバグがあり、FOREIGN KEY削除時に構文エラーが発生する
   - テスト実行は `make test` を使用（entitiesディレクトリを自動的に除外）
 
+### Mockery (Mockライブラリ)
+- **ツール**: github.com/vektra/mockery/v2
+- **インストール**: `go install github.com/vektra/mockery/v2@latest`
+- **設定ファイル**: `.mockery.yaml`
+- **自動生成ディレクトリ**: `internal/service/mocks/`, `internal/repository/mocks/`
+- **コマンド**: `make mocks` でmockを再生成
+- **特徴**:
+  - testify/mockと完全に統合
+  - interfaceから自動でmock生成
+  - 既存の手動mockと互換性あり
+  - sqlboilerと同じパターンで管理
+- **生成されるmock**:
+  - `UserService` → `internal/service/mocks/MockUserService.go`
+  - `MatchingService` → `internal/service/mocks/MockMatchingService.go`
+  - `UserRepository` → `internal/repository/mocks/MockUserRepository.go`
+- **使い方**:
+  - テストで `servicemocks.NewMockUserService(t)` を使用
+  - On/Return でモック動作を設定
+  - AssertExpectations で検証
+- **参考**: https://vektra.github.io/mockery/
+
 ### sql-migrate (マイグレーションツール)
 - **ツール**: github.com/rubenv/sql-migrate
 - **インストール**: `go install github.com/rubenv/sql-migrate/...@latest`
