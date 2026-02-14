@@ -16,7 +16,7 @@ import (
 // UserService はユーザーのビジネスロジック層のインターフェース
 type UserService interface {
 	ProcessTextMessage(ctx context.Context, userID string) (replyText string, quickReplyURL string, quickReplyLabel string, err error)
-	RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error)
+	RegisterUser(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error)
 	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error)
 	HandleFollowEvent(ctx context.Context, replyToken string) error
 }
@@ -65,8 +65,8 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID string) (re
 	return message.AlreadyRegisteredMessage, "", "", nil
 }
 
-// RegisterFromLIFF はLIFFフォームから送信された登録情報を保存する
-func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error) {
+// RegisterUser はLIFFフォームから送信されたユーザー登録情報を保存する
+func (s *userService) RegisterUser(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error) {
 	// 1. バリデーション
 	if ok, errMsg := model.IsValidName(name); !ok {
 		return false, &ValidationError{Message: errMsg}

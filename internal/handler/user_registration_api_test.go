@@ -37,8 +37,8 @@ func TestRegistrationAPI_Register_Success(t *testing.T) {
 	mockVerifier := &mockLIFFVerifier{}
 	handler := NewUserRegistrationAPIHandler(mockUserService, mockVerifier)
 
-	// Mock RegisterFromLIFF to succeed
-	mockUserService.On("RegisterFromLIFF", mock.Anything, "U-test-user", "田中太郎", "2000-01-15", false).Return(true, nil)
+	// Mock RegisterUser to succeed
+	mockUserService.On("RegisterUser", mock.Anything, "U-test-user", "田中太郎", "2000-01-15", false).Return(true, nil)
 
 	reqBody := map[string]string{
 		"name":     "田中太郎",
@@ -62,11 +62,11 @@ func TestRegistrationAPI_Register_MatchedUserExists(t *testing.T) {
 	mockVerifier := &mockLIFFVerifier{}
 	handler := NewUserRegistrationAPIHandler(mockUserService, mockVerifier)
 
-	// Mock RegisterFromLIFF to return MatchedUserExistsError
+	// Mock RegisterUser to return MatchedUserExistsError
 	matchedErr := &service.MatchedUserExistsError{
 		MatchedUserName: "サトウハナコ",
 	}
-	mockUserService.On("RegisterFromLIFF", mock.Anything, "U-test-user", "ヤマダタロウ", "2000-01-15", false).Return(false, matchedErr)
+	mockUserService.On("RegisterUser", mock.Anything, "U-test-user", "ヤマダタロウ", "2000-01-15", false).Return(false, matchedErr)
 
 	reqBody := map[string]interface{}{
 		"name":            "ヤマダタロウ",

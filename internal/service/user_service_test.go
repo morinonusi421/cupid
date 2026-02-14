@@ -197,7 +197,7 @@ func TestUserService_RegisterFromLIFF_NewUser(t *testing.T) {
 		return r.To == "U-new-user" && len(r.Messages) == 1
 	})).Return(&messaging_api.PushMessageResponse{}, nil)
 
-	_, err := service.RegisterFromLIFF(ctx, "U-new-user", "テストタロウ", "2000-01-15", false)
+	_, err := service.RegisterUser(ctx, "U-new-user", "テストタロウ", "2000-01-15", false)
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -234,7 +234,7 @@ func TestUserService_RegisterFromLIFF_UpdateExisting(t *testing.T) {
 		return r.To == "U-existing" && len(r.Messages) == 1
 	})).Return(&messaging_api.PushMessageResponse{}, nil)
 
-	_, err := service.RegisterFromLIFF(ctx, "U-existing", "アタラシイナマエ", "2000-12-25", false)
+	_, err := service.RegisterUser(ctx, "U-existing", "アタラシイナマエ", "2000-12-25", false)
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -258,7 +258,7 @@ func TestUserService_RegisterFromLIFF_InvalidName(t *testing.T) {
 	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
 
 	// 漢字を含む無効な名前で登録を試みる
-	_, err := service.RegisterFromLIFF(ctx, "U123", "山田太郎", "2000-01-15", false)
+	_, err := service.RegisterUser(ctx, "U123", "山田太郎", "2000-01-15", false)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "名前は全角カタカナ")
@@ -494,7 +494,7 @@ func TestUserService_RegisterFromLIFF_MatchedUserExists(t *testing.T) {
 	mockRepo.On("FindByLineID", ctx, "U-partner").Return(partnerUser, nil).Once()
 
 	// confirmUnmatch=falseで更新を試みる
-	_, err := service.RegisterFromLIFF(ctx, "U-existing", "アタラシイナマエ", "2000-12-25", false)
+	_, err := service.RegisterUser(ctx, "U-existing", "アタラシイナマエ", "2000-12-25", false)
 
 	// MatchedUserExistsError が返されることを確認
 	assert.Error(t, err)

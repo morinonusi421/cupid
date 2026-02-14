@@ -71,7 +71,7 @@ func (h *UserRegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Req
 	}
 
 	// user_idはトークンから取得したものを使用
-	isFirstRegistration, err := h.userService.RegisterFromLIFF(r.Context(), userID, req.Name, req.Birthday, req.ConfirmUnmatch)
+	isFirstRegistration, err := h.userService.RegisterUser(r.Context(), userID, req.Name, req.Birthday, req.ConfirmUnmatch)
 	if err != nil {
 		log.Printf("Failed to register user: %v", err)
 
