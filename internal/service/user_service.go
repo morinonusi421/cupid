@@ -275,7 +275,32 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	// 6. 更新完了メッセージを送信
+	// 6. マッチング判定（好きな人が登録されている場合）
+	if user.HasCrush() {
+		matched, matchedUser, err := s.matchingService.CheckAndUpdateMatch(ctx, user)
+		if err != nil {
+			log.Printf("Matching check failed for %s: %v", user.LineID, err)
+			// エラーをログに記録するが、処理は継続
+		}
+
+		// マッチした場合、両方のユーザーにLINE通知を送信
+		if matched {
+			// 現在のユーザーに通知
+			if err := s.sendMatchNotification(user, matchedUser); err != nil {
+				log.Printf("Failed to send match notification to %s: %v", user.LineID, err)
+			}
+
+			// 相手ユーザーに通知
+			if err := s.sendMatchNotification(matchedUser, user); err != nil {
+				log.Printf("Failed to send match notification to %s: %v", matchedUser.LineID, err)
+			}
+
+			// マッチした場合は更新完了メッセージは送信しない（マッチ通知を優先）
+			return nil
+		}
+	}
+
+	// 7. 更新完了メッセージを送信（マッチしなかった場合）
 	if err := s.sendUserInfoUpdateConfirmation(user); err != nil {
 		log.Printf("Failed to send update confirmation to %s: %v", user.LineID, err)
 		// エラーをログに記録するが、更新処理は成功として扱う
