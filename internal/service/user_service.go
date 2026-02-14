@@ -40,10 +40,10 @@ func NewUserService(userRepo repository.UserRepository, userLiffURL string, crus
 	}
 }
 
-// ProcessTextMessage はテキストメッセージを処理して返信テキスト、QuickReply情報を決定する
-// quickReplyURL, quickReplyLabel が空文字列の場合はQuickReplyなし
+// ProcessTextMessage はLINEでuserから何かしらチャットが送られてきたの応答メッセージを決定する。
+// 現在は、相手からのメッセージ内容に関係なく、登録状況に応じたメッセージを返信。
 func (s *userService) ProcessTextMessage(ctx context.Context, userID string) (replyText string, quickReplyURL string, quickReplyLabel string, err error) {
-	// DBからユーザーを検索（createはしない）
+	// DBからユーザーを検索
 	user, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to find user: %w", err)
@@ -55,13 +55,13 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID string) (re
 		return message.UnregisteredUserPrompt, s.userLiffURL, "登録する", nil
 	}
 
-	// 登録済みの場合、好きな人の登録状態に応じて処理分岐
+	// ユーザー登録してるけど、好きな人の登録はまだの場合
 	if !user.HasCrush() {
 		// ユーザー登録完了済み - 好きな人の登録フォームを案内
 		return message.RegistrationStep1Prompt, s.crushLiffURL, "好きな人を登録", nil
 	}
 
-	// 好きな人登録完了済み - 再登録を案内（QuickReplyなし）
+	// 全部完了してる場合
 	return message.AlreadyRegisteredMessage, "", "", nil
 }
 
