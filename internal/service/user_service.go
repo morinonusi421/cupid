@@ -66,6 +66,8 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID string) (re
 }
 
 // RegisterUser はLIFFフォームから送信されたユーザー登録情報を保存する
+//
+// confirmUnmatch: マッチング中の場合、trueならマッチング解除して更新、falseならエラーを返す
 func (s *userService) RegisterUser(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error) {
 	// 1. バリデーション
 	if ok, errMsg := model.IsValidName(name); !ok {
@@ -105,6 +107,8 @@ func (s *userService) RegisterUser(ctx context.Context, userID, name, birthday s
 }
 
 // RegisterCrush は好きな人を登録し、マッチング判定を行う
+//
+// confirmUnmatch: マッチング中の場合、trueならマッチング解除して更新、falseならエラーを返す
 func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error) {
 	// 1. 現在のユーザー情報を取得
 	currentUser, err := s.userRepo.FindByLineID(ctx, userID)
@@ -225,6 +229,8 @@ func (s *userService) registerNewUser(ctx context.Context, userID, name, birthda
 }
 
 // updateUserInfo は再登録時に既存ユーザーの情報を更新する
+//
+// confirmUnmatch: マッチング中の場合、trueならマッチング解除して更新、falseならエラーを返す
 func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name, birthday string, confirmUnmatch bool) error {
 	// 1. 自己登録チェック（好きな人と同じ名前・誕生日にならないか）
 	if user.HasCrush() {
