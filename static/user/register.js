@@ -153,6 +153,11 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
                 throw new Error(errorData.message || '同じ名前・誕生日のユーザーが既に登録されています。');
             }
 
+            // 自己登録エラーの場合は特別なエラーメッセージ
+            if (errorData.error === 'cannot_register_yourself') {
+                throw new Error('あうぅ...自分自身は登録できませんっ💦');
+            }
+
             throw new Error(errorData.error || '登録に失敗しました。');
         }
 

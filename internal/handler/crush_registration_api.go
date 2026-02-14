@@ -115,7 +115,7 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 		// 自己登録エラーの場合は400を返す
 		if errors.Is(err, service.ErrCannotRegisterYourself) {
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "自分自身は登録できません"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "cannot_register_yourself"})
 			return
 		}
 

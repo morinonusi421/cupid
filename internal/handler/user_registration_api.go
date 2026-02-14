@@ -97,6 +97,13 @@ func (h *UserRegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Req
 			return
 		}
 
+		// 自己登録エラーの場合は400を返す
+		if errors.Is(err, service.ErrCannotRegisterYourself) {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "cannot_register_yourself"})
+			return
+		}
+
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
