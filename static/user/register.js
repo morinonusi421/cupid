@@ -22,7 +22,7 @@ function validateName(name) {
     if (length < 2 || length > 20) {
         return {
             valid: false,
-            message: 'あうぅ...名前は2〜20文字で入力してくださいっ💦'
+            message: MESSAGES.validation.nameLengthError
         };
     }
 
@@ -31,7 +31,7 @@ function validateName(name) {
     if (!katakanaRegex.test(trimmed)) {
         return {
             valid: false,
-            message: '名前はカタカナフルネーム(空白なし)で入力してくださいねっ✨（例: ヤマダタロウ）'
+            message: MESSAGES.validation.nameFormatError
         };
     }
 
@@ -51,7 +51,7 @@ window.addEventListener('load', async () => {
         setupForm(); // ログイン済みならフォーム表示
     } catch (error) {
         console.error('LIFF initialization failed', error);
-        showMessage('あうぅ...LINE認証に失敗しちゃいました💦 もう一度試してくださいっ', 'error');
+        showMessage(MESSAGES.validation.liffAuthError, 'error');
     }
 });
 
@@ -81,7 +81,7 @@ function setupForm() {
 
         // バリデーション
         if (!name) {
-            showMessage('あうぅ...名前を入力してくださいっ💦', 'error');
+            showMessage(MESSAGES.user.nameRequired, 'error');
             return;
         }
 
@@ -93,7 +93,7 @@ function setupForm() {
         }
 
         if (!birthday) {
-            showMessage('あうぅ...生年月日を入力してくださいっ💦', 'error');
+            showMessage(MESSAGES.user.birthdayRequired, 'error');
             return;
         }
 
@@ -155,7 +155,7 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
 
             // 自己登録エラーの場合は特別なエラーメッセージ
             if (errorData.error === 'cannot_register_yourself') {
-                throw new Error('あうぅ...自分自身は登録できませんっ💦');
+                throw new Error(MESSAGES.user.cannotRegisterYourself);
             }
 
             throw new Error(errorData.error || '登録に失敗しました。');
@@ -164,14 +164,14 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
         // 成功 - 初回/再登録でメッセージを変える
         const data = await response.json();
         if (data.is_first_registration) {
-            showMessage('やったぁ✨ 登録完了ですっ♡ LINEに戻ってくださいねっ！', 'success');
+            showMessage(MESSAGES.user.registrationSuccess, 'success');
         } else {
-            showMessage('完了ですっ✨ 情報を更新しましたよ♡ LINEに戻ってくださいねっ！', 'success');
+            showMessage(MESSAGES.user.updateSuccess, 'success');
         }
 
     } catch (error) {
         console.error('Registration failed', error);
-        showMessage(error.message || 'あうぅ...登録に失敗しちゃいました💦 もう一度試してくださいっ', 'error');
+        showMessage(error.message || MESSAGES.user.registrationError, 'error');
         submitButton.disabled = false;
     } finally {
         showLoading(false);
