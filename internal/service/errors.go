@@ -16,7 +16,25 @@ var (
 
 	// ErrDuplicateUser は重複するユーザーが存在する場合のエラー
 	ErrDuplicateUser = errors.New("duplicate user")
+
+	// ErrInvalidName は名前のバリデーションに失敗した場合のエラー
+	// 注: 詳細情報が必要な場合は ValidationError を使用すること
+	ErrInvalidName = errors.New("invalid name")
 )
+
+// ValidationError はバリデーションエラーの詳細情報を含む
+type ValidationError struct {
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
+// Is implements error comparison for errors.Is()
+func (e *ValidationError) Is(target error) bool {
+	return target == ErrInvalidName
+}
 
 // MatchedUserExistsError はマッチング中のユーザーが存在する場合の詳細エラー
 // 相手のユーザー名を含む

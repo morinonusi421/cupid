@@ -69,7 +69,7 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID string) (re
 func (s *userService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error) {
 	// 1. バリデーション
 	if ok, errMsg := model.IsValidName(name); !ok {
-		return false, fmt.Errorf("%s", errMsg)
+		return false, &ValidationError{Message: errMsg}
 	}
 
 	// 2. 重複チェック（既存ユーザーと名前・誕生日が被っていないか）
@@ -149,7 +149,7 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 
 	// 5. 名前のバリデーション
 	if valid, errMsg := model.IsValidName(crushName); !valid {
-		return false, "", false, fmt.Errorf("%s", errMsg)
+		return false, "", false, &ValidationError{Message: errMsg}
 	}
 
 	// 6. 初回登録か再登録かを判定（好きな人を登録する前に）
@@ -229,7 +229,7 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 	// 1. 自己登録チェック（好きな人と同じ名前・誕生日にならないか）
 	if user.CrushName.Valid && user.CrushBirthday.Valid {
 		if user.CrushName.String == name && user.CrushBirthday.String == birthday {
-			return fmt.Errorf("自分自身は登録できません")
+			return ErrCannotRegisterYourself
 		}
 	}
 
