@@ -1,7 +1,7 @@
 package model
 
 import (
-	"regexp"
+	"unicode"
 
 	"github.com/aarondl/null/v8"
 )
@@ -50,9 +50,10 @@ func IsValidName(name string) (bool, string) {
 	}
 
 	// カタカナチェック: 全角カタカナのみ（長音符を含む）
-	katakanaPattern := regexp.MustCompile(`^[ァ-ヴー]+$`)
-	if !katakanaPattern.MatchString(name) {
-		return false, "名前は全角カタカナ2〜20文字で入力してください（スペース不可）"
+	for _, r := range name {
+		if !unicode.In(r, unicode.Katakana) && r != 'ー' {
+			return false, "名前は全角カタカナ2〜20文字で入力してください（スペース不可）"
+		}
 	}
 
 	return true, ""
