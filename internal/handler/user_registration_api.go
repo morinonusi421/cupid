@@ -2,6 +2,8 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -74,13 +76,13 @@ func (h *UserRegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Req
 		log.Printf("Failed to register user: %v", err)
 
 		// matched_user_existsエラーの場合は特別なレスポンス
-		if err.Error() == "matched_user_exists" {
-			// 相手の名前を取得するためにユーザー情報を取得
-			// TODO: サービスからエラーと一緒に相手の名前を返すようにリファクタリング
+		var matchedErr *service.MatchedUserExistsError
+		if errors.As(err, &matchedErr) {
 			w.WriteHeader(http.StatusConflict)
+			message := fmt.Sprintf("%sさんとマッチング中です。変更するとマッチングが解除されます。", matchedErr.MatchedUserName)
 			json.NewEncoder(w).Encode(map[string]string{
 				"error":   "matched_user_exists",
-				"message": "現在マッチング中です。変更するとマッチングが解除されます。",
+				"message": message,
 			})
 			return
 		}

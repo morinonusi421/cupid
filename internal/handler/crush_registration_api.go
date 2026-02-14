@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -13,16 +14,16 @@ import (
 )
 
 type CrushRegistrationAPIHandler struct {
-	userService  service.UserService
-	verifier     liff.Verifier
-	userLiffURL  string
+	userService service.UserService
+	verifier    liff.Verifier
+	userLiffURL string
 }
 
 func NewCrushRegistrationAPIHandler(userService service.UserService, verifier liff.Verifier, userLiffURL string) *CrushRegistrationAPIHandler {
 	return &CrushRegistrationAPIHandler{
-		userService:  userService,
-		verifier:     verifier,
-		userLiffURL:  userLiffURL,
+		userService: userService,
+		verifier:    verifier,
+		userLiffURL: userLiffURL,
 	}
 }
 
@@ -33,9 +34,9 @@ type RegisterCrushRequest struct {
 }
 
 type RegisterCrushResponse struct {
-	Status                string `json:"status"`
-	Matched               bool   `json:"matched"`
-	IsFirstRegistration   bool   `json:"is_first_registration"`
+	Status              string `json:"status"`
+	Matched             bool   `json:"matched"`
+	IsFirstRegistration bool   `json:"is_first_registration"`
 }
 
 func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *http.Request) {
@@ -100,11 +101,13 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 		}
 
 		// matched_user_existsエラーの場合は特別なレスポンス
-		if errors.Is(err, service.ErrMatchedUserExists) {
+		var matchedErr *service.MatchedUserExistsError
+		if errors.As(err, &matchedErr) {
 			w.WriteHeader(http.StatusConflict)
+			message := fmt.Sprintf("%sさんとマッチング中です。変更するとマッチングが解除されます。", matchedErr.MatchedUserName)
 			json.NewEncoder(w).Encode(map[string]string{
 				"error":   "matched_user_exists",
-				"message": "現在マッチング中です。変更するとマッチングが解除されます。",
+				"message": message,
 			})
 			return
 		}

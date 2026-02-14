@@ -117,7 +117,21 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 
 	// 2. マッチング中かチェック
 	if currentUser.IsMatched() && !confirmUnmatch {
-		return false, "", false, ErrMatchedUserExists
+		// 相手のユーザー情報を取得
+		matchedUser, err := s.userRepo.FindByLineID(ctx, currentUser.MatchedWithUserID.String)
+		if err != nil {
+			log.Printf("Failed to find matched user: %v", err)
+			// 相手のユーザー情報取得に失敗しても、エラーは返す
+			return false, "", false, ErrMatchedUserExists
+		}
+		if matchedUser == nil {
+			log.Printf("Matched user not found: %s", currentUser.MatchedWithUserID.String)
+			return false, "", false, ErrMatchedUserExists
+		}
+		// 相手の名前を含むカスタムエラーを返す
+		return false, "", false, &MatchedUserExistsError{
+			MatchedUserName: matchedUser.Name,
+		}
 	}
 
 	// 3. マッチング解除処理
@@ -221,7 +235,21 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 
 	// 2. マッチング中かチェック
 	if user.IsMatched() && !confirmUnmatch {
-		return ErrMatchedUserExists
+		// 相手のユーザー情報を取得
+		matchedUser, err := s.userRepo.FindByLineID(ctx, user.MatchedWithUserID.String)
+		if err != nil {
+			log.Printf("Failed to find matched user: %v", err)
+			// 相手のユーザー情報取得に失敗しても、エラーは返す
+			return ErrMatchedUserExists
+		}
+		if matchedUser == nil {
+			log.Printf("Matched user not found: %s", user.MatchedWithUserID.String)
+			return ErrMatchedUserExists
+		}
+		// 相手の名前を含むカスタムエラーを返す
+		return &MatchedUserExistsError{
+			MatchedUserName: matchedUser.Name,
+		}
 	}
 
 	// 3. マッチング解除処理
