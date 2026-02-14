@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/morinonusi421/cupid/internal/service"
+	servicemocks "github.com/morinonusi421/cupid/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -31,7 +32,7 @@ func (m *mockCrushLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
 }
 
 func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
-	mockUserService := new(MockUserServiceForAPI)
+	mockUserService := servicemocks.NewMockUserService(t)
 	mockVerifier := &mockCrushLIFFVerifier{}
 	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier, "https://example.com/register")
 
@@ -69,7 +70,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 }
 
 func TestCrushRegistrationAPIHandler_RegisterCrush_SelfRegistrationError(t *testing.T) {
-	mockUserService := new(MockUserServiceForAPI)
+	mockUserService := servicemocks.NewMockUserService(t)
 	mockVerifier := &mockCrushLIFFVerifier{}
 	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier, "https://example.com/register")
 

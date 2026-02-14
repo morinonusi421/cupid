@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -11,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
+	servicemocks "github.com/morinonusi421/cupid/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -36,36 +36,6 @@ func (m *MockLineBotClient) PushMessage(request *messaging_api.PushMessageReques
 	return args.Get(0).(*messaging_api.PushMessageResponse), args.Error(1)
 }
 
-// MockUserService は service.UserService の mock (webhook_test用)
-type MockUserService struct {
-	mock.Mock
-}
-
-func (m *MockUserService) VerifyLIFFToken(accessToken string) (string, error) {
-	args := m.Called(accessToken)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockUserService) ProcessTextMessage(ctx context.Context, userID string) (string, string, string, error) {
-	args := m.Called(ctx, userID)
-	return args.String(0), args.String(1), args.String(2), args.Error(3)
-}
-
-func (m *MockUserService) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (bool, error) {
-	args := m.Called(ctx, userID, name, birthday, confirmUnmatch)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockUserService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error) {
-	args := m.Called(ctx, userID, crushName, crushBirthday, confirmUnmatch)
-	return args.Bool(0), args.String(1), args.Bool(2), args.Error(3)
-}
-
-func (m *MockUserService) HandleFollowEvent(ctx context.Context, replyToken string) error {
-	args := m.Called(ctx, replyToken)
-	return args.Error(0)
-}
-
 // generateSignature はLINE Webhookの署名を生成する
 func generateSignature(channelSecret, body string) string {
 	mac := hmac.New(sha256.New, []byte(channelSecret))
@@ -77,7 +47,7 @@ func TestWebhookHandler_Handle_TextMessage(t *testing.T) {
 	// Setup
 	channelSecret := "test-channel-secret"
 	mockBot := new(MockLineBotClient)
-	mockUserService := new(MockUserService)
+	mockUserService := servicemocks.NewMockUserService(t)
 	handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
 
 	// テスト用のWebhookイベント（JSONフォーマット）
@@ -134,7 +104,7 @@ func TestWebhookHandler_Handle_FollowEvent(t *testing.T) {
 	// Setup
 	channelSecret := "test-channel-secret"
 	mockBot := new(MockLineBotClient)
-	mockUserService := new(MockUserService)
+	mockUserService := servicemocks.NewMockUserService(t)
 	handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
 
 	// テスト用のFollow Webhookイベント（JSONフォーマット）
@@ -178,7 +148,7 @@ func TestWebhookHandler_Handle_InvalidSignature(t *testing.T) {
 	// Setup
 	channelSecret := "test-channel-secret"
 	mockBot := new(MockLineBotClient)
-	mockUserService := new(MockUserService)
+	mockUserService := servicemocks.NewMockUserService(t)
 	handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
 
 	// 不正な署名でリクエスト

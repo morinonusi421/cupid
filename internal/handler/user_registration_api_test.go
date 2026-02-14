@@ -2,13 +2,13 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/morinonusi421/cupid/internal/service"
+	servicemocks "github.com/morinonusi421/cupid/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -32,32 +32,8 @@ func (m *mockLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
 	return "", nil
 }
 
-type MockUserServiceForAPI struct {
-	mock.Mock
-}
-
-func (m *MockUserServiceForAPI) ProcessTextMessage(ctx context.Context, userID string) (string, string, string, error) {
-	args := m.Called(ctx, userID)
-	return args.String(0), args.String(1), args.String(2), args.Error(3)
-}
-
-func (m *MockUserServiceForAPI) RegisterFromLIFF(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (bool, error) {
-	args := m.Called(ctx, userID, name, birthday, confirmUnmatch)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockUserServiceForAPI) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error) {
-	args := m.Called(ctx, userID, crushName, crushBirthday, confirmUnmatch)
-	return args.Bool(0), args.String(1), args.Bool(2), args.Error(3)
-}
-
-func (m *MockUserServiceForAPI) HandleFollowEvent(ctx context.Context, replyToken string) error {
-	args := m.Called(ctx, replyToken)
-	return args.Error(0)
-}
-
 func TestRegistrationAPI_Register_Success(t *testing.T) {
-	mockUserService := new(MockUserServiceForAPI)
+	mockUserService := servicemocks.NewMockUserService(t)
 	mockVerifier := &mockLIFFVerifier{}
 	handler := NewUserRegistrationAPIHandler(mockUserService, mockVerifier)
 
@@ -82,7 +58,7 @@ func TestRegistrationAPI_Register_Success(t *testing.T) {
 }
 
 func TestRegistrationAPI_Register_MatchedUserExists(t *testing.T) {
-	mockUserService := new(MockUserServiceForAPI)
+	mockUserService := servicemocks.NewMockUserService(t)
 	mockVerifier := &mockLIFFVerifier{}
 	handler := NewUserRegistrationAPIHandler(mockUserService, mockVerifier)
 
