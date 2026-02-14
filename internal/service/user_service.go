@@ -18,7 +18,7 @@ type UserService interface {
 	ProcessTextMessage(ctx context.Context, userID string) (replyText string, quickReplyURL string, quickReplyLabel string, err error)
 	RegisterUser(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error)
 	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, matchedUserName string, isFirstCrushRegistration bool, err error)
-	HandleFollowEvent(ctx context.Context, replyToken string) error
+	ProcessFollowEvent(ctx context.Context, replyToken string) error
 }
 
 type userService struct {
@@ -300,8 +300,8 @@ func (s *userService) sendMatchNotification(toUser *model.User, matchedWithUser 
 	return err
 }
 
-// HandleFollowEvent はFollowイベント時の挨拶メッセージ（QuickReply付き）を送信する
-func (s *userService) HandleFollowEvent(ctx context.Context, replyToken string) error {
+// ProcessFollowEvent はFollowイベント時の挨拶メッセージ（QuickReply付き）を送信する
+func (s *userService) ProcessFollowEvent(ctx context.Context, replyToken string) error {
 	request := &messaging_api.ReplyMessageRequest{
 		ReplyToken: replyToken,
 		Messages: []messaging_api.MessageInterface{

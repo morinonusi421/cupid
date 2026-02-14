@@ -46,7 +46,7 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		switch e := event.(type) {
 		case webhook.FollowEvent:
 			// UserServiceで挨拶メッセージを送信
-			err = h.userService.HandleFollowEvent(r.Context(), e.ReplyToken)
+			err = h.userService.ProcessFollowEvent(r.Context(), e.ReplyToken)
 			if err != nil {
 				log.Println("Failed to handle follow event:", err)
 			} else {

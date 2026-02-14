@@ -21,12 +21,12 @@ func (_m *MockUserService) EXPECT() *MockUserService_Expecter {
 	return &MockUserService_Expecter{mock: &_m.Mock}
 }
 
-// HandleFollowEvent provides a mock function with given fields: ctx, replyToken
-func (_m *MockUserService) HandleFollowEvent(ctx context.Context, replyToken string) error {
+// ProcessFollowEvent provides a mock function with given fields: ctx, replyToken
+func (_m *MockUserService) ProcessFollowEvent(ctx context.Context, replyToken string) error {
 	ret := _m.Called(ctx, replyToken)
 
 	if len(ret) == 0 {
-		panic("no return value specified for HandleFollowEvent")
+		panic("no return value specified for ProcessFollowEvent")
 	}
 
 	var r0 error
@@ -39,31 +39,31 @@ func (_m *MockUserService) HandleFollowEvent(ctx context.Context, replyToken str
 	return r0
 }
 
-// MockUserService_HandleFollowEvent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HandleFollowEvent'
-type MockUserService_HandleFollowEvent_Call struct {
+// MockUserService_ProcessFollowEvent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ProcessFollowEvent'
+type MockUserService_ProcessFollowEvent_Call struct {
 	*mock.Call
 }
 
-// HandleFollowEvent is a helper method to define mock.On call
+// ProcessFollowEvent is a helper method to define mock.On call
 //   - ctx context.Context
 //   - replyToken string
-func (_e *MockUserService_Expecter) HandleFollowEvent(ctx interface{}, replyToken interface{}) *MockUserService_HandleFollowEvent_Call {
-	return &MockUserService_HandleFollowEvent_Call{Call: _e.mock.On("HandleFollowEvent", ctx, replyToken)}
+func (_e *MockUserService_Expecter) ProcessFollowEvent(ctx interface{}, replyToken interface{}) *MockUserService_ProcessFollowEvent_Call {
+	return &MockUserService_ProcessFollowEvent_Call{Call: _e.mock.On("ProcessFollowEvent", ctx, replyToken)}
 }
 
-func (_c *MockUserService_HandleFollowEvent_Call) Run(run func(ctx context.Context, replyToken string)) *MockUserService_HandleFollowEvent_Call {
+func (_c *MockUserService_ProcessFollowEvent_Call) Run(run func(ctx context.Context, replyToken string)) *MockUserService_ProcessFollowEvent_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockUserService_HandleFollowEvent_Call) Return(_a0 error) *MockUserService_HandleFollowEvent_Call {
+func (_c *MockUserService_ProcessFollowEvent_Call) Return(_a0 error) *MockUserService_ProcessFollowEvent_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockUserService_HandleFollowEvent_Call) RunAndReturn(run func(context.Context, string) error) *MockUserService_HandleFollowEvent_Call {
+func (_c *MockUserService_ProcessFollowEvent_Call) RunAndReturn(run func(context.Context, string) error) *MockUserService_ProcessFollowEvent_Call {
 	_c.Call.Return(run)
 	return _c
 }

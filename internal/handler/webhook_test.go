@@ -132,8 +132,8 @@ func TestWebhookHandler_Handle_FollowEvent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Line-Signature", signature)
 
-	// Mock: HandleFollowEvent が呼ばれることを期待
-	mockUserService.On("HandleFollowEvent", mock.Anything, "reply-token-456").Return(nil)
+	// Mock: ProcessFollowEvent が呼ばれることを期待
+	mockUserService.On("ProcessFollowEvent", mock.Anything, "reply-token-456").Return(nil)
 
 	// Execute
 	rr := httptest.NewRecorder()
