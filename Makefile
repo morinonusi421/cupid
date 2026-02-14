@@ -37,6 +37,19 @@ mocks:
 	mockery
 
 deploy:
+	@echo "🔍 Checking for unpushed commits..."
+	@if [ -n "$$(git log origin/$$(git branch --show-current)..$$(git branch --show-current) 2>/dev/null)" ]; then \
+		echo ""; \
+		echo "⚠️  WARNING: You have unpushed commits!"; \
+		echo ""; \
+		git log origin/$$(git branch --show-current)..$$(git branch --show-current) --oneline; \
+		echo ""; \
+		echo "❌ Please push your commits first:"; \
+		echo "   git push"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo "✅ All commits are pushed. Proceeding with deployment..."
 	ssh cupid-bot "bash -l -c 'cd ~/cupid && git pull && sql-migrate up -config=db/dbconfig.yml && go build -o cupid ./cmd/server && sudo systemctl restart cupid && sudo systemctl status cupid'"
 
 status:
@@ -91,8 +104,12 @@ add-test-user:
 		echo "Aborted."; \
 		exit 1; \
 	fi; \
-	ssh cupid-bot "sqlite3 ~/cupid/cupid.db \"INSERT INTO users (line_user_id, name, birthday, registration_step, crush_name, crush_birthday, matched_with_user_id, registered_at, updated_at) VALUES ('$$line_user_id', '$$name', '$$birthday', 2, '$$crush_name', '$$crush_birthday', NULL, datetime('now'), datetime('now'));\""; \
-	echo "✅ Test user added successfully"
+	if ssh cupid-bot "sqlite3 ~/cupid/cupid.db \"INSERT INTO users (line_user_id, name, birthday, crush_name, crush_birthday, matched_with_user_id, registered_at, updated_at) VALUES ('$$line_user_id', '$$name', '$$birthday', '$$crush_name', '$$crush_birthday', NULL, datetime('now'), datetime('now'));\""; then \
+		echo "✅ Test user added successfully"; \
+	else \
+		echo "❌ Failed to add test user"; \
+		exit 1; \
+	fi
 
 db-copy:
 	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
