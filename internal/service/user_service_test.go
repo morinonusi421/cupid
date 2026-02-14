@@ -461,3 +461,99 @@ func TestUserService_RegisterCrush_Matched_NotificationFails(t *testing.T) {
 	mockMatchingService.AssertExpectations(t)
 	mockLineBotClient.AssertExpectations(t)
 }
+
+func TestUserService_RegisterFromLIFF_MatchedUserExists(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	mockMatchingService := new(MockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, "", "", mockMatchingService, mockLineBotClient)
+	ctx := context.Background()
+
+	// マッチング中のユーザー
+	matchedUser := &model.User{
+		LineID:             "U-existing",
+		Name:               "ヤマダタロウ",
+		Birthday:           "2000-01-01",
+		MatchedWithUserID:  null.StringFrom("U-partner"),
+		CrushName:          null.StringFrom("サトウハナコ"),
+		CrushBirthday:      null.StringFrom("2000-02-02"),
+		RegisteredAt:       "2024-01-01 00:00:00",
+	}
+
+	// 相手のユーザー
+	partnerUser := &model.User{
+		LineID:             "U-partner",
+		Name:               "サトウハナコ",
+		Birthday:           "2000-02-02",
+		MatchedWithUserID:  null.StringFrom("U-existing"),
+	}
+
+	// FindByLineID が既存ユーザーを返す
+	mockRepo.On("FindByLineID", ctx, "U-existing").Return(matchedUser, nil).Once()
+	// 相手のユーザー情報を取得
+	mockRepo.On("FindByLineID", ctx, "U-partner").Return(partnerUser, nil).Once()
+
+	// confirmUnmatch=falseで更新を試みる
+	_, err := service.RegisterFromLIFF(ctx, "U-existing", "アタラシイナマエ", "2000-12-25", false)
+
+	// MatchedUserExistsError が返されることを確認
+	assert.Error(t, err)
+	var matchedErr *MatchedUserExistsError
+	assert.ErrorAs(t, err, &matchedErr)
+	assert.Equal(t, "サトウハナコ", matchedErr.MatchedUserName)
+
+	// errors.Is でも判定できることを確認
+	assert.ErrorIs(t, err, ErrMatchedUserExists)
+
+	// Update は呼ばれないはず
+	mockRepo.AssertNotCalled(t, "Update")
+	mockRepo.AssertExpectations(t)
+}
+
+func TestUserService_RegisterCrush_MatchedUserExists(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	mockMatchingService := new(MockMatchingService)
+	mockLineBotClient := new(MockLineBotClient)
+	service := NewUserService(mockRepo, "", "", mockMatchingService, mockLineBotClient)
+	ctx := context.Background()
+
+	// マッチング中のユーザー
+	currentUser := &model.User{
+		LineID:             "U_A",
+		Name:               "ヤマダタロウ",
+		Birthday:           "1990-01-01",
+		MatchedWithUserID:  null.StringFrom("U_B"),
+		CrushName:          null.StringFrom("サトウハナコ"),
+		CrushBirthday:      null.StringFrom("1992-02-02"),
+	}
+
+	// 相手のユーザー
+	partnerUser := &model.User{
+		LineID:             "U_B",
+		Name:               "サトウハナコ",
+		Birthday:           "1992-02-02",
+		MatchedWithUserID:  null.StringFrom("U_A"),
+	}
+
+	// FindByLineID が既存ユーザーを返す
+	mockRepo.On("FindByLineID", ctx, "U_A").Return(currentUser, nil).Once()
+	// 相手のユーザー情報を取得
+	mockRepo.On("FindByLineID", ctx, "U_B").Return(partnerUser, nil).Once()
+
+	// confirmUnmatch=falseで好きな人を変更しようとする
+	_, _, _, err := service.RegisterCrush(ctx, "U_A", "タナカハナコ", "1995-05-20", false)
+
+	// MatchedUserExistsError が返されることを確認
+	assert.Error(t, err)
+	var matchedErr *MatchedUserExistsError
+	assert.ErrorAs(t, err, &matchedErr)
+	assert.Equal(t, "サトウハナコ", matchedErr.MatchedUserName)
+
+	// errors.Is でも判定できることを確認
+	assert.ErrorIs(t, err, ErrMatchedUserExists)
+
+	// Update や CheckAndUpdateMatch は呼ばれないはず
+	mockRepo.AssertNotCalled(t, "Update")
+	mockMatchingService.AssertNotCalled(t, "CheckAndUpdateMatch")
+	mockRepo.AssertExpectations(t)
+}

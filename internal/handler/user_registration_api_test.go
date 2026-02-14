@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -77,5 +78,43 @@ func TestRegistrationAPI_Register_Success(t *testing.T) {
 	handler.Register(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
+	mockUserService.AssertExpectations(t)
+}
+
+func TestRegistrationAPI_Register_MatchedUserExists(t *testing.T) {
+	mockUserService := new(MockUserServiceForAPI)
+	mockVerifier := &mockLIFFVerifier{}
+	handler := NewUserRegistrationAPIHandler(mockUserService, mockVerifier)
+
+	// Mock RegisterFromLIFF to return MatchedUserExistsError
+	matchedErr := &service.MatchedUserExistsError{
+		MatchedUserName: "サトウハナコ",
+	}
+	mockUserService.On("RegisterFromLIFF", mock.Anything, "U-test-user", "ヤマダタロウ", "2000-01-15", false).Return(false, matchedErr)
+
+	reqBody := map[string]interface{}{
+		"name":            "ヤマダタロウ",
+		"birthday":        "2000-01-15",
+		"confirm_unmatch": false,
+	}
+	bodyBytes, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer valid-token")
+
+	rr := httptest.NewRecorder()
+	handler.Register(rr, req)
+
+	// ステータスコードが409であることを確認
+	assert.Equal(t, http.StatusConflict, rr.Code)
+
+	// レスポンスボディを確認
+	var resp map[string]string
+	err := json.NewDecoder(rr.Body).Decode(&resp)
+	assert.NoError(t, err)
+	assert.Equal(t, "matched_user_exists", resp["error"])
+	assert.Contains(t, resp["message"], "サトウハナコさんとマッチング中です")
+
 	mockUserService.AssertExpectations(t)
 }
