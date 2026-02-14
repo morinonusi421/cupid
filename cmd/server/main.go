@@ -95,8 +95,8 @@ func main() {
 	http.HandleFunc("/api/register", registrationAPIHandler.Register)
 	http.HandleFunc("/api/register-crush", crushRegistrationAPIHandler.RegisterCrush)
 
-	// 静的ファイル配信
-	http.Handle("/crush/", http.StripPrefix("/crush/", http.FileServer(http.Dir("static/crush"))))
+	// 静的ファイル配信（/user/, /crush/）はNginxで直接処理されるため、ここでは設定しない
+	// 詳細: nginx/cupid.conf を参照
 
 	// === サーバー起動 ===
 	log.Printf("Server starting on :%s", port)
