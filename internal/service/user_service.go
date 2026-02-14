@@ -119,47 +119,25 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		return false, "", false, ErrUserNotFound
 	}
 
-	// 2. マッチング中かチェック
-	if currentUser.IsMatched() && !confirmUnmatch {
-		// 相手のユーザー情報を取得
-		matchedUser, err := s.userRepo.FindByLineID(ctx, currentUser.MatchedWithUserID.String)
-		if err != nil {
-			log.Printf("Failed to find matched user: %v", err)
-			// 相手のユーザー情報取得に失敗しても、エラーは返す
-			return false, "", false, ErrMatchedUserExists
-		}
-		if matchedUser == nil {
-			log.Printf("Matched user not found: %s", currentUser.MatchedWithUserID.String)
-			return false, "", false, ErrMatchedUserExists
-		}
-		// 相手の名前を含むカスタムエラーを返す
-		return false, "", false, &MatchedUserExistsError{
-			MatchedUserName: matchedUser.Name,
-		}
+	// 2. マッチング中チェックと解除処理
+	if err := s.handleMatchedStateBeforeUpdate(ctx, currentUser, confirmUnmatch); err != nil {
+		return false, "", false, err
 	}
 
-	// 3. マッチング解除処理
-	if currentUser.IsMatched() && confirmUnmatch {
-		if err := s.unmatchUsers(ctx, currentUser, currentUser.MatchedWithUserID.String); err != nil {
-			log.Printf("Failed to unmatch users: %v", err)
-			// エラーをログに記録するが、処理は継続（Crush更新は実施）
-		}
-	}
-
-	// 4. 自己登録チェック（domain method使用）
+	// 3. 自己登録チェック（domain method使用）
 	if currentUser.IsSamePerson(crushName, crushBirthday) {
 		return false, "", false, ErrCannotRegisterYourself
 	}
 
-	// 5. 名前のバリデーション
+	// 4. 名前のバリデーション
 	if valid, errMsg := model.IsValidName(crushName); !valid {
 		return false, "", false, &ValidationError{Message: errMsg}
 	}
 
-	// 6. 初回登録か再登録かを判定（好きな人を登録する前に）
+	// 5. 初回登録か再登録かを判定（好きな人を登録する前に）
 	isFirstCrushRegistration = !currentUser.HasCrush()
 
-	// 7. 好きな人を登録（usersテーブルに直接保存）
+	// 6. 好きな人を登録（usersテーブルに直接保存）
 	currentUser.CrushName = null.StringFrom(crushName)
 	currentUser.CrushBirthday = null.StringFrom(crushBirthday)
 
@@ -167,31 +145,14 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 		return false, "", false, err
 	}
 
-	// 9. マッチング判定（MatchingService に委譲）
+	// 7. マッチング判定と通知
 	var matchedUser *model.User
-	matched, matchedUser, err = s.matchingService.CheckAndUpdateMatch(ctx, currentUser)
-	if err != nil {
-		return false, "", false, fmt.Errorf("matching check failed: %w", err)
-	}
+	matched, matchedUser, _ = s.checkAndNotifyMatch(ctx, currentUser)
 
-	// マッチした場合、両方のユーザーにLINE通知を送信
-	if matched {
-		// 現在のユーザーに通知
-		if err := s.sendMatchNotification(currentUser, matchedUser); err != nil {
-			log.Printf("Failed to send match notification to %s: %v", currentUser.LineID, err)
-			// エラーをログに記録するが、処理は継続
-		}
-
-		// 相手ユーザーに通知
-		if err := s.sendMatchNotification(matchedUser, currentUser); err != nil {
-			log.Printf("Failed to send match notification to %s: %v", matchedUser.LineID, err)
-			// エラーをログに記録するが、処理は継続
-		}
-	} else {
-		// マッチしなかった場合も登録完了を通知
+	// マッチしなかった場合は登録完了を通知
+	if !matched {
 		if err := s.sendCrushRegistrationComplete(currentUser, isFirstCrushRegistration); err != nil {
 			log.Printf("Failed to send crush registration complete notification to %s: %v", currentUser.LineID, err)
-			// エラーをログに記録するが、処理は継続
 		}
 	}
 
@@ -239,68 +200,28 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 		}
 	}
 
-	// 2. マッチング中かチェック
-	if user.IsMatched() && !confirmUnmatch {
-		// 相手のユーザー情報を取得
-		matchedUser, err := s.userRepo.FindByLineID(ctx, user.MatchedWithUserID.String)
-		if err != nil {
-			log.Printf("Failed to find matched user: %v", err)
-			// 相手のユーザー情報取得に失敗しても、エラーは返す
-			return ErrMatchedUserExists
-		}
-		if matchedUser == nil {
-			log.Printf("Matched user not found: %s", user.MatchedWithUserID.String)
-			return ErrMatchedUserExists
-		}
-		// 相手の名前を含むカスタムエラーを返す
-		return &MatchedUserExistsError{
-			MatchedUserName: matchedUser.Name,
-		}
+	// 2. マッチング中チェックと解除処理
+	if err := s.handleMatchedStateBeforeUpdate(ctx, user, confirmUnmatch); err != nil {
+		return err
 	}
 
-	// 3. マッチング解除処理
-	if user.IsMatched() && confirmUnmatch {
-		if err := s.unmatchUsers(ctx, user, user.MatchedWithUserID.String); err != nil {
-			log.Printf("Failed to unmatch users: %v", err)
-			// エラーをログに記録するが、処理は継続（情報更新は実施）
-		}
-	}
-
-	// 4. ユーザー情報を更新
+	// 3. ユーザー情報を更新
 	user.Name = name
 	user.Birthday = birthday
 
-	// 5. DBに保存
+	// 4. DBに保存
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	// 6. マッチング判定（好きな人が登録されている場合）
-	if user.HasCrush() {
-		matched, matchedUser, err := s.matchingService.CheckAndUpdateMatch(ctx, user)
-		if err != nil {
-			log.Printf("Matching check failed for %s: %v", user.LineID, err)
-			// エラーをログに記録するが、処理は継続
-		}
-
-		// マッチした場合、両方のユーザーにLINE通知を送信
-		if matched {
-			// 現在のユーザーに通知
-			if err := s.sendMatchNotification(user, matchedUser); err != nil {
-				log.Printf("Failed to send match notification to %s: %v", user.LineID, err)
-			}
-
-			// 相手ユーザーに通知
-			if err := s.sendMatchNotification(matchedUser, user); err != nil {
-				log.Printf("Failed to send match notification to %s: %v", matchedUser.LineID, err)
-			}
-
-			// マッチした場合は更新完了メッセージは送信しない（マッチ通知を優先）
-			return nil
-		}
+	// 5. マッチング判定と通知
+	matched, _, _ := s.checkAndNotifyMatch(ctx, user)
+	if matched {
+		// マッチした場合は更新完了メッセージは送信しない（マッチ通知を優先）
+		return nil
 	}
 
-	// 7. 更新完了メッセージを送信（マッチしなかった場合）
+	// 6. 更新完了メッセージを送信（マッチしなかった場合）
 	if err := s.sendUserInfoUpdateConfirmation(user); err != nil {
 		log.Printf("Failed to send update confirmation to %s: %v", user.LineID, err)
 		// エラーをログに記録するが、更新処理は成功として扱う
@@ -439,6 +360,75 @@ func (s *userService) sendCrushRegistrationComplete(user *model.User, isFirstReg
 		log.Printf("[ERROR] Failed to send crush registration complete (paid message): %v", err)
 	}
 	return err
+}
+
+// handleMatchedStateBeforeUpdate はマッチング中チェックと解除処理を行う
+//
+// confirmUnmatch: マッチング中の場合、trueならマッチング解除、falseならエラーを返す
+// 戻り値: マッチング解除が必要かつ実行された場合はtrue
+func (s *userService) handleMatchedStateBeforeUpdate(ctx context.Context, user *model.User, confirmUnmatch bool) error {
+	// マッチング中かチェック
+	if user.IsMatched() && !confirmUnmatch {
+		// 相手のユーザー情報を取得
+		matchedUser, err := s.userRepo.FindByLineID(ctx, user.MatchedWithUserID.String)
+		if err != nil {
+			log.Printf("Failed to find matched user: %v", err)
+			return ErrMatchedUserExists
+		}
+		if matchedUser == nil {
+			log.Printf("Matched user not found: %s", user.MatchedWithUserID.String)
+			return ErrMatchedUserExists
+		}
+		// 相手の名前を含むカスタムエラーを返す
+		return &MatchedUserExistsError{
+			MatchedUserName: matchedUser.Name,
+		}
+	}
+
+	// マッチング解除処理
+	if user.IsMatched() && confirmUnmatch {
+		if err := s.unmatchUsers(ctx, user, user.MatchedWithUserID.String); err != nil {
+			log.Printf("Failed to unmatch users: %v", err)
+			// エラーをログに記録するが、処理は継続
+		}
+	}
+
+	return nil
+}
+
+// checkAndNotifyMatch はマッチング判定を行い、マッチした場合は両方に通知を送信する
+//
+// 戻り値:
+//   - matched: マッチングが成立したかどうか
+//   - matchedUser: マッチング相手のUserオブジェクト（マッチング成立時のみ）
+//   - err: エラー（あれば）
+func (s *userService) checkAndNotifyMatch(ctx context.Context, user *model.User) (matched bool, matchedUser *model.User, err error) {
+	// 好きな人が登録されていない場合はスキップ
+	if !user.HasCrush() {
+		return false, nil, nil
+	}
+
+	// マッチング判定
+	matched, matchedUser, err = s.matchingService.CheckAndUpdateMatch(ctx, user)
+	if err != nil {
+		log.Printf("Matching check failed for %s: %v", user.LineID, err)
+		return false, nil, nil
+	}
+
+	// マッチした場合、両方のユーザーにLINE通知を送信
+	if matched {
+		// 現在のユーザーに通知
+		if err := s.sendMatchNotification(user, matchedUser); err != nil {
+			log.Printf("Failed to send match notification to %s: %v", user.LineID, err)
+		}
+
+		// 相手ユーザーに通知
+		if err := s.sendMatchNotification(matchedUser, user); err != nil {
+			log.Printf("Failed to send match notification to %s: %v", matchedUser.LineID, err)
+		}
+	}
+
+	return matched, matchedUser, nil
 }
 
 // unmatchUsers はマッチングを解除し、両方のユーザーに通知を送信する
