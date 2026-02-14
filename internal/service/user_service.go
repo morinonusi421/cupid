@@ -227,7 +227,7 @@ func (s *userService) registerNewUser(ctx context.Context, userID, name, birthda
 // updateUserInfo は再登録時に既存ユーザーの情報を更新する
 func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name, birthday string, confirmUnmatch bool) error {
 	// 1. 自己登録チェック（好きな人と同じ名前・誕生日にならないか）
-	if user.CrushName.Valid && user.CrushBirthday.Valid {
+	if user.HasCrush() {
 		if user.CrushName.String == name && user.CrushBirthday.String == birthday {
 			return ErrCannotRegisterYourself
 		}
