@@ -301,11 +301,10 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 		return r.To == "U_A" && len(r.Messages) == 1
 	})).Return(&messaging_api.PushMessageResponse{}, nil)
 
-	matched, matchedName, _, err := service.RegisterCrush(ctx, "U_A", "サトウハナコ", "1992-02-02", false)
+	matched, _, err := service.RegisterCrush(ctx, "U_A", "サトウハナコ", "1992-02-02", false)
 
 	assert.NoError(t, err)
 	assert.False(t, matched)
-	assert.Empty(t, matchedName)
 	mockRepo.AssertExpectations(t)
 	mockMatchingService.AssertExpectations(t)
 	mockLineBotClient.AssertExpectations(t)
@@ -328,7 +327,7 @@ func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
 	mockRepo.On("FindByLineID", ctx, "U_SELF").Return(user, nil)
 
 	// 自分自身を登録しようとする
-	_, _, _, err := service.RegisterCrush(ctx, "U_SELF", "ヤマダタロウ", "1990-01-01", false)
+	_, _, err := service.RegisterCrush(ctx, "U_SELF", "ヤマダタロウ", "1990-01-01", false)
 
 	assert.Error(t, err)
 	assert.Equal(t, "cannot register yourself", err.Error())
@@ -354,7 +353,7 @@ func TestUserService_RegisterCrush_InvalidCrushName(t *testing.T) {
 	mockRepo.On("FindByLineID", ctx, "U_INVALID").Return(user, nil)
 
 	// ひらがなの無効な名前で登録を試みる
-	_, _, _, err := service.RegisterCrush(ctx, "U_INVALID", "やまだはなこ", "1995-05-20", false)
+	_, _, err := service.RegisterCrush(ctx, "U_INVALID", "やまだはなこ", "1995-05-20", false)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "名前は全角カタカナ")
@@ -403,11 +402,10 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 		return req.To == "U_B" || req.To == "U_A"
 	})).Return(&messaging_api.PushMessageResponse{}, nil).Times(2)
 
-	matched, matchedName, _, err := service.RegisterCrush(ctx, "U_B", "ヤマダタロウ", "1990-01-01", false)
+	matched, _, err := service.RegisterCrush(ctx, "U_B", "ヤマダタロウ", "1990-01-01", false)
 
 	assert.NoError(t, err)
 	assert.True(t, matched)
-	assert.Equal(t, "ヤマダタロウ", matchedName)
 	mockRepo.AssertExpectations(t)
 	mockMatchingService.AssertExpectations(t)
 	mockLineBotClient.AssertExpectations(t)
@@ -451,12 +449,11 @@ func TestUserService_RegisterCrush_Matched_NotificationFails(t *testing.T) {
 	// PushMessage が2回呼ばれるがエラーを返す
 	mockLineBotClient.On("PushMessage", mock.Anything).Return(nil, errors.New("notification failed")).Times(2)
 
-	matched, matchedName, _, err := service.RegisterCrush(ctx, "U_B", "ヤマダタロウ", "1990-01-01", false)
+	matched, _, err := service.RegisterCrush(ctx, "U_B", "ヤマダタロウ", "1990-01-01", false)
 
 	// 通知失敗してもマッチ成立は正常に返される
 	assert.NoError(t, err)
 	assert.True(t, matched)
-	assert.Equal(t, "ヤマダタロウ", matchedName)
 	mockRepo.AssertExpectations(t)
 	mockMatchingService.AssertExpectations(t)
 	mockLineBotClient.AssertExpectations(t)
@@ -541,7 +538,7 @@ func TestUserService_RegisterCrush_MatchedUserExists(t *testing.T) {
 	mockRepo.On("FindByLineID", ctx, "U_B").Return(partnerUser, nil).Once()
 
 	// confirmUnmatch=falseで好きな人を変更しようとする
-	_, _, _, err := service.RegisterCrush(ctx, "U_A", "タナカハナコ", "1995-05-20", false)
+	_, _, err := service.RegisterCrush(ctx, "U_A", "タナカハナコ", "1995-05-20", false)
 
 	// MatchedUserExistsError が返されることを確認
 	assert.Error(t, err)

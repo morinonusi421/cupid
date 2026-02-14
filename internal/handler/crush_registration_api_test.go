@@ -37,7 +37,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier, "https://example.com/register")
 
 	// Mock RegisterCrush to return no match
-	mockUserService.On("RegisterCrush", mock.Anything, "U_TEST", "佐藤花子", "1992-02-02", false).Return(false, "", true, nil)
+	mockUserService.On("RegisterCrush", mock.Anything, "U_TEST", "佐藤花子", "1992-02-02", false).Return(false, true, nil)
 
 	// リクエスト作成
 	reqBody := RegisterCrushRequest{
@@ -75,7 +75,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_SelfRegistrationError(t *test
 	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier, "https://example.com/register")
 
 	// Mock RegisterCrush to return self-registration error
-	mockUserService.On("RegisterCrush", mock.Anything, "U_SELF", "山田太郎", "1990-01-01", false).Return(false, "", false, service.ErrCannotRegisterYourself)
+	mockUserService.On("RegisterCrush", mock.Anything, "U_SELF", "山田太郎", "1990-01-01", false).Return(false, false, service.ErrCannotRegisterYourself)
 
 	reqBody := RegisterCrushRequest{
 		CrushName:     "山田太郎",

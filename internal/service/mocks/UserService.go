@@ -140,7 +140,7 @@ func (_c *MockUserService_ProcessTextMessage_Call) RunAndReturn(run func(context
 }
 
 // RegisterCrush provides a mock function with given fields: ctx, userID, crushName, crushBirthday, confirmUnmatch
-func (_m *MockUserService) RegisterCrush(ctx context.Context, userID string, crushName string, crushBirthday string, confirmUnmatch bool) (bool, string, bool, error) {
+func (_m *MockUserService) RegisterCrush(ctx context.Context, userID string, crushName string, crushBirthday string, confirmUnmatch bool) (bool, bool, error) {
 	ret := _m.Called(ctx, userID, crushName, crushBirthday, confirmUnmatch)
 
 	if len(ret) == 0 {
@@ -148,10 +148,9 @@ func (_m *MockUserService) RegisterCrush(ctx context.Context, userID string, cru
 	}
 
 	var r0 bool
-	var r1 string
-	var r2 bool
-	var r3 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, bool) (bool, string, bool, error)); ok {
+	var r1 bool
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, bool) (bool, bool, error)); ok {
 		return rf(ctx, userID, crushName, crushBirthday, confirmUnmatch)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, bool) bool); ok {
@@ -160,25 +159,19 @@ func (_m *MockUserService) RegisterCrush(ctx context.Context, userID string, cru
 		r0 = ret.Get(0).(bool)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, bool) string); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, bool) bool); ok {
 		r1 = rf(ctx, userID, crushName, crushBirthday, confirmUnmatch)
 	} else {
-		r1 = ret.Get(1).(string)
+		r1 = ret.Get(1).(bool)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, string, string, bool) bool); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, string, string, string, bool) error); ok {
 		r2 = rf(ctx, userID, crushName, crushBirthday, confirmUnmatch)
 	} else {
-		r2 = ret.Get(2).(bool)
+		r2 = ret.Error(2)
 	}
 
-	if rf, ok := ret.Get(3).(func(context.Context, string, string, string, bool) error); ok {
-		r3 = rf(ctx, userID, crushName, crushBirthday, confirmUnmatch)
-	} else {
-		r3 = ret.Error(3)
-	}
-
-	return r0, r1, r2, r3
+	return r0, r1, r2
 }
 
 // MockUserService_RegisterCrush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterCrush'
@@ -203,12 +196,12 @@ func (_c *MockUserService_RegisterCrush_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockUserService_RegisterCrush_Call) Return(matched bool, matchedUserName string, isFirstCrushRegistration bool, err error) *MockUserService_RegisterCrush_Call {
-	_c.Call.Return(matched, matchedUserName, isFirstCrushRegistration, err)
+func (_c *MockUserService_RegisterCrush_Call) Return(matched bool, isFirstCrushRegistration bool, err error) *MockUserService_RegisterCrush_Call {
+	_c.Call.Return(matched, isFirstCrushRegistration, err)
 	return _c
 }
 
-func (_c *MockUserService_RegisterCrush_Call) RunAndReturn(run func(context.Context, string, string, string, bool) (bool, string, bool, error)) *MockUserService_RegisterCrush_Call {
+func (_c *MockUserService_RegisterCrush_Call) RunAndReturn(run func(context.Context, string, string, string, bool) (bool, bool, error)) *MockUserService_RegisterCrush_Call {
 	_c.Call.Return(run)
 	return _c
 }
