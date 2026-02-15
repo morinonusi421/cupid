@@ -2,39 +2,22 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/service"
 	servicemocks "github.com/morinonusi421/cupid/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// mockLIFFVerifier is a mock implementation for testing
-type mockCrushLIFFVerifier struct{}
-
-func (m *mockCrushLIFFVerifier) VerifyAccessToken(accessToken string) (string, error) {
-	return "", nil
-}
-
-func (m *mockCrushLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
-	// For specific test tokens
-	if idToken == "valid-token" {
-		return "U_TEST", nil
-	}
-	if len(idToken) > 11 && idToken[:11] == "test-token-" {
-		return idToken[11:], nil
-	}
-	return "", nil
-}
-
 func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 	mockUserService := servicemocks.NewMockUserService(t)
-	mockVerifier := &mockCrushLIFFVerifier{}
-	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier, "https://example.com/register")
+	handler := NewCrushRegistrationAPIHandler(mockUserService, "https://example.com/register")
 
 	// Mock RegisterCrush to return no match
 	mockUserService.On("RegisterCrush", mock.Anything, "U_TEST", "佐藤花子", "1992-02-02", false).Return(false, true, nil)
@@ -47,7 +30,10 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/register-crush", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer valid-token")
+
+	// context に user_id を設定
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "U_TEST")
+	req = req.WithContext(ctx)
 
 	// レスポンス記録
 	w := httptest.NewRecorder()
@@ -71,8 +57,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_NoMatch(t *testing.T) {
 
 func TestCrushRegistrationAPIHandler_RegisterCrush_SelfRegistrationError(t *testing.T) {
 	mockUserService := servicemocks.NewMockUserService(t)
-	mockVerifier := &mockCrushLIFFVerifier{}
-	handler := NewCrushRegistrationAPIHandler(mockUserService, mockVerifier, "https://example.com/register")
+	handler := NewCrushRegistrationAPIHandler(mockUserService, "https://example.com/register")
 
 	// Mock RegisterCrush to return self-registration error
 	mockUserService.On("RegisterCrush", mock.Anything, "U_SELF", "山田太郎", "1990-01-01", false).Return(false, false, service.ErrCannotRegisterYourself)
@@ -84,7 +69,10 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_SelfRegistrationError(t *test
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/register-crush", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-token-U_SELF")
+
+	// context に user_id を設定
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, "U_SELF")
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.RegisterCrush(w, req)
@@ -93,7 +81,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush_SelfRegistrationError(t *test
 
 	var resp map[string]string
 	json.NewDecoder(w.Body).Decode(&resp)
-	assert.Equal(t, "自分自身は登録できません", resp["error"])
+	assert.Equal(t, "cannot_register_yourself", resp["error"])
 
 	mockUserService.AssertExpectations(t)
 }

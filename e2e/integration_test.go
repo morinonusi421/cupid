@@ -18,6 +18,7 @@ import (
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/morinonusi421/cupid/internal/handler"
 	"github.com/morinonusi421/cupid/internal/linebot"
+	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/repository"
 	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/morinonusi421/cupid/pkg/database"
@@ -112,9 +113,6 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.UserR
 	userRepo := repository.NewUserRepository(db)
 
 	// Initialize mock LIFF verifier for integration tests
-	// This allows us to test LIFF authentication without real LINE API calls
-	mockVerifier := &mockLIFFVerifier{}
-
 	// Initialize real services
 	matchingService := service.NewMatchingService(userRepo)
 	// Use registerURL for both user and crush LIFF URLs in tests
@@ -122,8 +120,8 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.UserR
 
 	// Initialize real handlers
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
-	userRegistrationAPIHandler := handler.NewUserRegistrationAPIHandler(userService, mockVerifier)
-	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, mockVerifier, registerURL)
+	userRegistrationAPIHandler := handler.NewUserRegistrationAPIHandler(userService)
+	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, registerURL)
 
 	return webhookHandler, userRegistrationAPIHandler, crushRegistrationAPIHandler, db
 }
@@ -162,7 +160,10 @@ func registerUserViaAPI(t *testing.T, handler *handler.UserRegistrationAPIHandle
 
 	req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-token-"+userID)
+
+	// Set user_id in context (authentication middleware would do this)
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, userID)
+	req = req.WithContext(ctx)
 
 	rec := httptest.NewRecorder()
 	handler.Register(rec, req)
@@ -181,7 +182,10 @@ func registerCrushViaAPI(t *testing.T, handler *handler.CrushRegistrationAPIHand
 
 	req := httptest.NewRequest(http.MethodPost, "/api/register-user-crush", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-token-"+userID)
+
+	// Set user_id in context (authentication middleware would do this)
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, userID)
+	req = req.WithContext(ctx)
 
 	rec := httptest.NewRecorder()
 	handler.RegisterCrush(rec, req)
@@ -223,7 +227,7 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 	rec := sendWebhook(t, webhookHandler, []interface{}{messageEvent})
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	// Step 2: Register user via LIFF API with ID token
+	// Step 2: Register user via LIFF API
 	registrationReq := map[string]interface{}{
 		"name":     "ヤマダタロウ",
 		"birthday": "1990-01-01",
@@ -233,7 +237,10 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-token-"+userID) // Mock ID token
+
+	// Set user_id in context (authentication middleware would do this)
+	reqCtx := context.WithValue(req.Context(), middleware.UserIDKey, userID)
+	req = req.WithContext(reqCtx)
 
 	rec = httptest.NewRecorder()
 	registrationAPIHandler.Register(rec, req)
@@ -348,7 +355,10 @@ func TestIntegration_ValidationError(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", "Bearer test-token-test-user") // Mock ID token
+
+			// Set user_id in context (authentication middleware would do this)
+			ctx := context.WithValue(req.Context(), middleware.UserIDKey, "test-user")
+			req = req.WithContext(ctx)
 
 			rec := httptest.NewRecorder()
 			registrationAPIHandler.Register(rec, req)

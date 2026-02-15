@@ -11,6 +11,7 @@ import (
 	"github.com/morinonusi421/cupid/internal/handler"
 	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/morinonusi421/cupid/internal/linebot"
+	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/repository"
 	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/morinonusi421/cupid/pkg/database"
@@ -77,10 +78,14 @@ func main() {
 	matchingService := service.NewMatchingService(userRepo)
 	userService := service.NewUserService(userRepo, userLiffURL, crushLiffURL, matchingService, lineBotClient)
 
+	// === Middleware層 ===
+	userAuthMiddleware := middleware.NewAuthMiddleware(userLiffVerifier)
+	crushAuthMiddleware := middleware.NewAuthMiddleware(crushLiffVerifier)
+
 	// === Handler層 ===
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
-	userRegistrationAPIHandler := handler.NewUserRegistrationAPIHandler(userService, userLiffVerifier)
-	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, crushLiffVerifier, userLiffURL)
+	userRegistrationAPIHandler := handler.NewUserRegistrationAPIHandler(userService)
+	crushRegistrationAPIHandler := handler.NewCrushRegistrationAPIHandler(userService, userLiffURL)
 
 	// === ルーティング設定 ===
 	// ヘルスチェック
@@ -91,9 +96,9 @@ func main() {
 	// LINE Webhook
 	http.HandleFunc("/webhook", webhookHandler.Handle)
 
-	// Registration API
-	http.HandleFunc("/api/register-user", userRegistrationAPIHandler.Register)
-	http.HandleFunc("/api/register-crush", crushRegistrationAPIHandler.RegisterCrush)
+	// Registration API（認証ミドルウェア適用）
+	http.HandleFunc("/api/register-user", userAuthMiddleware.Authenticate(userRegistrationAPIHandler.Register))
+	http.HandleFunc("/api/register-crush", crushAuthMiddleware.Authenticate(crushRegistrationAPIHandler.RegisterCrush))
 
 	// 静的ファイル配信（/user/, /crush/）はNginxで直接処理されるため、ここでは設定しない
 	// 詳細: nginx/cupid.conf を参照
