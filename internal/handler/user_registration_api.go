@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/middleware"
@@ -47,6 +48,17 @@ func (h *UserRegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Req
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Failed to decode request: %v", err)
 		httputil.WriteJSONError(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		return
+	}
+
+	// 日付のバリデーション（YYYY-MM-DD形式）
+	const birthdayLayout = "2006-01-02"
+	if _, err := time.Parse(birthdayLayout, req.Birthday); err != nil {
+		log.Printf("Invalid birthday format: %s, error: %v", req.Birthday, err)
+		httputil.WriteJSONError(w, http.StatusBadRequest, map[string]string{
+			"error":   "invalid_birthday",
+			"message": message.InvalidBirthdayError,
+		})
 		return
 	}
 

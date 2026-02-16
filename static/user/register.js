@@ -218,6 +218,11 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
                 return;
             }
 
+            // invalid_birthdayの場合は特別なエラーメッセージ
+            if (errorData.error === 'invalid_birthday') {
+                throw new Error(errorData.message || 'その日付は存在しません。');
+            }
+
             // duplicate_userの場合は特別なエラーメッセージ
             if (errorData.error === 'duplicate_user') {
                 throw new Error(errorData.message || '同じ名前・誕生日のユーザーが既に登録されています。');

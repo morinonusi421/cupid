@@ -237,6 +237,11 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
                 return;
             }
 
+            // invalid_birthdayの場合は特別なエラーメッセージ
+            if (errorData.error === 'invalid_birthday') {
+                throw new Error(errorData.message || 'その日付は存在しません。');
+            }
+
             // 自己登録エラーの場合は特別なエラーメッセージ
             if (errorData.error === 'cannot_register_yourself') {
                 throw new Error(MESSAGES.crush.cannotRegisterYourself);
