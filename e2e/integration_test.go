@@ -1,5 +1,16 @@
 package e2e
 
+// Integration tests for Cupid LINE Bot backend.
+//
+// Test environment:
+//   - Uses real components (Handler → Service → Repository → SQLite)
+//   - LINE API: real by default, mock when SKIP_LINE_API=true
+//   - Test DB: cupid_test.db (auto-cleanup before/after tests)
+//
+// Run tests:
+//   go test ./e2e -v
+//   SKIP_LINE_API=true go test ./e2e -v  # for CI/CD
+
 import (
 	"bytes"
 	"context"
@@ -181,7 +192,7 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	userID := "test-user-001"
+	userID := "test-user-registration"
 
 	// Step 1: Send message event via webhook
 	messageEvent := map[string]interface{}{
@@ -190,7 +201,7 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 			"type":   "user",
 			"userId": userID,
 		},
-		"replyToken": "test-reply-token-001",
+		"replyToken": "test-reply-token-registration",
 		"message": map[string]interface{}{
 			"type": "text",
 			"text": "hello",
@@ -201,24 +212,7 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 
 	// Step 2: Register user via LIFF API
-	registrationReq := map[string]interface{}{
-		"name":     "ヤマダタロウ",
-		"birthday": "1990-01-01",
-	}
-	body, err := json.Marshal(registrationReq)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-
-	// Set user_id in context (authentication middleware would do this)
-	reqCtx := context.WithValue(req.Context(), middleware.UserIDKey, userID)
-	req = req.WithContext(reqCtx)
-
-	rec = httptest.NewRecorder()
-	registrationAPIHandler.Register(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
+	registerUserViaAPI(t, registrationAPIHandler, userID, "ヤマダタロウ", "1990-01-01")
 
 	// Step 3: Verify user is saved in DB
 	userRepo := repository.NewUserRepository(db)
@@ -227,7 +221,6 @@ func TestIntegration_UserRegistrationFlow(t *testing.T) {
 	assert.NotNil(t, user)
 	assert.Equal(t, "ヤマダタロウ", user.Name)
 	assert.Equal(t, "1990-01-01", user.Birthday)
-	// RegistrationStepは削除されたため検証不要
 }
 
 func TestIntegration_CrushRegistrationNoMatch(t *testing.T) {
@@ -235,13 +228,13 @@ func TestIntegration_CrushRegistrationNoMatch(t *testing.T) {
 		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
 	}
 
-	_, registrationHandler, crushHandler, db := setupTestEnvironment(t)
+	_, registrationAPIHandler, crushHandler, db := setupTestEnvironment(t)
 	defer db.Close()
 
-	userID := "test-user-002"
+	userID := "test-user-no-match"
 
-	// Step 1: Register user via API (true E2E)
-	registerUserViaAPI(t, registrationHandler, userID, "タナカハナコ", "1995-05-05")
+	// Step 1: Register user via API
+	registerUserViaAPI(t, registrationAPIHandler, userID, "タナカハナコ", "1995-05-05")
 
 	// Step 2: Register crush (no matching user exists) via API
 	response := registerCrushViaAPI(t, crushHandler, userID, "サトウケンタ", "1992-03-15")
@@ -255,24 +248,24 @@ func TestIntegration_CrushRegistrationMatch(t *testing.T) {
 		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
 	}
 
-	_, registrationHandler, crushHandler, db := setupTestEnvironment(t)
+	_, registrationAPIHandler, crushHandler, db := setupTestEnvironment(t)
 	defer db.Close()
 
 	ctx := context.Background()
 	userRepo := repository.NewUserRepository(db)
 
-	userAID := "test-user-a"
-	userBID := "test-user-b"
+	userAID := "test-user-match-a"
+	userBID := "test-user-match-b"
 
-	// Step 1: User A registers via API (true E2E)
-	registerUserViaAPI(t, registrationHandler, userAID, "スズキイチロウ", "1988-08-08")
+	// Step 1: User A registers via API
+	registerUserViaAPI(t, registrationAPIHandler, userAID, "スズキイチロウ", "1988-08-08")
 
 	// Step 2: User A registers crush (User B) via API
 	responseA := registerCrushViaAPI(t, crushHandler, userAID, "コバヤシミキ", "1990-12-25")
 	assert.False(t, responseA["matched"].(bool), "User A should not match yet (User B not registered)")
 
-	// Step 3: User B registers via API (true E2E)
-	registerUserViaAPI(t, registrationHandler, userBID, "コバヤシミキ", "1990-12-25")
+	// Step 3: User B registers via API
+	registerUserViaAPI(t, registrationAPIHandler, userBID, "コバヤシミキ", "1990-12-25")
 
 	// Step 4: User B registers crush (User A) via API - should trigger match
 	responseB := registerCrushViaAPI(t, crushHandler, userBID, "スズキイチロウ", "1988-08-08")
@@ -288,6 +281,140 @@ func TestIntegration_CrushRegistrationMatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, userB.MatchedWithUserID.Valid, "User B should have matched_with_user_id set")
 	assert.Equal(t, userAID, userB.MatchedWithUserID.String, "User B should be matched with User A")
+}
+
+func TestIntegration_MatchedUserExistsError(t *testing.T) {
+	if channelSecret == "" {
+		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
+	}
+
+	_, registrationAPIHandler, crushHandler, db := setupTestEnvironment(t)
+	defer db.Close()
+
+	userAID := "test-user-matched-update-a"
+	userBID := "test-user-matched-update-b"
+
+	// Step 1: Create matched users
+	registerUserViaAPI(t, registrationAPIHandler, userAID, "ワタナベサトシ", "1987-07-07")
+	registerCrushViaAPI(t, crushHandler, userAID, "イトウアキコ", "1989-09-09")
+	registerUserViaAPI(t, registrationAPIHandler, userBID, "イトウアキコ", "1989-09-09")
+	responseB := registerCrushViaAPI(t, crushHandler, userBID, "ワタナベサトシ", "1987-07-07")
+	assert.True(t, responseB["matched"].(bool), "Users should be matched")
+
+	// Step 2: Try to update User A's info without confirmUnmatch
+	reqBody := map[string]interface{}{
+		"name":            "ワタナベマサル",
+		"birthday":        "1987-07-08",
+		"confirm_unmatch": false,
+	}
+	body, err := json.Marshal(reqBody)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, userAID)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+	registrationAPIHandler.Register(rec, req)
+
+	// Step 3: Verify error response
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	var response map[string]interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "matched_user_exists", response["error"])
+}
+
+func TestIntegration_DuplicateUserError(t *testing.T) {
+	if channelSecret == "" {
+		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
+	}
+
+	_, registrationAPIHandler, _, db := setupTestEnvironment(t)
+	defer db.Close()
+
+	userAID := "test-user-duplicate-a"
+	userBID := "test-user-duplicate-b"
+
+	// Step 1: Register User A
+	registerUserViaAPI(t, registrationAPIHandler, userAID, "タカハシユウキ", "1991-11-11")
+
+	// Step 2: Try to register User B with same name/birthday
+	reqBody := map[string]interface{}{
+		"name":     "タカハシユウキ",
+		"birthday": "1991-11-11",
+	}
+	body, err := json.Marshal(reqBody)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, userBID)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+	registrationAPIHandler.Register(rec, req)
+
+	// Step 3: Verify error response
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	var response map[string]interface{}
+	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "duplicate_user", response["error"])
+}
+
+func TestIntegration_UnmatchFlow(t *testing.T) {
+	if channelSecret == "" {
+		t.Skip("LINE_CHANNEL_SECRET not set, skipping integration test")
+	}
+
+	_, registrationAPIHandler, crushHandler, db := setupTestEnvironment(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	userRepo := repository.NewUserRepository(db)
+
+	userAID := "test-user-unmatch-a"
+	userBID := "test-user-unmatch-b"
+
+	// Step 1: Create matched users
+	registerUserViaAPI(t, registrationAPIHandler, userAID, "ヨシダマサヒロ", "1986-06-06")
+	registerCrushViaAPI(t, crushHandler, userAID, "サイトウユカ", "1988-08-08")
+	registerUserViaAPI(t, registrationAPIHandler, userBID, "サイトウユカ", "1988-08-08")
+	responseB := registerCrushViaAPI(t, crushHandler, userBID, "ヨシダマサヒロ", "1986-06-06")
+	assert.True(t, responseB["matched"].(bool), "Users should be matched")
+
+	// Step 2: Update User A's info with confirmUnmatch=true
+	reqBody := map[string]interface{}{
+		"name":            "ヨシダタカシ",
+		"birthday":        "1986-06-07",
+		"confirm_unmatch": true,
+	}
+	body, err := json.Marshal(reqBody)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/register-user", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	reqCtx := context.WithValue(req.Context(), middleware.UserIDKey, userAID)
+	req = req.WithContext(reqCtx)
+
+	rec := httptest.NewRecorder()
+	registrationAPIHandler.Register(rec, req)
+
+	// Step 3: Verify successful update
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// Step 4: Verify both users are unmatched in DB
+	userA, err := userRepo.FindByLineID(ctx, userAID)
+	require.NoError(t, err)
+	assert.False(t, userA.MatchedWithUserID.Valid, "User A should be unmatched")
+	assert.Equal(t, "ヨシダタカシ", userA.Name, "User A's name should be updated")
+	assert.Equal(t, "1986-06-07", userA.Birthday, "User A's birthday should be updated")
+
+	userB, err := userRepo.FindByLineID(ctx, userBID)
+	require.NoError(t, err)
+	assert.False(t, userB.MatchedWithUserID.Valid, "User B should be unmatched")
 }
 
 func TestIntegration_ValidationError(t *testing.T) {
