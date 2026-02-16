@@ -38,8 +38,21 @@ function validateName(name) {
     return { valid: true, message: '' };
 }
 
+// プレビューモードの判定
+function isPreviewMode() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('preview') === 'true';
+}
+
 // ページ読み込み時にLIFF初期化
 window.addEventListener('load', async () => {
+    // プレビューモードならLIFF認証をスキップ
+    if (isPreviewMode()) {
+        console.log('Preview mode: LIFF authentication skipped');
+        setupForm();
+        return;
+    }
+
     try {
         await liff.init({ liffId: LIFF_ID });
 
@@ -110,6 +123,13 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
     try {
         showLoading(true);
         submitButton.disabled = true;
+
+        // プレビューモードの場合はダミーの成功レスポンス
+        if (isPreviewMode()) {
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 2秒待機
+            showMessage(MESSAGES.crush.registrationSuccess, 'success');
+            return;
+        }
 
         // IDトークン取得
         const idToken = liff.getIDToken();
