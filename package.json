@@ -1,25 +1,10 @@
 {
   "name": "cupid",
   "version": "1.0.0",
-  "description": "⋯⋯ようこそ、プロデューサー。",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "test:visual": "playwright test tests/visual/screenshot.spec.js --headed"
-  },
+  "description": "相思相愛を見つけるLINE Bot",
   "repository": {
     "type": "git",
     "url": "git@github.com-morinonusi:morinonusi421/cupid.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "@playwright/test": "^1.58.0",
-    "playwright": "^1.58.0"
-  }
+  "license": "ISC"
 }
