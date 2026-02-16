@@ -170,9 +170,13 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
         showLoading(true);
         submitButton.disabled = true;
 
+        // 最低ローディング時間（ミリ秒）
+        const MIN_LOADING_TIME = 2000;
+        const startTime = Date.now();
+
         // プレビューモードの場合はダミーの成功レスポンス
         if (isPreviewMode()) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // 2秒待機
+            await new Promise(resolve => setTimeout(resolve, MIN_LOADING_TIME));
             showMessage(MESSAGES.crush.registrationSuccess, 'success');
             return;
         }
@@ -243,6 +247,13 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
 
         // 成功 - 初回/再登録でメッセージを変える
         const data = await response.json();
+
+        // 最低ローディング時間が経過するまで待機
+        const elapsed = Date.now() - startTime;
+        if (elapsed < MIN_LOADING_TIME) {
+            await new Promise(resolve => setTimeout(resolve, MIN_LOADING_TIME - elapsed));
+        }
+
         if (data.is_first_registration) {
             showMessage(MESSAGES.crush.registrationSuccess, 'success');
         } else {
