@@ -43,126 +43,114 @@ func generateSignature(channelSecret, body string) string {
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
-func TestWebhookHandler_Handle_TextMessage(t *testing.T) {
-	// Setup
+func TestWebhookHandler_Handle(t *testing.T) {
 	channelSecret := "test-channel-secret"
-	mockBot := new(MockLineBotClient)
-	mockUserService := servicemocks.NewMockUserService(t)
-	handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
 
-	// テスト用のWebhookイベント（JSONフォーマット）
-	webhookBodyJSON := `{
-		"destination": "U1234567890",
-		"events": [
-			{
-				"type": "message",
-				"replyToken": "reply-token-123",
-				"source": {
-					"type": "user",
-					"userId": "U-test-user"
-				},
-				"timestamp": 1234567890123,
-				"mode": "active",
-				"message": {
-					"type": "text",
-					"id": "msg-id-123",
-					"text": "こんにちは"
-				}
+	tests := []struct {
+		name               string
+		webhookBodyJSON    string
+		signature          string
+		mockSetup          func(*MockLineBotClient, *servicemocks.MockUserService)
+		expectedStatusCode int
+	}{
+		{
+			name: "正常系 - テキストメッセージ",
+			webhookBodyJSON: `{
+				"destination": "U1234567890",
+				"events": [{
+					"type": "message",
+					"replyToken": "reply-token-123",
+					"source": {"type": "user", "userId": "U-test-user"},
+					"timestamp": 1234567890123,
+					"mode": "active",
+					"message": {"type": "text", "id": "msg-id-123", "text": "こんにちは"}
+				}]
+			}`,
+			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+				mockUserService.EXPECT().ProcessTextMessage(mock.Anything, "U-test-user").
+					Return("こんにちは", "", "", nil)
+				mockBot.On("ReplyMessage", mock.MatchedBy(func(r *messaging_api.ReplyMessageRequest) bool {
+					return r.ReplyToken == "reply-token-123" && len(r.Messages) == 1
+				})).Return(&messaging_api.ReplyMessageResponse{}, nil)
+			},
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name: "正常系 - フォローイベント",
+			webhookBodyJSON: `{
+				"destination": "U1234567890",
+				"events": [{
+					"type": "follow",
+					"replyToken": "reply-token-456",
+					"source": {"type": "user", "userId": "U-new-user"},
+					"timestamp": 1234567890123,
+					"mode": "active"
+				}]
+			}`,
+			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+				mockUserService.EXPECT().ProcessFollowEvent(mock.Anything, "reply-token-456").Return(nil)
+			},
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name: "正常系 - グループ参加イベント",
+			webhookBodyJSON: `{
+				"destination": "U1234567890",
+				"events": [{
+					"type": "join",
+					"replyToken": "reply-token-789",
+					"source": {"type": "group", "groupId": "G-group-123"},
+					"timestamp": 1234567890123,
+					"mode": "active"
+				}]
+			}`,
+			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+				mockUserService.EXPECT().ProcessJoinEvent(mock.Anything, "reply-token-789").Return(nil)
+			},
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:            "異常系 - 不正な署名",
+			webhookBodyJSON: `{"events":[]}`,
+			signature:       "invalid-signature",
+			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+				// 署名が不正なので、mockは呼ばれない
+			},
+			expectedStatusCode: http.StatusBadRequest,
+		},
+		{
+			name: "異常系 - 不正なJSON",
+			webhookBodyJSON: `{invalid json}`,
+			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+				// JSONが不正なので、mockは呼ばれない
+			},
+			expectedStatusCode: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockBot := new(MockLineBotClient)
+			mockUserService := servicemocks.NewMockUserService(t)
+			tt.mockSetup(mockBot, mockUserService)
+			handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
+
+			bodyBytes := []byte(tt.webhookBodyJSON)
+			signature := tt.signature
+			if signature == "" {
+				signature = generateSignature(channelSecret, tt.webhookBodyJSON)
 			}
-		]
-	}`
 
-	bodyBytes := []byte(webhookBodyJSON)
-	signature := generateSignature(channelSecret, webhookBodyJSON)
+			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(bodyBytes))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Line-Signature", signature)
 
-	// HTTPリクエストを作成
-	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Line-Signature", signature)
+			rr := httptest.NewRecorder()
+			handler.Handle(rr, req)
 
-	// Mock: ProcessTextMessage が呼ばれて返信テキストとQuickReply情報を返すことを期待
-	mockUserService.On("ProcessTextMessage", mock.Anything, "U-test-user").
-		Return("こんにちは", "", "", nil)
-
-	// Mock: ReplyMessage が呼ばれることを期待
-	mockBot.On("ReplyMessage", mock.MatchedBy(func(r *messaging_api.ReplyMessageRequest) bool {
-		return r.ReplyToken == "reply-token-123" &&
-			len(r.Messages) == 1
-	})).Return(&messaging_api.ReplyMessageResponse{}, nil)
-
-	// Execute
-	rr := httptest.NewRecorder()
-	handler.Handle(rr, req)
-
-	// Assert
-	assert.Equal(t, http.StatusOK, rr.Code)
-	mockBot.AssertExpectations(t)
-	mockUserService.AssertExpectations(t)
-}
-
-func TestWebhookHandler_Handle_FollowEvent(t *testing.T) {
-	// Setup
-	channelSecret := "test-channel-secret"
-	mockBot := new(MockLineBotClient)
-	mockUserService := servicemocks.NewMockUserService(t)
-	handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
-
-	// テスト用のFollow Webhookイベント（JSONフォーマット）
-	webhookBodyJSON := `{
-		"destination": "U1234567890",
-		"events": [
-			{
-				"type": "follow",
-				"replyToken": "reply-token-456",
-				"source": {
-					"type": "user",
-					"userId": "U-new-user"
-				},
-				"timestamp": 1234567890123,
-				"mode": "active"
-			}
-		]
-	}`
-
-	bodyBytes := []byte(webhookBodyJSON)
-	signature := generateSignature(channelSecret, webhookBodyJSON)
-
-	// HTTPリクエストを作成
-	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Line-Signature", signature)
-
-	// Mock: ProcessFollowEvent が呼ばれることを期待
-	mockUserService.On("ProcessFollowEvent", mock.Anything, "reply-token-456").Return(nil)
-
-	// Execute
-	rr := httptest.NewRecorder()
-	handler.Handle(rr, req)
-
-	// Assert
-	assert.Equal(t, http.StatusOK, rr.Code)
-	mockUserService.AssertExpectations(t)
-}
-
-func TestWebhookHandler_Handle_InvalidSignature(t *testing.T) {
-	// Setup
-	channelSecret := "test-channel-secret"
-	mockBot := new(MockLineBotClient)
-	mockUserService := servicemocks.NewMockUserService(t)
-	handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
-
-	// 不正な署名でリクエスト
-	bodyBytes := []byte(`{"events":[]}`)
-	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Line-Signature", "invalid-signature")
-
-	// Execute
-	rr := httptest.NewRecorder()
-	handler.Handle(rr, req)
-
-	// Assert: 署名が不正なので BadRequest が返る
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-	mockBot.AssertNotCalled(t, "ReplyMessage")
-	mockUserService.AssertNotCalled(t, "ProcessTextMessage")
+			assert.Equal(t, tt.expectedStatusCode, rr.Code)
+			mockBot.AssertExpectations(t)
+			mockUserService.AssertExpectations(t)
+		})
+	}
 }
