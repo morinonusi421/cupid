@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aarondl/null/v8"
 	"github.com/morinonusi421/cupid/internal/model"
@@ -11,6 +12,7 @@ import (
 // MatchingService はマッチング処理を行うドメインサービスのインターフェース
 type MatchingService interface {
 	CheckAndUpdateMatch(ctx context.Context, currentUser *model.User) (matched bool, matchedUser *model.User, err error)
+	UnmatchUsers(ctx context.Context, initiatorUserID, partnerUserID string) (initiatorUser *model.User, partnerUser *model.User, err error)
 }
 
 // matchingService は MatchingService の実装
@@ -63,4 +65,44 @@ func (s *matchingService) CheckAndUpdateMatch(
 	}
 
 	return true, matchedUser, nil
+}
+
+// UnmatchUsers はマッチングを解除する（通知送信は行わない）
+//
+// 戻り値:
+//   - initiatorUser: 解除を開始したユーザー（matched_with_user_id が NULL に更新済み）
+//   - partnerUser: 相手ユーザー（matched_with_user_id が NULL に更新済み）
+//   - err: エラー（あれば）
+func (s *matchingService) UnmatchUsers(ctx context.Context, initiatorUserID, partnerUserID string) (*model.User, *model.User, error) {
+	// 開始ユーザーの情報を取得
+	initiatorUser, err := s.userRepo.FindByLineID(ctx, initiatorUserID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to find initiator user: %w", err)
+	}
+	if initiatorUser == nil {
+		return nil, nil, fmt.Errorf("initiator user not found: %s", initiatorUserID)
+	}
+
+	// 相手のユーザー情報を取得
+	partnerUser, err := s.userRepo.FindByLineID(ctx, partnerUserID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to find partner user: %w", err)
+	}
+	if partnerUser == nil {
+		return nil, nil, fmt.Errorf("partner user not found: %s", partnerUserID)
+	}
+
+	// 両方の matched_with_user_id を NULL に
+	initiatorUser.MatchedWithUserID = null.String{Valid: false}
+	partnerUser.MatchedWithUserID = null.String{Valid: false}
+
+	if err := s.userRepo.Update(ctx, initiatorUser); err != nil {
+		return nil, nil, fmt.Errorf("failed to update initiator user: %w", err)
+	}
+
+	if err := s.userRepo.Update(ctx, partnerUser); err != nil {
+		return nil, nil, fmt.Errorf("failed to update partner user: %w", err)
+	}
+
+	return initiatorUser, partnerUser, nil
 }

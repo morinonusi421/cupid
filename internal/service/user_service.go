@@ -304,34 +304,22 @@ func (s *userService) checkAndNotifyMatch(ctx context.Context, user *model.User)
 
 // unmatchUsers はマッチングを解除し、両方のユーザーに通知を送信する
 func (s *userService) unmatchUsers(ctx context.Context, initiatorUser *model.User, partnerUserID string) error {
-	// 相手のユーザー情報を取得
-	partnerUser, err := s.userRepo.FindByLineID(ctx, partnerUserID)
+	// MatchingService でマッチング解除
+	updatedInitiator, updatedPartner, err := s.matchingService.UnmatchUsers(ctx, initiatorUser.LineID, partnerUserID)
 	if err != nil {
-		return fmt.Errorf("failed to find partner user: %w", err)
-	}
-	if partnerUser == nil {
-		return fmt.Errorf("partner user not found: %s", partnerUserID)
+		return err
 	}
 
-	// 両方の matched_with_user_id を NULL に
-	initiatorUser.MatchedWithUserID = null.String{Valid: false}
-	partnerUser.MatchedWithUserID = null.String{Valid: false}
-
-	if err := s.userRepo.Update(ctx, initiatorUser); err != nil {
-		return fmt.Errorf("failed to update initiator user: %w", err)
-	}
-
-	if err := s.userRepo.Update(ctx, partnerUser); err != nil {
-		return fmt.Errorf("failed to update partner user: %w", err)
-	}
+	// initiatorUser を更新された値で上書き（UserService が保持しているポインタを更新）
+	*initiatorUser = *updatedInitiator
 
 	// 両方のユーザーに解除通知を送信
-	if err := s.notificationService.SendUnmatchNotification(ctx, initiatorUser.LineID, partnerUser.Name, true); err != nil {
-		log.Printf("Failed to send unmatch notification to initiator %s: %v", initiatorUser.LineID, err)
+	if err := s.notificationService.SendUnmatchNotification(ctx, updatedInitiator.LineID, updatedPartner.Name, true); err != nil {
+		log.Printf("Failed to send unmatch notification to initiator %s: %v", updatedInitiator.LineID, err)
 	}
 
-	if err := s.notificationService.SendUnmatchNotification(ctx, partnerUser.LineID, initiatorUser.Name, false); err != nil {
-		log.Printf("Failed to send unmatch notification to partner %s: %v", partnerUser.LineID, err)
+	if err := s.notificationService.SendUnmatchNotification(ctx, updatedPartner.LineID, updatedInitiator.Name, false); err != nil {
+		log.Printf("Failed to send unmatch notification to partner %s: %v", updatedPartner.LineID, err)
 	}
 
 	return nil

@@ -88,6 +88,75 @@ func (_c *MockMatchingService_CheckAndUpdateMatch_Call) RunAndReturn(run func(co
 	return _c
 }
 
+// UnmatchUsers provides a mock function with given fields: ctx, initiatorUserID, partnerUserID
+func (_m *MockMatchingService) UnmatchUsers(ctx context.Context, initiatorUserID string, partnerUserID string) (*model.User, *model.User, error) {
+	ret := _m.Called(ctx, initiatorUserID, partnerUserID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnmatchUsers")
+	}
+
+	var r0 *model.User
+	var r1 *model.User
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*model.User, *model.User, error)); ok {
+		return rf(ctx, initiatorUserID, partnerUserID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *model.User); ok {
+		r0 = rf(ctx, initiatorUserID, partnerUserID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) *model.User); ok {
+		r1 = rf(ctx, initiatorUserID, partnerUserID)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.User)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, string, string) error); ok {
+		r2 = rf(ctx, initiatorUserID, partnerUserID)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockMatchingService_UnmatchUsers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmatchUsers'
+type MockMatchingService_UnmatchUsers_Call struct {
+	*mock.Call
+}
+
+// UnmatchUsers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - initiatorUserID string
+//   - partnerUserID string
+func (_e *MockMatchingService_Expecter) UnmatchUsers(ctx interface{}, initiatorUserID interface{}, partnerUserID interface{}) *MockMatchingService_UnmatchUsers_Call {
+	return &MockMatchingService_UnmatchUsers_Call{Call: _e.mock.On("UnmatchUsers", ctx, initiatorUserID, partnerUserID)}
+}
+
+func (_c *MockMatchingService_UnmatchUsers_Call) Run(run func(ctx context.Context, initiatorUserID string, partnerUserID string)) *MockMatchingService_UnmatchUsers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockMatchingService_UnmatchUsers_Call) Return(initiatorUser *model.User, partnerUser *model.User, err error) *MockMatchingService_UnmatchUsers_Call {
+	_c.Call.Return(initiatorUser, partnerUser, err)
+	return _c
+}
+
+func (_c *MockMatchingService_UnmatchUsers_Call) RunAndReturn(run func(context.Context, string, string) (*model.User, *model.User, error)) *MockMatchingService_UnmatchUsers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockMatchingService creates a new instance of MockMatchingService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockMatchingService(t interface {
