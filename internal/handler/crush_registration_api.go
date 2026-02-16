@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -81,10 +80,10 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 		// matched_user_existsエラーの場合は特別なレスポンス
 		var matchedErr *service.MatchedUserExistsError
 		if errors.As(err, &matchedErr) {
-			message := fmt.Sprintf("%sさんとマッチング中です。変更するとマッチングが解除されます。", matchedErr.MatchedUserName)
+			warningMsg := message.MatchedUserExistsWarning(matchedErr.MatchedUserName)
 			httputil.WriteJSONError(w, http.StatusConflict, map[string]string{
 				"error":   "matched_user_exists",
-				"message": message,
+				"message": warningMsg,
 			})
 			return
 		}

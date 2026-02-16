@@ -75,3 +75,14 @@ func UnmatchNotificationPartner(partnerName string) string {
 func CrushRegistrationUserNotFound(userLiffURL string) string {
 	return fmt.Sprintf("あうぅ...先に自分の情報を登録してくださいっ💦\n\nまずは下のリンクから登録をお願いしますね✨\n\n%s", userLiffURL)
 }
+
+// MatchedUserExistsWarning はマッチング中のユーザーが情報を変更しようとした時の警告メッセージを生成する
+func MatchedUserExistsWarning(userName string) string {
+	return fmt.Sprintf("はわわっ💦 %sさんとマッチング中ですっ！\n\n変更するとマッチングが解除されちゃいますよぉ...💔\n\nそれでも変更しますか？", userName)
+}
+
+// DuplicateUserError は同じ名前・誕生日のユーザーが既に登録されている時のエラーメッセージ
+const DuplicateUserError = "あうぅ...その名前と誕生日の組み合わせは既に登録されていますっ💦\n\n別の情報で登録してくださいね✨"
+
+// GeneralError は一般的なエラーが発生した時のメッセージ
+const GeneralError = "ふえぇ...エラーが発生しちゃいましたっ💦\n\nもう一度試してみてくださいね✨"

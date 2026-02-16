@@ -7,6 +7,7 @@ import (
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/line/line-bot-sdk-go/v8/linebot/webhook"
 	"github.com/morinonusi421/cupid/internal/linebot"
+	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/service"
 )
 
@@ -79,7 +80,7 @@ func (h *WebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 				replyText, quickReplyURL, quickReplyLabel, err := h.userService.ProcessTextMessage(r.Context(), userID)
 				if err != nil {
 					log.Printf("Failed to process message: %v", err)
-					replyText = "エラーが発生しました。もう一度試してください。"
+					replyText = message.GeneralError
 					quickReplyURL = ""
 					quickReplyLabel = ""
 				}

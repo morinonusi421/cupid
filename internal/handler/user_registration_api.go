@@ -3,10 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/morinonusi421/cupid/pkg/httputil"
@@ -58,10 +58,10 @@ func (h *UserRegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Req
 		// matched_user_existsエラーの場合は特別なレスポンス
 		var matchedErr *service.MatchedUserExistsError
 		if errors.As(err, &matchedErr) {
-			message := fmt.Sprintf("%sさんとマッチング中です。変更するとマッチングが解除されます。", matchedErr.MatchedUserName)
+			warningMsg := message.MatchedUserExistsWarning(matchedErr.MatchedUserName)
 			httputil.WriteJSONError(w, http.StatusConflict, map[string]string{
 				"error":   "matched_user_exists",
-				"message": message,
+				"message": warningMsg,
 			})
 			return
 		}
@@ -70,7 +70,7 @@ func (h *UserRegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Req
 		if errors.Is(err, service.ErrDuplicateUser) {
 			httputil.WriteJSONError(w, http.StatusConflict, map[string]string{
 				"error":   "duplicate_user",
-				"message": "同じ名前・誕生日のユーザーが既に登録されています。",
+				"message": message.DuplicateUserError,
 			})
 			return
 		}
