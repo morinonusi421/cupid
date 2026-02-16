@@ -11,6 +11,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/line/line-bot-sdk-go/v8 v8.18.0
 	github.com/pkg/errors v0.9.1
+	github.com/rubenv/sql-migrate v1.8.1
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	modernc.org/sqlite v1.44.2
@@ -30,7 +31,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/rubenv/sql-migrate v1.8.1 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect

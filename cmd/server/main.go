@@ -75,8 +75,9 @@ func main() {
 
 	// === Service層 ===
 	lineBotClient := linebot.NewClient(botAPI)
+	notificationService := service.NewNotificationService(lineBotClient)
 	matchingService := service.NewMatchingService(userRepo)
-	userService := service.NewUserService(userRepo, userLiffURL, crushLiffURL, matchingService, lineBotClient)
+	userService := service.NewUserService(userRepo, userLiffURL, crushLiffURL, matchingService, notificationService)
 
 	// === Middleware層 ===
 	userAuthMiddleware := middleware.NewAuthMiddleware(userLiffVerifier)

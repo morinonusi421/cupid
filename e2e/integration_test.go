@@ -114,9 +114,10 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.UserR
 
 	// Initialize mock LIFF verifier for integration tests
 	// Initialize real services
+	notificationService := service.NewNotificationService(lineBotClient)
 	matchingService := service.NewMatchingService(userRepo)
 	// Use registerURL for both user and crush LIFF URLs in tests
-	userService := service.NewUserService(userRepo, registerURL, registerURL, matchingService, lineBotClient)
+	userService := service.NewUserService(userRepo, registerURL, registerURL, matchingService, notificationService)
 
 	// Initialize real handlers
 	webhookHandler := handler.NewWebhookHandler(channelSecret, lineBotClient, userService)
