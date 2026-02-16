@@ -8,50 +8,18 @@ import (
 	"github.com/aarondl/null/v8"
 	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/model"
-	"github.com/morinonusi421/cupid/internal/service/mocks"
+	repositorymocks "github.com/morinonusi421/cupid/internal/repository/mocks"
+	servicemocks "github.com/morinonusi421/cupid/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// MockUserRepository は UserRepository の mock
-type MockUserRepository struct {
-	mock.Mock
-}
-
-func (m *MockUserRepository) FindByLineID(ctx context.Context, lineID string) (*model.User, error) {
-	args := m.Called(ctx, lineID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*model.User), args.Error(1)
-}
-
-func (m *MockUserRepository) Create(ctx context.Context, user *model.User) error {
-	args := m.Called(ctx, user)
-	return args.Error(0)
-}
-
-func (m *MockUserRepository) Update(ctx context.Context, user *model.User) error {
-	args := m.Called(ctx, user)
-	return args.Error(0)
-}
-
-func (m *MockUserRepository) FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error) {
-	// モックの実装: 既存のテストで使用されないため、nilを返す
-	return nil, nil
-}
-
-func (m *MockUserRepository) FindMatchingUser(ctx context.Context, user *model.User) (*model.User, error) {
-	// モックの実装: 既存のテストで使用されないため、nilを返す
-	return nil, nil
-}
-
 // ProcessTextMessage tests
 
 func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	crushLiffURL := "https://miniapp.line.me/2009070891-iIdvFKtI"
 	service := NewUserService(mockRepo, "", crushLiffURL, mockMatchingService, mockNotificationService)
 	ctx := context.Background()
@@ -75,9 +43,9 @@ func TestUserService_ProcessTextMessage_Step1_CrushRegistration(t *testing.T) {
 }
 
 func TestUserService_ProcessTextMessage_Step2_CrushReregistration(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	crushLiffURL := "https://miniapp.line.me/2009070891-iIdvFKtI"
 	service := NewUserService(mockRepo, "", crushLiffURL, mockMatchingService, mockNotificationService)
 	ctx := context.Background()
@@ -103,9 +71,9 @@ func TestUserService_ProcessTextMessage_Step2_CrushReregistration(t *testing.T) 
 }
 
 func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
 
@@ -121,9 +89,9 @@ func TestUserService_ProcessTextMessage_GetUserError(t *testing.T) {
 }
 
 func TestUserService_ProcessTextMessage_UnregisteredUser(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	userLiffURL := "https://miniapp.line.me/2009059076-kBsUXYIC"
 	service := NewUserService(mockRepo, userLiffURL, "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
@@ -141,12 +109,15 @@ func TestUserService_ProcessTextMessage_UnregisteredUser(t *testing.T) {
 }
 
 func TestUserService_RegisterFromLIFF_NewUser(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	crushLiffURL := "https://miniapp.line.me/2009070891-iIdvFKtI"
 	service := NewUserService(mockRepo, "", crushLiffURL, mockMatchingService, mockNotificationService)
 	ctx := context.Background()
+
+	// FindByNameAndBirthday が nil を返す（重複なし）
+	mockRepo.On("FindByNameAndBirthday", ctx, "テストタロウ", "2000-01-15").Return(nil, nil)
 
 	// FindByLineID が nil を返す（ユーザー未登録）
 	mockRepo.On("FindByLineID", ctx, "U-new-user").Return(nil, nil)
@@ -169,9 +140,9 @@ func TestUserService_RegisterFromLIFF_NewUser(t *testing.T) {
 }
 
 func TestUserService_RegisterFromLIFF_UpdateExisting(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
 
@@ -181,6 +152,9 @@ func TestUserService_RegisterFromLIFF_UpdateExisting(t *testing.T) {
 		Birthday:     "2000-01-01",
 		RegisteredAt: "2024-01-01 00:00:00",
 	}
+
+	// FindByNameAndBirthday が nil を返す（重複なし）
+	mockRepo.On("FindByNameAndBirthday", ctx, "アタラシイナマエ", "2000-12-25").Return(nil, nil)
 
 	// FindByLineID が既存ユーザーを返す
 	mockRepo.On("FindByLineID", ctx, "U-existing").Return(existingUser, nil)
@@ -204,34 +178,27 @@ func TestUserService_RegisterFromLIFF_UpdateExisting(t *testing.T) {
 }
 
 func TestUserService_RegisterFromLIFF_InvalidName(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
-
-	user := &model.User{
-		LineID:   "U123",
-		Name:     "",
-		Birthday: "",
-	}
-
-	// FindByLineID が既存ユーザーを返す
-	mockRepo.On("FindByLineID", ctx, "U123").Return(user, nil)
 
 	// 漢字を含む無効な名前で登録を試みる
 	_, err := service.RegisterUser(ctx, "U123", "山田太郎", "2000-01-15", false)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "名前は全角カタカナ")
-	// Update は呼ばれないはず（バリデーションで弾かれる）
+	// バリデーションで弾かれるため、FindByNameAndBirthday, FindByLineID, Update は呼ばれないはず
+	mockRepo.AssertNotCalled(t, "FindByNameAndBirthday")
+	mockRepo.AssertNotCalled(t, "FindByLineID")
 	mockRepo.AssertNotCalled(t, "Update")
 }
 
 func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
 
@@ -271,9 +238,9 @@ func TestUserService_RegisterCrush_NoMatch(t *testing.T) {
 }
 
 func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
 
@@ -297,9 +264,9 @@ func TestUserService_RegisterCrush_SelfRegistrationError(t *testing.T) {
 }
 
 func TestUserService_RegisterCrush_InvalidCrushName(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
 
@@ -323,9 +290,9 @@ func TestUserService_RegisterCrush_InvalidCrushName(t *testing.T) {
 }
 
 func TestUserService_RegisterCrush_Matched(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
 
@@ -371,9 +338,9 @@ func TestUserService_RegisterCrush_Matched(t *testing.T) {
 }
 
 func TestUserService_RegisterCrush_Matched_NotificationFails(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
 
@@ -420,9 +387,9 @@ func TestUserService_RegisterCrush_Matched_NotificationFails(t *testing.T) {
 }
 
 func TestUserService_RegisterFromLIFF_MatchedUserExists(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
 
@@ -444,6 +411,9 @@ func TestUserService_RegisterFromLIFF_MatchedUserExists(t *testing.T) {
 		Birthday:           "2000-02-02",
 		MatchedWithUserID:  null.StringFrom("U-existing"),
 	}
+
+	// FindByNameAndBirthday が nil を返す（重複なし）
+	mockRepo.On("FindByNameAndBirthday", ctx, "アタラシイナマエ", "2000-12-25").Return(nil, nil)
 
 	// FindByLineID が既存ユーザーを返す
 	mockRepo.On("FindByLineID", ctx, "U-existing").Return(matchedUser, nil).Once()
@@ -468,9 +438,9 @@ func TestUserService_RegisterFromLIFF_MatchedUserExists(t *testing.T) {
 }
 
 func TestUserService_RegisterCrush_MatchedUserExists(t *testing.T) {
-	mockRepo := new(MockUserRepository)
-	mockMatchingService := mocks.NewMockMatchingService(t)
-	mockNotificationService := mocks.NewMockNotificationService(t)
+	mockRepo := repositorymocks.NewMockUserRepository(t)
+	mockMatchingService := servicemocks.NewMockMatchingService(t)
+	mockNotificationService := servicemocks.NewMockNotificationService(t)
 	service := NewUserService(mockRepo, "", "", mockMatchingService, mockNotificationService)
 	ctx := context.Background()
 
