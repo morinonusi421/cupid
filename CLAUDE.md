@@ -231,24 +231,15 @@ LINE公式アカウントの管理画面から設定。**必ず本番用URLを�
   - AssertExpectations で検証
 - **参考**: https://vektra.github.io/mockery/
 
-### sql-migrate (マイグレーションツール)
-- **ツール**: github.com/rubenv/sql-migrate
-- **インストール**: `go install github.com/rubenv/sql-migrate/...@latest`
-- **設定ファイル**: `db/dbconfig.yml`
-- **マイグレーションディレクトリ**: `db/migrations/`
-- **コマンド**:
-  - `make migrate-up` - マイグレーション適用
-  - `make migrate-down` - 最後のマイグレーションをロールバック
-  - `make migrate-status` - マイグレーション状態確認
-- **デプロイ時**: `make deploy` が自動的にマイグレーション実行（`sql-migrate up`）
-- **DB削除時**: `make reset-db` がDB削除後に自動的にマイグレーション実行
-- **管理テーブル**: `schema_migrations` にマイグレーション履歴を記録
-- **ベストプラクティス**:
-  - **既存のマイグレーションファイルは絶対に編集しない**
-  - スキーマ変更は必ず新しいマイグレーションファイルを追加する
-  - ファイル名は `YYYYMMDDNNNNNN-description.sql` 形式（例: `20260202000001-remove_temp_crush_name.sql`）
-  - 各マイグレーションには `-- +migrate Up` と `-- +migrate Down` を記述
-  - 適用済みマイグレーションは履歴として保持する
+### Database Schema
+- **スキーマファイル**: `db/schema.sql`
+- **自動作成**: アプリケーション起動時に、テーブルが存在しない場合は自動的にスキーマを作成
+- **テスト**: `pkg/testutil/SetupTestDB` を使用してテスト用DBをセットアップ
+  - e2e/integration_test.go: `testutil.SetupTestDB(t, testDBFile, "../db/schema.sql")`
+  - internal/repository/user_repo_test.go: `testutil.SetupTestDB(t, "test_repo_cupid.db", "../../db/schema.sql")`
+- **スキーマ変更**:
+  - 開発初期段階のため、`db/schema.sql`を直接編集してOK
+  - 本番運用後は必要に応じてマイグレーションツールの導入を検討
 
 ## 使用するgitアカウント
 

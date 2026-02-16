@@ -3,47 +3,16 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 
 	"github.com/morinonusi421/cupid/internal/model"
-	migrate "github.com/rubenv/sql-migrate"
-	_ "modernc.org/sqlite"
+	"github.com/morinonusi421/cupid/pkg/testutil"
 )
 
 // setupTestDB はテスト用のデータベースをセットアップする
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-
-	// テスト用の DB ファイル名
-	testDBPath := "test_repo_cupid.db"
-	t.Cleanup(func() {
-		os.Remove(testDBPath)
-	})
-
-	// DB を作成
-	db, err := sql.Open("sqlite", testDBPath)
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
-
-	// 外部キー制約を有効化
-	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		db.Close()
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	// マイグレーションを実行（本番と同じスキーマを使用）
-	migrations := &migrate.FileMigrationSource{
-		Dir: "../../db/migrations",
-	}
-	_, err = migrate.Exec(db, "sqlite3", migrations, migrate.Up)
-	if err != nil {
-		db.Close()
-		t.Fatalf("Failed to run migrations: %v", err)
-	}
-
-	return db
+	return testutil.SetupTestDB(t, "test_repo_cupid.db", "../../db/schema.sql")
 }
 
 func TestUserRepository_Create(t *testing.T) {

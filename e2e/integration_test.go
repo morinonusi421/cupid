@@ -21,8 +21,7 @@ import (
 	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/repository"
 	"github.com/morinonusi421/cupid/internal/service"
-	"github.com/morinonusi421/cupid/pkg/database"
-	migrate "github.com/rubenv/sql-migrate"
+	"github.com/morinonusi421/cupid/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,17 +69,8 @@ func (m *mockLineBotClient) PushMessage(request *messaging_api.PushMessageReques
 }
 
 func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.UserRegistrationAPIHandler, *handler.CrushRegistrationAPIHandler, *sql.DB) {
-	// Initialize real database
-	db, err := database.InitDB(testDBFile)
-	require.NoError(t, err)
-
-	// Run migrations
-	migrations := &migrate.FileMigrationSource{
-		Dir: "../db/migrations",
-	}
-	n, err := migrate.Exec(db, "sqlite3", migrations, migrate.Up)
-	require.NoError(t, err)
-	t.Logf("Applied %d migrations", n)
+	// Initialize test database with schema
+	db := testutil.SetupTestDB(t, testDBFile, "../db/schema.sql")
 
 	// Initialize LINE Bot client (real or mock)
 	var lineBotClient linebot.Client
