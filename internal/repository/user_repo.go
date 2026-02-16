@@ -32,7 +32,7 @@ func NewUserRepository(db *sql.DB) UserRepository {
 // FindByLineID は LINE ユーザーID でユーザーを検索する
 func (r *userRepository) FindByLineID(ctx context.Context, lineID string) (*model.User, error) {
 	entityUser, err := entities.Users(
-		qm.Where("line_user_id = ?", lineID),
+		qm.Where(entities.UserColumns.LineUserID+" = ?", lineID),
 	).One(ctx, r.db)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -47,7 +47,7 @@ func (r *userRepository) FindByLineID(ctx context.Context, lineID string) (*mode
 // FindByNameAndBirthday は名前と誕生日でユーザーを検索する
 func (r *userRepository) FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error) {
 	entityUser, err := entities.Users(
-		qm.Where("name = ? AND birthday = ?", name, birthday),
+		qm.Where(entities.UserColumns.Name+" = ? AND "+entities.UserColumns.Birthday+" = ?", name, birthday),
 	).One(ctx, r.db)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -75,7 +75,12 @@ func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 // FindMatchingUser は相互にcrushしているユーザーを検索する
 func (r *userRepository) FindMatchingUser(ctx context.Context, currentUser *model.User) (*model.User, error) {
 	entityUser, err := entities.Users(
-		qm.Where("name = ? AND birthday = ? AND crush_name = ? AND crush_birthday = ? AND matched_with_user_id IS NULL",
+		qm.Where(
+			entities.UserColumns.Name+" = ? AND "+
+				entities.UserColumns.Birthday+" = ? AND "+
+				entities.UserColumns.CrushName+" = ? AND "+
+				entities.UserColumns.CrushBirthday+" = ? AND "+
+				entities.UserColumns.MatchedWithUserID+" IS NULL",
 			currentUser.CrushName.String,
 			currentUser.CrushBirthday.String,
 			currentUser.Name,
