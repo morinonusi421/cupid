@@ -32,11 +32,19 @@
 
             <div class="form-group">
                 <label for="birthday">好きな人の誕生日</label>
-                <input
-                    type="date"
-                    id="birthday"
-                    required
-                >
+                <div class="birthday-selects">
+                    <select id="birth-year" required>
+                        <option value="">年</option>
+                    </select>
+                    <span class="separator">年</span>
+                    <select id="birth-month" required>
+                        <option value="">月</option>
+                    </select>
+                    <span class="separator">月</span>
+                    <select id="birth-day" required>
+                        <option value="">日</option>
+                    </select>
+                </div>
             </div>
 
             <button type="submit" id="submit-button">登録する</button>

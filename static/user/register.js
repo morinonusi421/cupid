@@ -4,10 +4,53 @@ const LIFF_ID = '2009059076-kBsUXYIC';
 // DOM要素
 const form = document.getElementById('register-form');
 const nameInput = document.getElementById('name');
-const birthdayInput = document.getElementById('birthday');
+const birthYearSelect = document.getElementById('birth-year');
+const birthMonthSelect = document.getElementById('birth-month');
+const birthDaySelect = document.getElementById('birth-day');
 const submitButton = document.getElementById('submit-button');
 const loading = document.getElementById('loading');
 const message = document.getElementById('message');
+
+// 誕生日セレクトの初期化
+function initBirthdaySelects() {
+    // 年を生成（1950年〜現在の年まで、降順）
+    const currentYear = new Date().getFullYear();
+    for (let year = currentYear; year >= 1950; year--) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        birthYearSelect.appendChild(option);
+    }
+
+    // 月を生成（1〜12月）
+    for (let month = 1; month <= 12; month++) {
+        const option = document.createElement('option');
+        option.value = month;
+        option.textContent = month;
+        birthMonthSelect.appendChild(option);
+    }
+
+    // 日を生成（1〜31日）
+    for (let day = 1; day <= 31; day++) {
+        const option = document.createElement('option');
+        option.value = day;
+        option.textContent = day;
+        birthDaySelect.appendChild(option);
+    }
+}
+
+// 誕生日を取得（YYYY-MM-DD形式）
+function getBirthday() {
+    const year = birthYearSelect.value;
+    const month = birthMonthSelect.value.padStart(2, '0');
+    const day = birthDaySelect.value.padStart(2, '0');
+
+    if (!year || !month || !day) {
+        return null;
+    }
+
+    return `${year}-${month}-${day}`;
+}
 
 /**
  * 名前のバリデーション
@@ -72,6 +115,9 @@ window.addEventListener('load', async () => {
  * フォーム送信イベントを設定
  */
 function setupForm() {
+    // 誕生日セレクトを初期化
+    initBirthdaySelects();
+
     // 名前入力のblurイベント（リアルタイムバリデーション）
     const nameError = document.getElementById('name-error');
     nameInput.addEventListener('blur', () => {
@@ -90,7 +136,7 @@ function setupForm() {
         e.preventDefault();
 
         const name = nameInput.value.trim();
-        const birthday = birthdayInput.value;
+        const birthday = getBirthday();
 
         // バリデーション
         if (!name) {

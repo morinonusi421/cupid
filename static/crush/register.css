@@ -287,6 +287,47 @@ input:hover {
     border-color: rgba(224, 187, 228, 0.5);
 }
 
+/* 誕生日セレクト */
+.birthday-selects {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+select {
+    flex: 1;
+    padding: 16px 12px;
+    border: 2px solid rgba(224, 187, 228, 0.3);
+    border-radius: 20px;
+    font-size: 1rem;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 500;
+    color: var(--text-dark);
+    background: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--soft-purple);
+    background: var(--white);
+    box-shadow:
+        0 8px 24px rgba(224, 187, 228, 0.2),
+        0 0 0 4px rgba(224, 187, 228, 0.1);
+    transform: translateY(-2px);
+}
+
+select:hover {
+    border-color: rgba(224, 187, 228, 0.5);
+}
+
+.separator {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
 button {
     width: 100%;
     padding: 18px;
