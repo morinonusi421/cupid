@@ -69,23 +69,6 @@ func (m *mockLineBotClient) PushMessage(request *messaging_api.PushMessageReques
 	return &messaging_api.PushMessageResponse{}, nil
 }
 
-// mockLIFFVerifier is a mock implementation for testing
-type mockLIFFVerifier struct{}
-
-func (m *mockLIFFVerifier) VerifyAccessToken(accessToken string) (string, error) {
-	// Not used in current implementation
-	return "", nil
-}
-
-func (m *mockLIFFVerifier) VerifyIDToken(idToken string) (string, error) {
-	// Accept tokens in format "test-token-{userID}"
-	// Example: "test-token-U123" returns "U123"
-	if len(idToken) > 11 && idToken[:11] == "test-token-" {
-		return idToken[11:], nil
-	}
-	return "", nil
-}
-
 func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.UserRegistrationAPIHandler, *handler.CrushRegistrationAPIHandler, *sql.DB) {
 	// Initialize real database
 	db, err := database.InitDB(testDBFile)
@@ -112,7 +95,6 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.UserR
 	// Initialize real repositories
 	userRepo := repository.NewUserRepository(db)
 
-	// Initialize mock LIFF verifier for integration tests
 	// Initialize real services
 	notificationService := service.NewNotificationService(lineBotClient)
 	matchingService := service.NewMatchingService(userRepo)
