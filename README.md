@@ -6,7 +6,7 @@
 
 **Cupid**は、相思相愛を見つけるためのLINE Botアプリケーション。自分と好きな人の情報を登録すると、相手も自分を登録している場合のみ、両者にマッチング通知が届く。
 
-🔗 **本番環境**: https://cupid-linebot.click/
+🔗 **本番LineBot**: https://line.me/R/ti/p/@763jbwrh
 
 ---
 
