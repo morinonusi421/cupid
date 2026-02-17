@@ -41,7 +41,7 @@ QRコードまたは検索でCupid LINE Botを友達追加。
 ```
 【入力内容】
 - 名前（全角カタカナ、空白なし）
-- 誕生日（YYYY-MM-DD形式）
+- 誕生日
 ```
 
 ### 3. 好きな人を登録
@@ -51,21 +51,16 @@ QRコードまたは検索でCupid LINE Botを友達追加。
 ```
 【入力内容】
 - 好きな人の名前（全角カタカナ、空白なし）
-- 好きな人の誕生日（YYYY-MM-DD形式）
+- 好きな人の誕生日
 ```
 
 ### 4. マッチング通知
 
 相手も自分を登録している場合、両者にマッチング通知が届く。
 
-```
-🎉 相思相愛が成立しました！
-相手：○○さん
-```
-
 ### 5. 情報変更
 
-トーク画面からメッセージを送ると、再登録用URLが送られてくる。
+トーク画面下部のリッチメニューから、情報の再登録ができる。
 
 **注意**: マッチング中に情報を変更すると、マッチングが解除される。
 
@@ -87,18 +82,18 @@ QRコードまたは検索でCupid LINE Botを友達追加。
 
 ### 技術スタック
 
-| 項目 | 技術 | バージョン |
-|-----|------|----------|
-| **言語** | Go | 1.25.5 |
-| **フレームワーク** | net/http (標準ライブラリ) | - |
-| **データベース** | SQLite | 3 |
-| **ORM** | SQLBoiler | latest |
-| **マイグレーション** | sql-migrate | latest |
-| **LINE SDK** | line-bot-sdk-go | v8 |
-| **Webサーバー** | Nginx | 1.24.0 |
-| **SSL/TLS** | Let's Encrypt (Certbot) | - |
-| **インフラ** | AWS EC2 (t4g.micro, ARM64) | Amazon Linux 2023 |
-| **ドメイン** | AWS Route 53 | cupid-linebot.click |
+| 項目 | 技術 |
+|-----|------|
+| **言語** | Go |
+| **フレームワーク** | net/http (標準ライブラリ) |
+| **データベース** | SQLite |
+| **ORM** | SQLBoiler |
+| **LINE SDK** | line-bot-sdk-go |
+| **Mock生成** | Mockery |
+| **Webサーバー** | Nginx |
+| **SSL/TLS** | Let's Encrypt (Certbot) |
+| **インフラ** | AWS EC2 (t4g.micro, ARM64) |
+| **ドメイン** | AWS Route 53 |
 
 ### ディレクトリ構成
 
@@ -110,33 +105,44 @@ cupid/
 ├── internal/
 │   ├── handler/                 # HTTPハンドラー
 │   │   ├── webhook.go           # LINE Webhook
-│   │   ├── registration_api.go  # ユーザー登録API
+│   │   ├── user_registration_api.go  # ユーザー登録API
 │   │   └── crush_registration_api.go # 好きな人登録API
 │   ├── service/                 # ビジネスロジック
 │   │   ├── user_service.go      # ユーザー管理
-│   │   └── matching_service.go  # マッチング処理
-│   ├── repository/              # データアクセス
-│   │   └── user_repo.go
+│   │   ├── matching_service.go  # マッチング処理
+│   │   ├── notification_service.go # 通知処理
+│   │   └── mocks/               # Mockery自動生成
+│   ├── repository/              # データアクセス層
+│   │   ├── user_repo.go
+│   │   └── mocks/               # Mockery自動生成
 │   ├── model/                   # ドメインモデル
 │   │   └── user.go
+│   ├── message/                 # メッセージ定数
+│   ├── middleware/              # HTTPミドルウェア
 │   ├── liff/                    # LIFF認証
-│   ├── linebot/                 # LINE Bot Client
-│   └── database/                # DB接続
+│   │   └── mocks/               # Mockery自動生成
+│   └── linebot/                 # LINE Bot Client
+├── pkg/                         # 共通パッケージ
+│   ├── database/                # DB接続
+│   ├── httputil/                # HTTP応答ヘルパー
+│   └── testutil/                # テストユーティリティ
 ├── entities/                    # SQLBoiler自動生成
 ├── db/
-│   ├── migrations/              # SQLマイグレーション
-│   └── dbconfig.yml
+│   └── schema.sql               # データベーススキーマ
 ├── public/
 │   ├── liff/                    # ユーザー登録LIFF
 │   └── crush/                   # 好きな人登録LIFF
-├── e2e/                         # E2Eテスト
-└── docs/
-    └── plans/                   # 設計ドキュメント
+└── e2e/                         # E2Eテスト
 ```
 
 ---
 
 ## 🗄️ データベーススキーマ
+
+### スキーマ管理
+
+- **ファイル**: `db/schema.sql`
+- **初期化**: アプリケーション起動時に自動作成
 
 ### users テーブル
 
@@ -157,7 +163,7 @@ cupid/
 
 ---
 
-## 🔌 API仕様
+## 🔌 エンドポイント
 
 ### LINE Webhook
 
@@ -165,97 +171,18 @@ cupid/
 
 LINE Platformからのイベントを受信。
 
-#### イベントタイプ
+- **follow**: 友達追加時に挨拶メッセージ送信
+- **join**: グループ招待時に挨拶メッセージ送信
+- **message**: ユーザーのメッセージに応じて登録URLを案内
 
-1. **follow**: 友達追加時に挨拶メッセージ送信
-2. **message**: ユーザーのメッセージに応じて登録URLを案内
+### 内部API
 
-### ユーザー登録API
+以下のAPIはLIFF経由でのみ使用される内部APIです。
 
-**Endpoint**: `POST /api/register-user`
+- `POST /api/register-user` - ユーザー情報登録
+- `POST /api/register-crush` - 好きな人情報登録
 
-LIFF経由でユーザー情報を登録。
-
-#### リクエスト
-
-```json
-{
-  "name": "タナカタロウ",
-  "birthday": "2000-01-15",
-  "confirm_unmatch": false
-}
-```
-
-#### レスポンス（成功）
-
-```json
-{
-  "status": "ok"
-}
-```
-
-#### レスポンス（マッチング中）
-
-```json
-{
-  "error": "matched_user_exists",
-  "message": "現在マッチング中です。変更するとマッチングが解除されます。"
-}
-```
-
-**HTTPステータスコード**: 409 Conflict
-
-#### 認証
-
-- `Authorization: Bearer {LIFF_ID_TOKEN}`
-- LINE LIFF ID Tokenを検証してユーザーIDを取得
-
-### 好きな人登録API
-
-**Endpoint**: `POST /api/register-crush`
-
-LIFF経由で好きな人の情報を登録。
-
-#### リクエスト
-
-```json
-{
-  "crush_name": "ヤマダハナコ",
-  "crush_birthday": "2000-05-20",
-  "confirm_unmatch": false
-}
-```
-
-#### レスポンス（マッチング成立）
-
-```json
-{
-  "status": "ok",
-  "matched": true,
-  "message": "ヤマダハナコさんとマッチしました！💘"
-}
-```
-
-#### レスポンス（未マッチ）
-
-```json
-{
-  "status": "ok",
-  "matched": false,
-  "message": "登録しました。相手があなたを登録したらマッチングします。"
-}
-```
-
-#### レスポンス（マッチング中）
-
-```json
-{
-  "error": "matched_user_exists",
-  "message": "現在マッチング中です。変更するとマッチングが解除されます。"
-}
-```
-
-**HTTPステータスコード**: 409 Conflict
+詳細な仕様はコードを参照してください。
 
 ---
 
@@ -332,153 +259,147 @@ AND B.matched_with_user_id IS NULL
 - 2〜20文字
 - スペース不可（姓名を続けて入力）
 
-**OK例:**
-- ✅ ヤマダタロウ
-- ✅ サトウハナコ
-
-**NG例:**
-- ❌ 山田太郎（漢字）
-- ❌ やまだたろう（ひらがな）
-- ❌ ヤマダ タロウ（スペースあり）
-- ❌ ヤ（1文字）
-
 ### マッチング中の情報変更
 
 #### 変更時の挙動
 
-マッチング中でも情報変更は可能ですが、以下の確認と処理が行われます。
+マッチング中でも自分や好きな人の情報変更は可能ですが、以下の処理が行われます。
 
-**1. 確認ダイアログ**
-
-情報変更時にLIFF画面で確認ダイアログが表示されます。
-
-```
-現在マッチング中です。変更するとマッチングが解除されます。
-
-本当に変更しますか？
-```
-
-**2. マッチング解除処理**
-
-ユーザーが変更を承認すると：
-- 両者の `matched_with_user_id` が NULL にリセット
-- 両者にマッチング解除の通知が送信
-
-**3. 通知内容**
-
-マッチング解除時、相手に以下のメッセージが送信されます。
-
-```
-【マッチング解除のお知らせ】
-
-○○さんとのマッチングが解除されました。
-相手が情報を変更したため、マッチングが解除されました。
-```
-
-#### 変更可能な情報
-
-| 情報 | 変更可否 | マッチング解除 |
-|-----|---------|--------------|
-| 自分の名前 | ✅ 可能 | ⚠️ 解除される |
-| 自分の誕生日 | ✅ 可能 | ⚠️ 解除される |
-| 好きな人 | ✅ 可能 | ⚠️ 解除される |
-
-**重要**: どの情報を変更しても、マッチングは解除されます。
+1. **確認**: LIFF画面で確認ダイアログを表示
+2. **解除**: 両者の `matched_with_user_id` を NULL にリセット
+3. **通知**: 両者にマッチング解除を通知
 
 ---
 
 ## 🛠️ 開発者向け情報
 
+### システムアーキテクチャ
+
+#### レイヤー構成
+
+このアプリケーションは、標準的な3層アーキテクチャを採用しています。
+
+```
+[Handler Layer (HTTP)]
+         ↓
+[Service Layer (Business Logic)]
+         ↓
+[Repository Layer (Data Access)]
+         ↓
+[Database (SQLite)]
+```
+
+#### 各レイヤーの責務
+
+| レイヤー | パッケージ | 責務 |
+|---------|----------|------|
+| **Handler** | `internal/handler/` | HTTPリクエスト/レスポンス処理、バリデーション |
+| **Service** | `internal/service/` | ビジネスロジック、トランザクション制御 |
+| **Repository** | `internal/repository/` | データベースCRUD操作 |
+| **Model** | `internal/model/` | ドメインモデル定義 |
+
+#### 依存関係の方向
+
+```
+Handler → Service → Repository → Database
+   ↓         ↓           ↓
+ Model    Model       Model
+```
+
+- 各レイヤーは下位レイヤーのみに依存
+- 上位レイヤーは下位レイヤーのインターフェースを通じて依存（疎結合）
+- テスト時はモックを注入して単体テスト可能
+
+#### コード生成ツール
+
+| ツール | 生成対象 | コマンド | 設定ファイル |
+|--------|---------|---------|------------|
+| **SQLBoiler** | `entities/` | `make generate` | `sqlboiler.toml` |
+| **Mockery** | `internal/*/mocks/` | `make mocks` | `.mockery.yaml` |
+
+**SQLBoiler**:
+- `db/schema.sql`からGo構造体とCRUD操作を自動生成
+
+**Mockery**:
+- インターフェースから自動でモック生成
+
 ### ローカル開発環境
-
-#### 必要なツール
-
-- Go 1.25.5+
-- SQLite 3
-- Make
 
 #### セットアップ
 
 ```bash
+# リポジトリクローン
+git clone https://github.com/morinonusi421/cupid.git
+cd cupid
+
 # 依存関係インストール
 go mod download
 
-# マイグレーション実行
-make migrate-up
+# 環境変数設定
+cp .env.example .env
+# .envファイルを編集して実際の値を設定
 
 # SQLBoiler entity生成
 make generate
 
-# テスト実行
-make test
+# Mockery mock生成
+make mocks
 
 # ローカルサーバー起動
 go run ./cmd/server
 ```
 
-#### 環境変数
-
-`.env` ファイルを作成：
-
-```env
-# LINE Bot設定
-LINE_CHANNEL_SECRET=your_channel_secret
-LINE_CHANNEL_ACCESS_TOKEN=your_access_token
-
-# LIFF設定（ユーザー登録用）
-USER_LIFF_CHANNEL_ID=your_user_liff_channel_id
-USER_LIFF_URL=your_user_liff_url
-
-# LIFF設定（好きな人登録用）
-CRUSH_LIFF_CHANNEL_ID=your_crush_liff_channel_id
-CRUSH_LIFF_URL=your_crush_liff_url
-```
+**注意**: データベースはアプリケーション起動時に`db/schema.sql`から自動作成されます。
 
 ### テスト
 
 ```bash
 # 全テスト実行
 make test
-
-# カバレッジ確認
-go test -cover ./...
-
-# 特定パッケージのテスト
-go test ./internal/service/...
 ```
 
-### マイグレーション
+**注意**: `entities/`配下のSQLBoiler自動生成テストは実行しません。
 
-```bash
-# マイグレーション適用
-make migrate-up
+---
 
-# ロールバック
-make migrate-down
+## 🏗️ インフラセットアップ
 
-# マイグレーション状態確認
-make migrate-status
+本番環境を構築するために実施した設定です。
 
-# 新規マイグレーション作成
-sql-migrate new -config=db/dbconfig.yml migration_name
-```
+### LINE Platform
 
-### ビルド＆デプロイ
+#### Messaging API
+- **Channel作成**: LINE Developers ConsoleでMessaging APIチャンネル作成
+- **認証情報取得**: Channel Secret、Channel Access Token
+- **Webhook設定**: `https://cupid-linebot.click/webhook` を登録
 
-```bash
-# ローカルビルド
-go build -o cupid ./cmd/server
+#### LIFF（LINE Front-end Framework）
+- **ユーザー登録用**: Endpoint `https://cupid-linebot.click/liff/register.html`
+- **好きな人登録用**: Endpoint `https://cupid-linebot.click/crush/register.html`
+- 各LIFFアプリでLIFF IDを取得
 
-# EC2へデプロイ（自動）
-make deploy
-```
+### AWS
 
-**`make deploy` の処理内容**:
-1. EC2にSSH接続
-2. `git pull` で最新コード取得
-3. `sql-migrate up` でマイグレーション適用
-4. `go build` でビルド
-5. `sudo systemctl restart cupid` でサービス再起動
+#### ドメイン
+- **Route 53**: `cupid-linebot.click` を取得
+- **Aレコード**: ドメイン → Elastic IPを設定
+
+#### EC2
+- **インスタンス**: t4g.micro（ARM64、無料枠対象）
+- **OS**: Amazon Linux 2023
+- **セキュリティグループ**: SSH/HTTP/HTTPSを許可
+- **Elastic IP**: 固定IPを割り当て
+
+### サーバー
+
+#### Webサーバー
+- **Nginx**: リバースプロキシとして設定
+- **設定ファイル**: リポジトリの`nginx/cupid.conf`をシンボリックリンク
+- **SSL証明書**: Let's Encryptで取得、自動更新設定
+
+#### サービス化
+- **systemd**: リポジトリの`systemd/cupid.service`をシンボリックリンク
+- **自動起動**: サーバー再起動時に自動でGoアプリ起動
 
 ---
 
@@ -497,8 +418,10 @@ make deploy
 
 ### サービス管理
 
+**注意**: 以下のコマンドは、管理者（開発者）がローカル環境で`~/.ssh/config`にSSH設定を行っている前提です。このリポジトリをクローンしただけでは、本番EC2にはアクセスできません（セキュリティのため意図的）。
+
 ```bash
-# SSH接続
+# SSH接続（管理者のみ）
 ssh cupid-bot
 
 # サービス状態確認
@@ -534,6 +457,14 @@ sqlite3 ~/cupid/cupid.db "SELECT * FROM users;"
    ```bash
    make deploy
    ```
+
+   **`make deploy`の処理内容**:
+   - EC2にSSH接続（`ssh cupid-bot`コマンドをセットアップしている前提）
+   - `git pull`で最新コード取得
+   - `go build`でビルド
+   - `sudo systemctl restart cupid`でサービス再起動
+
+   **注意**: データベーススキーマ変更時は、EC2で手動でDBファイルを削除してから再起動してください。
 
 ### 監視
 
