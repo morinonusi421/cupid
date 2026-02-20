@@ -265,14 +265,3 @@ LINE公式アカウントの管理画面から設定。**必ず本番用URLを�
 ・mockeryを活用
 ・各serviceやレイヤーでの責任分離を考える。(一つの実装ファイルだけをみてテストを作らず、周辺テストも考えるべき)
 ・必要に応じてテーブルドリブンを意識
-
-## 次のステップ
-
-- [x] Phase 0: 環境準備（ローカル）
-- [x] Phase 1: ドメイン取得（cupid-linebot.click）
-- [x] Phase 2: EC2基本セットアップ
-- [x] Phase 3: Hello World (HTTP)
-- [x] Phase 4: Nginx + リバースプロキシ
-- [x] Phase 5: HTTPS化 + systemdサービス化
-- [x] Phase 6: LINE Bot基本応答（オウム返し）
-- [ ] Phase 7: ユーザー登録フローとDB実装
