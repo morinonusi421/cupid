@@ -11,26 +11,18 @@ import (
 	"github.com/morinonusi421/cupid/internal/model"
 )
 
-// UserRepository はユーザーのデータアクセス層のインターフェース
-type UserRepository interface {
-	FindByLineID(ctx context.Context, lineID string) (*model.User, error)
-	FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error)
-	Create(ctx context.Context, user *model.User) error
-	Update(ctx context.Context, user *model.User) error
-	FindMatchingUser(ctx context.Context, currentUser *model.User) (*model.User, error)
-}
-
-type userRepository struct {
+// UserRepository はユーザーのデータアクセス層
+type UserRepository struct {
 	db *sql.DB
 }
 
 // NewUserRepository は UserRepository の新しいインスタンスを作成する
-func NewUserRepository(db *sql.DB) UserRepository {
-	return &userRepository{db: db}
+func NewUserRepository(db *sql.DB) *UserRepository {
+	return &UserRepository{db: db}
 }
 
 // FindByLineID は LINE ユーザーID でユーザーを検索する
-func (r *userRepository) FindByLineID(ctx context.Context, lineID string) (*model.User, error) {
+func (r *UserRepository) FindByLineID(ctx context.Context, lineID string) (*model.User, error) {
 	entityUser, err := entities.Users(
 		qm.Where(entities.UserColumns.LineUserID+" = ?", lineID),
 	).One(ctx, r.db)
@@ -45,7 +37,7 @@ func (r *userRepository) FindByLineID(ctx context.Context, lineID string) (*mode
 }
 
 // FindByNameAndBirthday は名前と誕生日でユーザーを検索する
-func (r *userRepository) FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error) {
+func (r *UserRepository) FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error) {
 	entityUser, err := entities.Users(
 		qm.Where(entities.UserColumns.Name+" = ? AND "+entities.UserColumns.Birthday+" = ?", name, birthday),
 	).One(ctx, r.db)
@@ -60,20 +52,20 @@ func (r *userRepository) FindByNameAndBirthday(ctx context.Context, name, birthd
 }
 
 // Create は新しいユーザーを作成する
-func (r *userRepository) Create(ctx context.Context, user *model.User) error {
+func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
 	entityUser := modelToEntity(user)
 	return entityUser.Insert(ctx, r.db, boil.Infer())
 }
 
 // Update は既存のユーザーを更新する
-func (r *userRepository) Update(ctx context.Context, user *model.User) error {
+func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
 	entityUser := modelToEntity(user)
 	_, err := entityUser.Update(ctx, r.db, boil.Infer())
 	return err
 }
 
 // FindMatchingUser は相互にcrushしているユーザーを検索する
-func (r *userRepository) FindMatchingUser(ctx context.Context, currentUser *model.User) (*model.User, error) {
+func (r *UserRepository) FindMatchingUser(ctx context.Context, currentUser *model.User) (*model.User, error) {
 	entityUser, err := entities.Users(
 		qm.Where(
 			entities.UserColumns.Name+" = ? AND "+

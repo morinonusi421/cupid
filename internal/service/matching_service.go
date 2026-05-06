@@ -6,23 +6,23 @@ import (
 
 	"github.com/aarondl/null/v8"
 	"github.com/morinonusi421/cupid/internal/model"
-	"github.com/morinonusi421/cupid/internal/repository"
 )
 
-// MatchingService はマッチング処理を行うドメインサービスのインターフェース
-type MatchingService interface {
-	CheckAndUpdateMatch(ctx context.Context, currentUser *model.User) (matched bool, matchedUser *model.User, err error)
-	UnmatchUsers(ctx context.Context, initiatorUserID, partnerUserID string) (initiatorUser *model.User, partnerUser *model.User, err error)
+// MatchUserStore は MatchingService が UserRepository に求めるメソッドのみを切り出したインターフェース
+type MatchUserStore interface {
+	FindByLineID(ctx context.Context, lineID string) (*model.User, error)
+	FindMatchingUser(ctx context.Context, currentUser *model.User) (*model.User, error)
+	Update(ctx context.Context, user *model.User) error
 }
 
-// matchingService は MatchingService の実装
-type matchingService struct {
-	userRepo repository.UserRepository
+// MatchingService はマッチング処理を行うドメインサービス
+type MatchingService struct {
+	userRepo MatchUserStore
 }
 
 // NewMatchingService は MatchingService の新しいインスタンスを作成する
-func NewMatchingService(userRepo repository.UserRepository) MatchingService {
-	return &matchingService{
+func NewMatchingService(userRepo MatchUserStore) *MatchingService {
+	return &MatchingService{
 		userRepo: userRepo,
 	}
 }
@@ -37,7 +37,7 @@ func NewMatchingService(userRepo repository.UserRepository) MatchingService {
 //   - matched: マッチングが成立したかどうか
 //   - matchedUser: マッチング相手のUserオブジェクト（マッチング成立時のみ）
 //   - err: エラー（あれば）
-func (s *matchingService) CheckAndUpdateMatch(
+func (s *MatchingService) CheckAndUpdateMatch(
 	ctx context.Context,
 	currentUser *model.User,
 ) (matched bool, matchedUser *model.User, err error) {
@@ -73,7 +73,7 @@ func (s *matchingService) CheckAndUpdateMatch(
 //   - initiatorUser: 解除を開始したユーザー（matched_with_user_id が NULL に更新済み）
 //   - partnerUser: 相手ユーザー（matched_with_user_id が NULL に更新済み）
 //   - err: エラー（あれば）
-func (s *matchingService) UnmatchUsers(ctx context.Context, initiatorUserID, partnerUserID string) (*model.User, *model.User, error) {
+func (s *MatchingService) UnmatchUsers(ctx context.Context, initiatorUserID, partnerUserID string) (*model.User, *model.User, error) {
 	// 開始ユーザーの情報を取得
 	initiatorUser, err := s.userRepo.FindByLineID(ctx, initiatorUserID)
 	if err != nil {

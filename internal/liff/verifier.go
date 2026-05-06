@@ -9,19 +9,13 @@ import (
 	"strings"
 )
 
-// Verifier is an interface for LIFF token verification
-type Verifier interface {
-	VerifyAccessToken(accessToken string) (string, error)
-	VerifyIDToken(idToken string) (string, error)
-}
-
-// verifier is the concrete implementation of Verifier
-type verifier struct {
+// Verifier verifies LIFF access tokens and ID tokens against LINE.
+type Verifier struct {
 	channelID string
 }
 
-func NewVerifier(channelID string) Verifier {
-	return &verifier{channelID: channelID}
+func NewVerifier(channelID string) *Verifier {
+	return &Verifier{channelID: channelID}
 }
 
 type VerifyResponse struct {
@@ -48,7 +42,7 @@ type IDTokenVerifyResponse struct {
 	Picture string   `json:"picture"`
 }
 
-func (v *verifier) VerifyAccessToken(accessToken string) (string, error) {
+func (v *Verifier) VerifyAccessToken(accessToken string) (string, error) {
 	// Call LINE's token verification endpoint
 	url := "https://api.line.me/oauth2/v2.1/verify?access_token=" + accessToken
 
@@ -101,7 +95,7 @@ func (v *verifier) VerifyAccessToken(accessToken string) (string, error) {
 }
 
 // VerifyIDToken verifies LIFF ID token and returns LINE user ID
-func (v *verifier) VerifyIDToken(idToken string) (string, error) {
+func (v *Verifier) VerifyIDToken(idToken string) (string, error) {
 	// Call LINE's ID token verification endpoint
 	apiURL := "https://api.line.me/oauth2/v2.1/verify"
 

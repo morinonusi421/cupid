@@ -7,7 +7,7 @@ import (
 
 	"github.com/aarondl/null/v8"
 	"github.com/morinonusi421/cupid/internal/model"
-	"github.com/morinonusi421/cupid/internal/repository/mocks"
+	"github.com/morinonusi421/cupid/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -20,7 +20,7 @@ func TestMatchingService_CheckAndUpdateMatch(t *testing.T) {
 	tests := []struct {
 		name              string
 		currentUser       *model.User
-		mockSetup         func(*mocks.MockUserRepository)
+		mockSetup         func(*mocks.MockMatchUserStore)
 		expectedMatched   bool
 		expectedUserName  string
 		expectedError     bool
@@ -35,7 +35,7 @@ func TestMatchingService_CheckAndUpdateMatch(t *testing.T) {
 				CrushName:     null.StringFrom("ボブ"),
 				CrushBirthday: null.StringFrom("1995-05-05"),
 			},
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				m.EXPECT().FindMatchingUser(mock.Anything, mock.Anything).Return(nil, nil)
 			},
 			expectedMatched: false,
@@ -50,7 +50,7 @@ func TestMatchingService_CheckAndUpdateMatch(t *testing.T) {
 				CrushName:     null.StringFrom("ボブ"),
 				CrushBirthday: null.StringFrom("1995-05-05"),
 			},
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				m.EXPECT().FindMatchingUser(mock.Anything, mock.Anything).Return(nil, nil)
 			},
 			expectedMatched: false,
@@ -65,7 +65,7 @@ func TestMatchingService_CheckAndUpdateMatch(t *testing.T) {
 				CrushName:     null.StringFrom("ボブ"),
 				CrushBirthday: null.StringFrom("1995-05-05"),
 			},
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				matchedUser := &model.User{
 					LineID:        "U-bob",
 					Name:          "ボブ",
@@ -95,7 +95,7 @@ func TestMatchingService_CheckAndUpdateMatch(t *testing.T) {
 				CrushName:     null.StringFrom("ボブ"),
 				CrushBirthday: null.StringFrom("1995-05-05"),
 			},
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				m.EXPECT().FindMatchingUser(mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 			},
 			expectedMatched:  false,
@@ -111,7 +111,7 @@ func TestMatchingService_CheckAndUpdateMatch(t *testing.T) {
 				CrushName:     null.StringFrom("ボブ"),
 				CrushBirthday: null.StringFrom("1995-05-05"),
 			},
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				matchedUser := &model.User{
 					LineID:        "U-bob",
 					Name:          "ボブ",
@@ -139,7 +139,7 @@ func TestMatchingService_CheckAndUpdateMatch(t *testing.T) {
 				CrushName:     null.StringFrom("ボブ"),
 				CrushBirthday: null.StringFrom("1995-05-05"),
 			},
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				matchedUser := &model.User{
 					LineID:        "U-bob",
 					Name:          "ボブ",
@@ -167,7 +167,7 @@ func TestMatchingService_CheckAndUpdateMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUserRepo := mocks.NewMockUserRepository(t)
+			mockUserRepo := mocks.NewMockMatchUserStore(t)
 			tt.mockSetup(mockUserRepo)
 
 			service := NewMatchingService(mockUserRepo)
@@ -201,7 +201,7 @@ func TestMatchingService_UnmatchUsers(t *testing.T) {
 		name             string
 		initiatorUserID  string
 		partnerUserID    string
-		mockSetup        func(*mocks.MockUserRepository)
+		mockSetup        func(*mocks.MockMatchUserStore)
 		expectedError    bool
 		expectedErrorMsg string
 	}{
@@ -209,7 +209,7 @@ func TestMatchingService_UnmatchUsers(t *testing.T) {
 			name:            "正常系 - マッチング解除成功",
 			initiatorUserID: "U-alice",
 			partnerUserID:   "U-bob",
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				initiatorUser := &model.User{
 					LineID:            "U-alice",
 					Name:              "アリス",
@@ -241,7 +241,7 @@ func TestMatchingService_UnmatchUsers(t *testing.T) {
 			name:            "異常系 - initiatorユーザーが見つからない",
 			initiatorUserID: "U-alice",
 			partnerUserID:   "U-bob",
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				m.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(nil, nil)
 			},
 			expectedError:    true,
@@ -251,7 +251,7 @@ func TestMatchingService_UnmatchUsers(t *testing.T) {
 			name:            "異常系 - initiatorユーザー検索エラー",
 			initiatorUserID: "U-alice",
 			partnerUserID:   "U-bob",
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				m.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(nil, errors.New("db error"))
 			},
 			expectedError:    true,
@@ -261,7 +261,7 @@ func TestMatchingService_UnmatchUsers(t *testing.T) {
 			name:            "異常系 - partnerユーザーが見つからない",
 			initiatorUserID: "U-alice",
 			partnerUserID:   "U-bob",
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				initiatorUser := &model.User{
 					LineID:            "U-alice",
 					Name:              "アリス",
@@ -278,7 +278,7 @@ func TestMatchingService_UnmatchUsers(t *testing.T) {
 			name:            "異常系 - partnerユーザー検索エラー",
 			initiatorUserID: "U-alice",
 			partnerUserID:   "U-bob",
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				initiatorUser := &model.User{
 					LineID:            "U-alice",
 					Name:              "アリス",
@@ -295,7 +295,7 @@ func TestMatchingService_UnmatchUsers(t *testing.T) {
 			name:            "異常系 - initiatorユーザー更新エラー",
 			initiatorUserID: "U-alice",
 			partnerUserID:   "U-bob",
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				initiatorUser := &model.User{
 					LineID:            "U-alice",
 					Name:              "アリス",
@@ -323,7 +323,7 @@ func TestMatchingService_UnmatchUsers(t *testing.T) {
 			name:            "異常系 - partnerユーザー更新エラー",
 			initiatorUserID: "U-alice",
 			partnerUserID:   "U-bob",
-			mockSetup: func(m *mocks.MockUserRepository) {
+			mockSetup: func(m *mocks.MockMatchUserStore) {
 				initiatorUser := &model.User{
 					LineID:            "U-alice",
 					Name:              "アリス",
@@ -356,7 +356,7 @@ func TestMatchingService_UnmatchUsers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUserRepo := mocks.NewMockUserRepository(t)
+			mockUserRepo := mocks.NewMockMatchUserStore(t)
 			tt.mockSetup(mockUserRepo)
 
 			service := NewMatchingService(mockUserRepo)

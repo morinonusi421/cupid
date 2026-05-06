@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/morinonusi421/cupid/internal/liff"
 	"github.com/morinonusi421/cupid/pkg/httputil"
 )
 
@@ -14,12 +13,17 @@ type contextKey string
 
 const UserIDKey contextKey = "user_id"
 
-// AuthMiddleware は LIFF ID Token を検証し、user_id を context に保存するミドルウェア
-type AuthMiddleware struct {
-	verifier liff.Verifier
+// IDTokenVerifier は AuthMiddleware が LIFF Verifier に求めるメソッドのみを切り出したインターフェース
+type IDTokenVerifier interface {
+	VerifyIDToken(idToken string) (string, error)
 }
 
-func NewAuthMiddleware(verifier liff.Verifier) *AuthMiddleware {
+// AuthMiddleware は LIFF ID Token を検証し、user_id を context に保存するミドルウェア
+type AuthMiddleware struct {
+	verifier IDTokenVerifier
+}
+
+func NewAuthMiddleware(verifier IDTokenVerifier) *AuthMiddleware {
 	return &AuthMiddleware{
 		verifier: verifier,
 	}

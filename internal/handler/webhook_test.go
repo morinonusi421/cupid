@@ -10,31 +10,10 @@ import (
 	"testing"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
-	servicemocks "github.com/morinonusi421/cupid/internal/service/mocks"
+	handlermocks "github.com/morinonusi421/cupid/internal/handler/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-// MockLineBotClient は linebot.Client の mock
-type MockLineBotClient struct {
-	mock.Mock
-}
-
-func (m *MockLineBotClient) ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error) {
-	args := m.Called(request)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*messaging_api.ReplyMessageResponse), args.Error(1)
-}
-
-func (m *MockLineBotClient) PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error) {
-	args := m.Called(request)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*messaging_api.PushMessageResponse), args.Error(1)
-}
 
 // generateSignature はLINE Webhookの署名を生成する
 func generateSignature(channelSecret, body string) string {
@@ -50,7 +29,7 @@ func TestWebhookHandler_Handle(t *testing.T) {
 		name               string
 		webhookBodyJSON    string
 		signature          string
-		mockSetup          func(*MockLineBotClient, *servicemocks.MockUserService)
+		mockSetup          func(*handlermocks.MockLINEReplier, *handlermocks.MockWebhookUserService)
 		expectedStatusCode int
 	}{
 		{
@@ -66,10 +45,10 @@ func TestWebhookHandler_Handle(t *testing.T) {
 					"message": {"type": "text", "id": "msg-id-123", "text": "こんにちは"}
 				}]
 			}`,
-			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+			mockSetup: func(mockBot *handlermocks.MockLINEReplier, mockUserService *handlermocks.MockWebhookUserService) {
 				mockUserService.EXPECT().ProcessTextMessage(mock.Anything, "U-test-user").
 					Return("こんにちは", "", "", nil)
-				mockBot.On("ReplyMessage", mock.MatchedBy(func(r *messaging_api.ReplyMessageRequest) bool {
+				mockBot.EXPECT().ReplyMessage(mock.MatchedBy(func(r *messaging_api.ReplyMessageRequest) bool {
 					return r.ReplyToken == "reply-token-123" && len(r.Messages) == 1
 				})).Return(&messaging_api.ReplyMessageResponse{}, nil)
 			},
@@ -87,7 +66,7 @@ func TestWebhookHandler_Handle(t *testing.T) {
 					"mode": "active"
 				}]
 			}`,
-			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+			mockSetup: func(mockBot *handlermocks.MockLINEReplier, mockUserService *handlermocks.MockWebhookUserService) {
 				mockUserService.EXPECT().ProcessFollowEvent(mock.Anything, "reply-token-456").Return(nil)
 			},
 			expectedStatusCode: http.StatusOK,
@@ -104,7 +83,7 @@ func TestWebhookHandler_Handle(t *testing.T) {
 					"mode": "active"
 				}]
 			}`,
-			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+			mockSetup: func(mockBot *handlermocks.MockLINEReplier, mockUserService *handlermocks.MockWebhookUserService) {
 				mockUserService.EXPECT().ProcessJoinEvent(mock.Anything, "reply-token-789").Return(nil)
 			},
 			expectedStatusCode: http.StatusOK,
@@ -113,15 +92,15 @@ func TestWebhookHandler_Handle(t *testing.T) {
 			name:            "異常系 - 不正な署名",
 			webhookBodyJSON: `{"events":[]}`,
 			signature:       "invalid-signature",
-			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+			mockSetup: func(mockBot *handlermocks.MockLINEReplier, mockUserService *handlermocks.MockWebhookUserService) {
 				// 署名が不正なので、mockは呼ばれない
 			},
 			expectedStatusCode: http.StatusBadRequest,
 		},
 		{
-			name: "異常系 - 不正なJSON",
+			name:            "異常系 - 不正なJSON",
 			webhookBodyJSON: `{invalid json}`,
-			mockSetup: func(mockBot *MockLineBotClient, mockUserService *servicemocks.MockUserService) {
+			mockSetup: func(mockBot *handlermocks.MockLINEReplier, mockUserService *handlermocks.MockWebhookUserService) {
 				// JSONが不正なので、mockは呼ばれない
 			},
 			expectedStatusCode: http.StatusBadRequest,
@@ -130,8 +109,8 @@ func TestWebhookHandler_Handle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockBot := new(MockLineBotClient)
-			mockUserService := servicemocks.NewMockUserService(t)
+			mockBot := handlermocks.NewMockLINEReplier(t)
+			mockUserService := handlermocks.NewMockWebhookUserService(t)
 			tt.mockSetup(mockBot, mockUserService)
 			handler := NewWebhookHandler(channelSecret, mockBot, mockUserService)
 
@@ -149,8 +128,6 @@ func TestWebhookHandler_Handle(t *testing.T) {
 			handler.Handle(rr, req)
 
 			assert.Equal(t, tt.expectedStatusCode, rr.Code)
-			mockBot.AssertExpectations(t)
-			mockUserService.AssertExpectations(t)
 		})
 	}
 }

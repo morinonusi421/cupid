@@ -8,12 +8,17 @@ issue-845-fix: true
 packages:
   github.com/morinonusi421/cupid/internal/service:
     interfaces:
-      UserService:
-      MatchingService:
-      NotificationService:
-  github.com/morinonusi421/cupid/internal/repository:
+      UserStore:
+      Matcher:
+      Notifier:
+      MatchUserStore:
+      LINEMessenger:
+  github.com/morinonusi421/cupid/internal/handler:
     interfaces:
-      UserRepository:
-  github.com/morinonusi421/cupid/internal/liff:
+      WebhookUserService:
+      LINEReplier:
+      UserRegistrar:
+      CrushRegistrar:
+  github.com/morinonusi421/cupid/internal/middleware:
     interfaces:
-      Verifier:
+      IDTokenVerifier:

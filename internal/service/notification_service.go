@@ -5,41 +5,23 @@ import (
 	"log"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
-	"github.com/morinonusi421/cupid/internal/linebot"
 	"github.com/morinonusi421/cupid/internal/message"
 )
 
-// NotificationService はLINE通知送信を担当するサービス
-type NotificationService interface {
-	// SendMatchNotification はマッチ成立時にLINE Push通知を送信する
-	SendMatchNotification(ctx context.Context, toUserLineID, matchedUserName string) error
-
-	// SendCrushRegistrationPrompt はユーザー登録完了後に好きな人登録を促すメッセージを送信する
-	SendCrushRegistrationPrompt(ctx context.Context, toUserLineID, crushLiffURL string) error
-
-	// SendUserInfoUpdateConfirmation は情報更新完了のメッセージを送信する
-	SendUserInfoUpdateConfirmation(ctx context.Context, toUserLineID string) error
-
-	// SendCrushRegistrationComplete は好きな人登録完了時（マッチなし）のメッセージを送信する
-	SendCrushRegistrationComplete(ctx context.Context, toUserLineID string, isFirstRegistration bool) error
-
-	// SendUnmatchNotification はマッチング解除時にLINE Push通知を送信する
-	SendUnmatchNotification(ctx context.Context, toUserLineID, partnerUserName string, isInitiator bool) error
-
-	// SendFollowGreeting はFollowイベント時の挨拶メッセージ（QuickReply付き）を送信する
-	SendFollowGreeting(ctx context.Context, replyToken, userLiffURL string) error
-
-	// SendJoinGroupGreeting はグループに招待された時の挨拶メッセージを送信する
-	SendJoinGroupGreeting(ctx context.Context, replyToken string) error
+// LINEMessenger は NotificationService がLINE Bot Clientに求めるメソッドのみを切り出したインターフェース
+type LINEMessenger interface {
+	ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error)
+	PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error)
 }
 
-type notificationService struct {
-	lineBotClient linebot.Client
+// NotificationService はLINE通知送信を担当するサービス
+type NotificationService struct {
+	lineBotClient LINEMessenger
 }
 
 // NewNotificationService は NotificationService の新しいインスタンスを作成する
-func NewNotificationService(lineBotClient linebot.Client) NotificationService {
-	return &notificationService{
+func NewNotificationService(lineBotClient LINEMessenger) *NotificationService {
+	return &NotificationService{
 		lineBotClient: lineBotClient,
 	}
 }
@@ -48,7 +30,7 @@ func NewNotificationService(lineBotClient linebot.Client) NotificationService {
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *notificationService) SendMatchNotification(ctx context.Context, toUserLineID, matchedUserName string) error {
+func (s *NotificationService) SendMatchNotification(ctx context.Context, toUserLineID, matchedUserName string) error {
 	request := &messaging_api.PushMessageRequest{
 		To: toUserLineID,
 		Messages: []messaging_api.MessageInterface{
@@ -70,7 +52,7 @@ func (s *notificationService) SendMatchNotification(ctx context.Context, toUserL
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *notificationService) SendCrushRegistrationPrompt(ctx context.Context, toUserLineID, crushLiffURL string) error {
+func (s *NotificationService) SendCrushRegistrationPrompt(ctx context.Context, toUserLineID, crushLiffURL string) error {
 	request := &messaging_api.PushMessageRequest{
 		To: toUserLineID,
 		Messages: []messaging_api.MessageInterface{
@@ -103,7 +85,7 @@ func (s *notificationService) SendCrushRegistrationPrompt(ctx context.Context, t
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *notificationService) SendUserInfoUpdateConfirmation(ctx context.Context, toUserLineID string) error {
+func (s *NotificationService) SendUserInfoUpdateConfirmation(ctx context.Context, toUserLineID string) error {
 	request := &messaging_api.PushMessageRequest{
 		To: toUserLineID,
 		Messages: []messaging_api.MessageInterface{
@@ -125,7 +107,7 @@ func (s *notificationService) SendUserInfoUpdateConfirmation(ctx context.Context
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *notificationService) SendCrushRegistrationComplete(ctx context.Context, toUserLineID string, isFirstRegistration bool) error {
+func (s *NotificationService) SendCrushRegistrationComplete(ctx context.Context, toUserLineID string, isFirstRegistration bool) error {
 	var messageText string
 	if isFirstRegistration {
 		messageText = message.CrushRegistrationCompleteFirst
@@ -154,7 +136,7 @@ func (s *notificationService) SendCrushRegistrationComplete(ctx context.Context,
 //
 // 【重要】有償メッセージ（無料プランでは月200通まで）
 // Push APIを使用するため、LINE Messaging APIの有償カウント対象
-func (s *notificationService) SendUnmatchNotification(ctx context.Context, toUserLineID, partnerUserName string, isInitiator bool) error {
+func (s *NotificationService) SendUnmatchNotification(ctx context.Context, toUserLineID, partnerUserName string, isInitiator bool) error {
 	var messageText string
 	if isInitiator {
 		messageText = message.UnmatchNotificationInitiator(partnerUserName)
@@ -180,7 +162,7 @@ func (s *notificationService) SendUnmatchNotification(ctx context.Context, toUse
 }
 
 // SendFollowGreeting はFollowイベント時の挨拶メッセージ（QuickReply付き）を送信する
-func (s *notificationService) SendFollowGreeting(ctx context.Context, replyToken, userLiffURL string) error {
+func (s *NotificationService) SendFollowGreeting(ctx context.Context, replyToken, userLiffURL string) error {
 	request := &messaging_api.ReplyMessageRequest{
 		ReplyToken: replyToken,
 		Messages: []messaging_api.MessageInterface{
@@ -206,7 +188,7 @@ func (s *notificationService) SendFollowGreeting(ctx context.Context, replyToken
 }
 
 // SendJoinGroupGreeting はグループに招待された時の挨拶メッセージを送信する
-func (s *notificationService) SendJoinGroupGreeting(ctx context.Context, replyToken string) error {
+func (s *NotificationService) SendJoinGroupGreeting(ctx context.Context, replyToken string) error {
 	request := &messaging_api.ReplyMessageRequest{
 		ReplyToken: replyToken,
 		Messages: []messaging_api.MessageInterface{

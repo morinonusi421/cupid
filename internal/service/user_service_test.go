@@ -8,7 +8,6 @@ import (
 	"github.com/aarondl/null/v8"
 	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/model"
-	repositorymocks "github.com/morinonusi421/cupid/internal/repository/mocks"
 	servicemocks "github.com/morinonusi421/cupid/internal/service/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,7 +21,7 @@ func TestUserService_ProcessTextMessage(t *testing.T) {
 	tests := []struct {
 		name              string
 		userID            string
-		mockSetup         func(*repositorymocks.MockUserRepository)
+		mockSetup         func(*servicemocks.MockUserStore)
 		expectedReplyText string
 		expectedQuickURL  string
 		expectedQuickLabel string
@@ -31,7 +30,7 @@ func TestUserService_ProcessTextMessage(t *testing.T) {
 		{
 			name:   "ユーザー未登録 - ユーザー登録フォームを案内",
 			userID: "U-new",
-			mockSetup: func(m *repositorymocks.MockUserRepository) {
+			mockSetup: func(m *servicemocks.MockUserStore) {
 				m.EXPECT().FindByLineID(mock.Anything, "U-new").Return(nil, nil)
 			},
 			expectedReplyText:  message.UnregisteredUserPrompt,
@@ -42,7 +41,7 @@ func TestUserService_ProcessTextMessage(t *testing.T) {
 		{
 			name:   "ユーザー登録済み、好きな人未登録 - 好きな人登録フォームを案内",
 			userID: "U-alice",
-			mockSetup: func(m *repositorymocks.MockUserRepository) {
+			mockSetup: func(m *servicemocks.MockUserStore) {
 				m.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(&model.User{
 					LineID:   "U-alice",
 					Name:     "アリス",
@@ -58,7 +57,7 @@ func TestUserService_ProcessTextMessage(t *testing.T) {
 		{
 			name:   "全て登録済み - 登録完了メッセージ",
 			userID: "U-alice",
-			mockSetup: func(m *repositorymocks.MockUserRepository) {
+			mockSetup: func(m *servicemocks.MockUserStore) {
 				m.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(&model.User{
 					LineID:        "U-alice",
 					Name:          "アリス",
@@ -75,7 +74,7 @@ func TestUserService_ProcessTextMessage(t *testing.T) {
 		{
 			name:   "DBエラー",
 			userID: "U-alice",
-			mockSetup: func(m *repositorymocks.MockUserRepository) {
+			mockSetup: func(m *servicemocks.MockUserStore) {
 				m.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(nil, errors.New("db error"))
 			},
 			expectedReplyText:  "",
@@ -87,9 +86,9 @@ func TestUserService_ProcessTextMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := repositorymocks.NewMockUserRepository(t)
-			mockMatchingService := servicemocks.NewMockMatchingService(t)
-			mockNotificationService := servicemocks.NewMockNotificationService(t)
+			mockRepo := servicemocks.NewMockUserStore(t)
+			mockMatchingService := servicemocks.NewMockMatcher(t)
+			mockNotificationService := servicemocks.NewMockNotifier(t)
 
 			tt.mockSetup(mockRepo)
 
@@ -126,7 +125,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 		userName              string
 		birthday              string
 		confirmUnmatch        bool
-		mockSetup             func(*repositorymocks.MockUserRepository, *servicemocks.MockMatchingService, *servicemocks.MockNotificationService)
+		mockSetup             func(*servicemocks.MockUserStore, *servicemocks.MockMatcher, *servicemocks.MockNotifier)
 		expectedIsFirstReg    bool
 		expectedError         bool
 		expectedErrorContains string
@@ -137,7 +136,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			userName:       "アリス",
 			birthday:       "1990-01-01",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// 重複チェック
 				repo.EXPECT().FindByNameAndBirthday(mock.Anything, "アリス", "1990-01-01").Return(nil, nil)
 				// ユーザー検索（未登録）
@@ -158,7 +157,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			userName:       "山田太郎",
 			birthday:       "1990-01-01",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// バリデーションで弾かれるため、DB操作は行われない
 			},
 			expectedIsFirstReg:    false,
@@ -171,7 +170,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			userName:       "アリス",
 			birthday:       "1990-01-01",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// 他人が見つかる
 				repo.EXPECT().FindByNameAndBirthday(mock.Anything, "アリス", "1990-01-01").Return(&model.User{
 					LineID:   "U-other",
@@ -189,7 +188,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			userName:       "アリスタロウ",
 			birthday:       "1990-12-25",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// 重複チェック
 				repo.EXPECT().FindByNameAndBirthday(mock.Anything, "アリスタロウ", "1990-12-25").Return(nil, nil)
 				// ユーザー検索（既存）
@@ -215,7 +214,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			userName:       "アリスタロウ",
 			birthday:       "1990-12-25",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// 重複チェック
 				repo.EXPECT().FindByNameAndBirthday(mock.Anything, "アリスタロウ", "1990-12-25").Return(nil, nil)
 				// ユーザー検索（マッチング中）
@@ -240,9 +239,9 @@ func TestUserService_RegisterUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := repositorymocks.NewMockUserRepository(t)
-			mockMatchingService := servicemocks.NewMockMatchingService(t)
-			mockNotificationService := servicemocks.NewMockNotificationService(t)
+			mockRepo := servicemocks.NewMockUserStore(t)
+			mockMatchingService := servicemocks.NewMockMatcher(t)
+			mockNotificationService := servicemocks.NewMockNotifier(t)
 
 			tt.mockSetup(mockRepo, mockMatchingService, mockNotificationService)
 
@@ -280,7 +279,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 		crushName                  string
 		crushBirthday              string
 		confirmUnmatch             bool
-		mockSetup                  func(*repositorymocks.MockUserRepository, *servicemocks.MockMatchingService, *servicemocks.MockNotificationService)
+		mockSetup                  func(*servicemocks.MockUserStore, *servicemocks.MockMatcher, *servicemocks.MockNotifier)
 		expectedMatched            bool
 		expectedIsFirstCrushReg    bool
 		expectedError              bool
@@ -292,7 +291,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 			crushName:      "ボブ",
 			crushBirthday:  "1995-05-05",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// ユーザー検索
 				repo.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(&model.User{
 					LineID:   "U-alice",
@@ -319,7 +318,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 			crushName:      "チャーリー",
 			crushBirthday:  "1992-03-15",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// ユーザー検索（既に好きな人登録済み）
 				repo.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(&model.User{
 					LineID:        "U-alice",
@@ -347,7 +346,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 			crushName:      "ボブ",
 			crushBirthday:  "1995-05-05",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// ユーザー検索
 				repo.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(&model.User{
 					LineID:   "U-alice",
@@ -376,7 +375,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 			crushName:      "やまだはなこ",
 			crushBirthday:  "1995-05-05",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// ユーザー検索
 				repo.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(&model.User{
 					LineID:   "U-alice",
@@ -395,7 +394,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 			crushName:      "アリス",
 			crushBirthday:  "1990-01-01",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// ユーザー検索
 				repo.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(&model.User{
 					LineID:   "U-alice",
@@ -414,7 +413,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 			crushName:      "チャーリー",
 			crushBirthday:  "1992-03-15",
 			confirmUnmatch: false,
-			mockSetup: func(repo *repositorymocks.MockUserRepository, matching *servicemocks.MockMatchingService, notif *servicemocks.MockNotificationService) {
+			mockSetup: func(repo *servicemocks.MockUserStore, matching *servicemocks.MockMatcher, notif *servicemocks.MockNotifier) {
 				// ユーザー検索（マッチング中）
 				repo.EXPECT().FindByLineID(mock.Anything, "U-alice").Return(&model.User{
 					LineID:            "U-alice",
@@ -440,9 +439,9 @@ func TestUserService_RegisterCrush(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := repositorymocks.NewMockUserRepository(t)
-			mockMatchingService := servicemocks.NewMockMatchingService(t)
-			mockNotificationService := servicemocks.NewMockNotificationService(t)
+			mockRepo := servicemocks.NewMockUserStore(t)
+			mockMatchingService := servicemocks.NewMockMatcher(t)
+			mockNotificationService := servicemocks.NewMockNotifier(t)
 
 			tt.mockSetup(mockRepo, mockMatchingService, mockNotificationService)
 
@@ -478,13 +477,13 @@ func TestUserService_ProcessFollowEvent(t *testing.T) {
 	tests := []struct {
 		name          string
 		replyToken    string
-		mockSetup     func(*servicemocks.MockNotificationService)
+		mockSetup     func(*servicemocks.MockNotifier)
 		expectedError bool
 	}{
 		{
 			name:       "正常系",
 			replyToken: "reply-token-123",
-			mockSetup: func(notif *servicemocks.MockNotificationService) {
+			mockSetup: func(notif *servicemocks.MockNotifier) {
 				notif.EXPECT().SendFollowGreeting(mock.Anything, "reply-token-123", "https://liff.example.com/user").Return(nil)
 			},
 			expectedError: false,
@@ -492,7 +491,7 @@ func TestUserService_ProcessFollowEvent(t *testing.T) {
 		{
 			name:       "異常系 - 通知送信失敗",
 			replyToken: "reply-token-123",
-			mockSetup: func(notif *servicemocks.MockNotificationService) {
+			mockSetup: func(notif *servicemocks.MockNotifier) {
 				notif.EXPECT().SendFollowGreeting(mock.Anything, "reply-token-123", "https://liff.example.com/user").Return(errors.New("api error"))
 			},
 			expectedError: true,
@@ -501,9 +500,9 @@ func TestUserService_ProcessFollowEvent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := repositorymocks.NewMockUserRepository(t)
-			mockMatchingService := servicemocks.NewMockMatchingService(t)
-			mockNotificationService := servicemocks.NewMockNotificationService(t)
+			mockRepo := servicemocks.NewMockUserStore(t)
+			mockMatchingService := servicemocks.NewMockMatcher(t)
+			mockNotificationService := servicemocks.NewMockNotifier(t)
 
 			tt.mockSetup(mockNotificationService)
 
@@ -534,13 +533,13 @@ func TestUserService_ProcessJoinEvent(t *testing.T) {
 	tests := []struct {
 		name          string
 		replyToken    string
-		mockSetup     func(*servicemocks.MockNotificationService)
+		mockSetup     func(*servicemocks.MockNotifier)
 		expectedError bool
 	}{
 		{
 			name:       "正常系",
 			replyToken: "reply-token-456",
-			mockSetup: func(notif *servicemocks.MockNotificationService) {
+			mockSetup: func(notif *servicemocks.MockNotifier) {
 				notif.EXPECT().SendJoinGroupGreeting(mock.Anything, "reply-token-456").Return(nil)
 			},
 			expectedError: false,
@@ -548,7 +547,7 @@ func TestUserService_ProcessJoinEvent(t *testing.T) {
 		{
 			name:       "異常系 - 通知送信失敗",
 			replyToken: "reply-token-456",
-			mockSetup: func(notif *servicemocks.MockNotificationService) {
+			mockSetup: func(notif *servicemocks.MockNotifier) {
 				notif.EXPECT().SendJoinGroupGreeting(mock.Anything, "reply-token-456").Return(errors.New("api error"))
 			},
 			expectedError: true,
@@ -557,9 +556,9 @@ func TestUserService_ProcessJoinEvent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := repositorymocks.NewMockUserRepository(t)
-			mockMatchingService := servicemocks.NewMockMatchingService(t)
-			mockNotificationService := servicemocks.NewMockNotificationService(t)
+			mockRepo := servicemocks.NewMockUserStore(t)
+			mockMatchingService := servicemocks.NewMockMatcher(t)
+			mockNotificationService := servicemocks.NewMockNotifier(t)
 
 			tt.mockSetup(mockNotificationService)
 

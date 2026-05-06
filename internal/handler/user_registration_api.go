@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -13,11 +14,16 @@ import (
 	"github.com/morinonusi421/cupid/pkg/httputil"
 )
 
-type UserRegistrationAPIHandler struct {
-	userService service.UserService
+// UserRegistrar は UserRegistrationAPIHandler が UserService に求めるメソッドのみを切り出したインターフェース
+type UserRegistrar interface {
+	RegisterUser(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error)
 }
 
-func NewUserRegistrationAPIHandler(userService service.UserService) *UserRegistrationAPIHandler {
+type UserRegistrationAPIHandler struct {
+	userService UserRegistrar
+}
+
+func NewUserRegistrationAPIHandler(userService UserRegistrar) *UserRegistrationAPIHandler {
 	return &UserRegistrationAPIHandler{
 		userService: userService,
 	}

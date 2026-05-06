@@ -10,7 +10,7 @@ import (
 
 	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/service"
-	servicemocks "github.com/morinonusi421/cupid/internal/service/mocks"
+	handlermocks "github.com/morinonusi421/cupid/internal/handler/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -21,7 +21,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 		requestBody             interface{}
 		hasUserID               bool
 		userID                  string
-		mockSetup               func(*servicemocks.MockUserService)
+		mockSetup               func(*handlermocks.MockCrushRegistrar)
 		expectedStatusCode      int
 		expectedMatched         *bool
 		expectedFirstReg        *bool
@@ -36,7 +36,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-test-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockCrushRegistrar) {
 				m.EXPECT().RegisterCrush(mock.Anything, "U-test-user", "サトウハナコ", "1992-02-02", false).
 					Return(false, true, nil)
 			},
@@ -53,7 +53,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-existing-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockCrushRegistrar) {
 				m.EXPECT().RegisterCrush(mock.Anything, "U-existing-user", "タナカタロウ", "1990-01-01", false).
 					Return(false, false, nil)
 			},
@@ -70,7 +70,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-matched-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockCrushRegistrar) {
 				m.EXPECT().RegisterCrush(mock.Anything, "U-matched-user", "スズキイチロウ", "1988-08-08", false).
 					Return(true, false, nil)
 			},
@@ -87,7 +87,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-self-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockCrushRegistrar) {
 				m.EXPECT().RegisterCrush(mock.Anything, "U-self-user", "ヤマダタロウ", "1990-01-01", false).
 					Return(false, false, service.ErrCannotRegisterYourself)
 			},
@@ -102,7 +102,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-validation-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockCrushRegistrar) {
 				validationErr := &service.ValidationError{
 					Message: "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
 				}
@@ -119,7 +119,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 				"crush_birthday": "1992-02-02",
 			},
 			hasUserID:          false,
-			mockSetup:          func(m *servicemocks.MockUserService) {},
+			mockSetup:          func(m *handlermocks.MockCrushRegistrar) {},
 			expectedStatusCode: http.StatusUnauthorized,
 			expectedError:      "認証に失敗しました",
 		},
@@ -128,7 +128,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 			requestBody:        "invalid json",
 			hasUserID:          true,
 			userID:             "U-test-user",
-			mockSetup:          func(m *servicemocks.MockUserService) {},
+			mockSetup:          func(m *handlermocks.MockCrushRegistrar) {},
 			expectedStatusCode: http.StatusBadRequest,
 			expectedError:      "invalid request",
 		},
@@ -136,7 +136,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUserService := servicemocks.NewMockUserService(t)
+			mockUserService := handlermocks.NewMockCrushRegistrar(t)
 			tt.mockSetup(mockUserService)
 			handler := NewCrushRegistrationAPIHandler(mockUserService, "https://example.com/register")
 

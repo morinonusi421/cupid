@@ -1,28 +1,39 @@
 package handler
 
 import (
+	"context"
 	"log"
 	"net/http"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/line/line-bot-sdk-go/v8/linebot/webhook"
-	"github.com/morinonusi421/cupid/internal/linebot"
 	"github.com/morinonusi421/cupid/internal/message"
-	"github.com/morinonusi421/cupid/internal/service"
 )
+
+// WebhookUserService は WebhookHandler が UserService に求めるメソッドのみを切り出したインターフェース
+type WebhookUserService interface {
+	ProcessTextMessage(ctx context.Context, userID string) (replyText string, quickReplyURL string, quickReplyLabel string, err error)
+	ProcessFollowEvent(ctx context.Context, replyToken string) error
+	ProcessJoinEvent(ctx context.Context, replyToken string) error
+}
+
+// LINEReplier は WebhookHandler が LINE Bot Client に求めるメソッドのみを切り出したインターフェース
+type LINEReplier interface {
+	ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error)
+}
 
 // WebhookHandler はLINE Webhookを処理するハンドラー
 type WebhookHandler struct {
 	channelSecret string
-	bot           linebot.Client
-	userService   service.UserService
+	bot           LINEReplier
+	userService   WebhookUserService
 }
 
 // NewWebhookHandler は WebhookHandler の新しいインスタンスを作成する
 func NewWebhookHandler(
 	channelSecret string,
-	bot linebot.Client,
-	userService service.UserService,
+	bot LINEReplier,
+	userService WebhookUserService,
 ) *WebhookHandler {
 	return &WebhookHandler{
 		channelSecret: channelSecret,

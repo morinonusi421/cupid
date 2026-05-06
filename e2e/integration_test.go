@@ -83,8 +83,10 @@ func setupTestEnvironment(t *testing.T) (*handler.WebhookHandler, *handler.UserR
 	// Initialize test database with schema
 	db := testutil.SetupTestDB(t, testDBFile, "../db/schema.sql")
 
-	// Initialize LINE Bot client (real or mock)
-	var lineBotClient linebot.Client
+	// Initialize LINE Bot client (real or mock).
+	// 受け側のserviceとhandlerはそれぞれ自分用のconsumer interfaceを取るので、
+	// ここでは両方を満たす service.LINEMessenger 型で受けて引き回す。
+	var lineBotClient service.LINEMessenger
 	if channelToken != "" && os.Getenv("SKIP_LINE_API") != "true" {
 		botAPI, err := messaging_api.NewMessagingApiAPI(channelToken)
 		require.NoError(t, err)

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -13,12 +14,17 @@ import (
 	"github.com/morinonusi421/cupid/pkg/httputil"
 )
 
+// CrushRegistrar は CrushRegistrationAPIHandler が UserService に求めるメソッドのみを切り出したインターフェース
+type CrushRegistrar interface {
+	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, isFirstCrushRegistration bool, err error)
+}
+
 type CrushRegistrationAPIHandler struct {
-	userService service.UserService
+	userService CrushRegistrar
 	userLiffURL string
 }
 
-func NewCrushRegistrationAPIHandler(userService service.UserService, userLiffURL string) *CrushRegistrationAPIHandler {
+func NewCrushRegistrationAPIHandler(userService CrushRegistrar, userLiffURL string) *CrushRegistrationAPIHandler {
 	return &CrushRegistrationAPIHandler{
 		userService: userService,
 		userLiffURL: userLiffURL,

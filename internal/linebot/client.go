@@ -4,24 +4,18 @@ import (
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 )
 
-// Client はLINE Messaging APIクライアントのインターフェース
-type Client interface {
-	ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error)
-	PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error)
-}
-
-// client はLINE SDKをラップする実装
-type client struct {
+// Client はLINE Messaging APIクライアント
+type Client struct {
 	api *messaging_api.MessagingApiAPI
 }
 
 // NewClient はLINE Bot Clientの新しいインスタンスを作成する
-func NewClient(api *messaging_api.MessagingApiAPI) Client {
-	return &client{api: api}
+func NewClient(api *messaging_api.MessagingApiAPI) *Client {
+	return &Client{api: api}
 }
 
 // ReplyMessage はメッセージを返信する
-func (c *client) ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error) {
+func (c *Client) ReplyMessage(request *messaging_api.ReplyMessageRequest) (*messaging_api.ReplyMessageResponse, error) {
 	return c.api.ReplyMessage(request)
 }
 
@@ -32,6 +26,6 @@ func (c *client) ReplyMessage(request *messaging_api.ReplyMessageRequest) (*mess
 // - 無料プランでは月200通まで送信可能（有償メッセージ）
 // - Reply APIは無料だが、Push APIは有償カウント対象
 // - 制限超過時は 429 Too Many Requests エラーが返される
-func (c *client) PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error) {
+func (c *Client) PushMessage(request *messaging_api.PushMessageRequest) (*messaging_api.PushMessageResponse, error) {
 	return c.api.PushMessage(request, "")
 }

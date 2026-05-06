@@ -8,29 +8,45 @@ import (
 	"github.com/aarondl/null/v8"
 	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/model"
-	"github.com/morinonusi421/cupid/internal/repository"
 )
 
-// UserService はユーザーのビジネスロジック層のインターフェース
-type UserService interface {
-	ProcessTextMessage(ctx context.Context, userID string) (replyText string, quickReplyURL string, quickReplyLabel string, err error)
-	RegisterUser(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error)
-	RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, isFirstCrushRegistration bool, err error)
-	ProcessFollowEvent(ctx context.Context, replyToken string) error
-	ProcessJoinEvent(ctx context.Context, replyToken string) error
+// UserStore は UserService が UserRepository に求めるメソッドのみを切り出したインターフェース
+type UserStore interface {
+	FindByLineID(ctx context.Context, lineID string) (*model.User, error)
+	FindByNameAndBirthday(ctx context.Context, name, birthday string) (*model.User, error)
+	Create(ctx context.Context, user *model.User) error
+	Update(ctx context.Context, user *model.User) error
 }
 
-type userService struct {
-	userRepo            repository.UserRepository
+// Matcher は UserService が MatchingService に求めるメソッドのみを切り出したインターフェース
+type Matcher interface {
+	CheckAndUpdateMatch(ctx context.Context, currentUser *model.User) (matched bool, matchedUser *model.User, err error)
+	UnmatchUsers(ctx context.Context, initiatorUserID, partnerUserID string) (initiatorUser *model.User, partnerUser *model.User, err error)
+}
+
+// Notifier は UserService が NotificationService に求めるメソッドのみを切り出したインターフェース
+type Notifier interface {
+	SendMatchNotification(ctx context.Context, toUserLineID, matchedUserName string) error
+	SendCrushRegistrationPrompt(ctx context.Context, toUserLineID, crushLiffURL string) error
+	SendUserInfoUpdateConfirmation(ctx context.Context, toUserLineID string) error
+	SendCrushRegistrationComplete(ctx context.Context, toUserLineID string, isFirstRegistration bool) error
+	SendUnmatchNotification(ctx context.Context, toUserLineID, partnerUserName string, isInitiator bool) error
+	SendFollowGreeting(ctx context.Context, replyToken, userLiffURL string) error
+	SendJoinGroupGreeting(ctx context.Context, replyToken string) error
+}
+
+// UserService はユーザーのビジネスロジック層
+type UserService struct {
+	userRepo            UserStore
 	userLiffURL         string
 	crushLiffURL        string
-	matchingService     MatchingService
-	notificationService NotificationService
+	matchingService     Matcher
+	notificationService Notifier
 }
 
 // NewUserService は UserService の新しいインスタンスを作成する
-func NewUserService(userRepo repository.UserRepository, userLiffURL string, crushLiffURL string, matchingService MatchingService, notificationService NotificationService) UserService {
-	return &userService{
+func NewUserService(userRepo UserStore, userLiffURL string, crushLiffURL string, matchingService Matcher, notificationService Notifier) *UserService {
+	return &UserService{
 		userRepo:            userRepo,
 		userLiffURL:         userLiffURL,
 		crushLiffURL:        crushLiffURL,
@@ -41,7 +57,7 @@ func NewUserService(userRepo repository.UserRepository, userLiffURL string, crus
 
 // ProcessTextMessage はLINEでuserから何かしらチャットが送られてきたの応答メッセージを決定する。
 // 現在は、相手からのメッセージ内容に関係なく、登録状況に応じたメッセージを返信。
-func (s *userService) ProcessTextMessage(ctx context.Context, userID string) (replyText string, quickReplyURL string, quickReplyLabel string, err error) {
+func (s *UserService) ProcessTextMessage(ctx context.Context, userID string) (replyText string, quickReplyURL string, quickReplyLabel string, err error) {
 	// DBからユーザーを検索
 	user, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
@@ -67,7 +83,7 @@ func (s *userService) ProcessTextMessage(ctx context.Context, userID string) (re
 // RegisterUser はLIFFフォームから送信されたユーザー登録情報を保存する
 //
 // confirmUnmatch: マッチング中の場合、trueならマッチング解除して更新、falseならエラーを返す
-func (s *userService) RegisterUser(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error) {
+func (s *UserService) RegisterUser(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error) {
 	// 1. バリデーション
 	if ok, errMsg := model.IsValidName(name); !ok {
 		return false, &ValidationError{Message: errMsg}
@@ -108,7 +124,7 @@ func (s *userService) RegisterUser(ctx context.Context, userID, name, birthday s
 // RegisterCrush は好きな人を登録し、マッチング判定を行う
 //
 // confirmUnmatch: マッチング中の場合、trueならマッチング解除して更新、falseならエラーを返す
-func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, isFirstCrushRegistration bool, err error) {
+func (s *UserService) RegisterCrush(ctx context.Context, userID, crushName, crushBirthday string, confirmUnmatch bool) (matched bool, isFirstCrushRegistration bool, err error) {
 	// 1. 現在のユーザー情報を取得
 	currentUser, err := s.userRepo.FindByLineID(ctx, userID)
 	if err != nil {
@@ -158,7 +174,7 @@ func (s *userService) RegisterCrush(ctx context.Context, userID, crushName, crus
 }
 
 // registerNewUser は初回登録時に新規ユーザーを作成する
-func (s *userService) registerNewUser(ctx context.Context, userID, name, birthday string) error {
+func (s *UserService) registerNewUser(ctx context.Context, userID, name, birthday string) error {
 	// 1. 完全なユーザーオブジェクトを作成
 	user := &model.User{
 		LineID:       userID,
@@ -185,7 +201,7 @@ func (s *userService) registerNewUser(ctx context.Context, userID, name, birthda
 // updateUserInfo は再登録時に既存ユーザーの情報を更新する
 //
 // confirmUnmatch: マッチング中の場合、trueならマッチング解除して更新、falseならエラーを返す
-func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name, birthday string, confirmUnmatch bool) error {
+func (s *UserService) updateUserInfo(ctx context.Context, user *model.User, name, birthday string, confirmUnmatch bool) error {
 	// 1. 自己登録チェック（好きな人と同じ名前・誕生日にならないか）
 	if user.HasCrush() {
 		if user.CrushName.String == name && user.CrushBirthday.String == birthday {
@@ -224,12 +240,12 @@ func (s *userService) updateUserInfo(ctx context.Context, user *model.User, name
 }
 
 // ProcessFollowEvent はFollowイベント時の挨拶メッセージ（QuickReply付き）を送信する
-func (s *userService) ProcessFollowEvent(ctx context.Context, replyToken string) error {
+func (s *UserService) ProcessFollowEvent(ctx context.Context, replyToken string) error {
 	return s.notificationService.SendFollowGreeting(ctx, replyToken, s.userLiffURL)
 }
 
 // ProcessJoinEvent はグループに招待された時の挨拶メッセージを送信する
-func (s *userService) ProcessJoinEvent(ctx context.Context, replyToken string) error {
+func (s *UserService) ProcessJoinEvent(ctx context.Context, replyToken string) error {
 	return s.notificationService.SendJoinGroupGreeting(ctx, replyToken)
 }
 
@@ -237,7 +253,7 @@ func (s *userService) ProcessJoinEvent(ctx context.Context, replyToken string) e
 //
 // confirmUnmatch: マッチング中の場合、trueならマッチング解除、falseならエラーを返す
 // 戻り値: マッチング解除が必要かつ実行された場合はtrue
-func (s *userService) handleMatchedStateBeforeUpdate(ctx context.Context, user *model.User, confirmUnmatch bool) error {
+func (s *UserService) handleMatchedStateBeforeUpdate(ctx context.Context, user *model.User, confirmUnmatch bool) error {
 	// マッチング中かチェック
 	if user.IsMatched() && !confirmUnmatch {
 		// 相手のユーザー情報を取得
@@ -273,7 +289,7 @@ func (s *userService) handleMatchedStateBeforeUpdate(ctx context.Context, user *
 //   - matched: マッチングが成立したかどうか
 //   - matchedUser: マッチング相手のUserオブジェクト（マッチング成立時のみ）
 //   - err: エラー（あれば）
-func (s *userService) checkAndNotifyMatch(ctx context.Context, user *model.User) (matched bool, matchedUser *model.User, err error) {
+func (s *UserService) checkAndNotifyMatch(ctx context.Context, user *model.User) (matched bool, matchedUser *model.User, err error) {
 	// 好きな人が登録されていない場合はスキップ
 	if !user.HasCrush() {
 		return false, nil, nil
@@ -303,7 +319,7 @@ func (s *userService) checkAndNotifyMatch(ctx context.Context, user *model.User)
 }
 
 // unmatchUsers はマッチングを解除し、両方のユーザーに通知を送信する
-func (s *userService) unmatchUsers(ctx context.Context, initiatorUser *model.User, partnerUserID string) error {
+func (s *UserService) unmatchUsers(ctx context.Context, initiatorUser *model.User, partnerUserID string) error {
 	// MatchingService でマッチング解除
 	updatedInitiator, updatedPartner, err := s.matchingService.UnmatchUsers(ctx, initiatorUser.LineID, partnerUserID)
 	if err != nil {

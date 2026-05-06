@@ -10,7 +10,7 @@ import (
 
 	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/service"
-	servicemocks "github.com/morinonusi421/cupid/internal/service/mocks"
+	handlermocks "github.com/morinonusi421/cupid/internal/handler/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -21,7 +21,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 		requestBody        interface{}
 		hasUserID          bool
 		userID             string
-		mockSetup          func(*servicemocks.MockUserService)
+		mockSetup          func(*handlermocks.MockUserRegistrar)
 		expectedStatusCode int
 		expectedError      string
 		expectedStatus     string
@@ -34,7 +34,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-test-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockUserRegistrar) {
 				m.EXPECT().RegisterUser(mock.Anything, "U-test-user", "ヤマダタロウ", "2000-01-15", false).
 					Return(true, nil)
 			},
@@ -49,7 +49,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-existing-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockUserRegistrar) {
 				m.EXPECT().RegisterUser(mock.Anything, "U-existing-user", "タナカハナコ", "1995-05-05", false).
 					Return(false, nil)
 			},
@@ -65,7 +65,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-matched-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockUserRegistrar) {
 				matchedErr := &service.MatchedUserExistsError{
 					MatchedUserName: "サトウハナコ",
 				}
@@ -83,7 +83,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-duplicate-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockUserRegistrar) {
 				m.EXPECT().RegisterUser(mock.Anything, "U-duplicate-user", "スズキイチロウ", "1990-01-01", false).
 					Return(false, service.ErrDuplicateUser)
 			},
@@ -98,7 +98,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			},
 			hasUserID: true,
 			userID:    "U-validation-user",
-			mockSetup: func(m *servicemocks.MockUserService) {
+			mockSetup: func(m *handlermocks.MockUserRegistrar) {
 				validationErr := &service.ValidationError{
 					Message: "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
 				}
@@ -115,7 +115,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 				"birthday": "2000-01-15",
 			},
 			hasUserID:          false,
-			mockSetup:          func(m *servicemocks.MockUserService) {},
+			mockSetup:          func(m *handlermocks.MockUserRegistrar) {},
 			expectedStatusCode: http.StatusUnauthorized,
 			expectedError:      "認証に失敗しました",
 		},
@@ -124,7 +124,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			requestBody:        "invalid json",
 			hasUserID:          true,
 			userID:             "U-test-user",
-			mockSetup:          func(m *servicemocks.MockUserService) {},
+			mockSetup:          func(m *handlermocks.MockUserRegistrar) {},
 			expectedStatusCode: http.StatusBadRequest,
 			expectedError:      "invalid request",
 		},
@@ -132,7 +132,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUserService := servicemocks.NewMockUserService(t)
+			mockUserService := handlermocks.NewMockUserRegistrar(t)
 			tt.mockSetup(mockUserService)
 			handler := NewUserRegistrationAPIHandler(mockUserService)
 
