@@ -151,8 +151,18 @@ function handleAPIError(errorData, messages, onMatchedUserExists) {
         return messages.cannotRegisterYourself;
     }
 
-    // その他のエラー
-    return errorData.error || '登録に失敗しました。';
+    // validation_errorの場合（サーバー側のバリデーションメッセージをそのまま表示）
+    if (errorData.error === 'validation_error') {
+        return errorData.message || messages.registrationError;
+    }
+
+    // internal_errorの場合（サーバーの想定外エラー、汎用メッセージを表示）
+    if (errorData.error === 'internal_error') {
+        return errorData.message || messages.registrationError;
+    }
+
+    // 未知のエラー: errorコードはユーザーに見せず、汎用メッセージにフォールバック
+    return messages.registrationError || '登録に失敗しました。';
 }
 
 /**

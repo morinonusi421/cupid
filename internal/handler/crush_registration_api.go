@@ -112,7 +112,21 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 			return
 		}
 
-		httputil.WriteJSONError(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		// バリデーションエラーは詳細メッセージをユーザーに返す
+		var validationErr *service.ValidationError
+		if errors.As(err, &validationErr) {
+			httputil.WriteJSONError(w, http.StatusBadRequest, map[string]string{
+				"error":   "validation_error",
+				"message": validationErr.Message,
+			})
+			return
+		}
+
+		// 想定外の内部エラーは詳細を伏せてログだけに残す（情報漏洩防止）
+		httputil.WriteJSONError(w, http.StatusInternalServerError, map[string]string{
+			"error":   "internal_error",
+			"message": message.GeneralError,
+		})
 		return
 	}
 

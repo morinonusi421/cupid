@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	handlermocks "github.com/morinonusi421/cupid/internal/handler/mocks"
+	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/service"
-	handlermocks "github.com/morinonusi421/cupid/internal/handler/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -24,6 +26,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 		mockSetup          func(*handlermocks.MockUserRegistrar)
 		expectedStatusCode int
 		expectedError      string
+		expectedMessage    string
 		expectedStatus     string
 	}{
 		{
@@ -106,7 +109,24 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 					Return(false, validationErr)
 			},
 			expectedStatusCode: http.StatusBadRequest,
-			expectedError:      "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
+			expectedError:      "validation_error",
+			expectedMessage:    "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
+		},
+		{
+			name: "異常系 - 予期しない内部エラーは詳細を漏らさず500を返す",
+			requestBody: map[string]interface{}{
+				"name":     "ヤマダタロウ",
+				"birthday": "2000-01-15",
+			},
+			hasUserID: true,
+			userID:    "U-internal-error-user",
+			mockSetup: func(m *handlermocks.MockUserRegistrar) {
+				m.EXPECT().RegisterUser(mock.Anything, "U-internal-error-user", "ヤマダタロウ", "2000-01-15", false).
+					Return(false, errors.New("sql: connection refused at internal/172.31.10.53"))
+			},
+			expectedStatusCode: http.StatusInternalServerError,
+			expectedError:      "internal_error",
+			expectedMessage:    message.GeneralError,
 		},
 		{
 			name: "異常系 - contextにUserIDがない",
@@ -167,8 +187,19 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			if tt.expectedError != "" {
 				assert.Contains(t, resp["error"], tt.expectedError)
 			}
+			if tt.expectedMessage != "" {
+				assert.Contains(t, resp["message"], tt.expectedMessage)
+			}
 			if tt.expectedStatus != "" {
 				assert.Equal(t, tt.expectedStatus, resp["status"])
+			}
+
+			// 内部エラー詳細がレスポンスに漏れていないことを確認
+			if tt.expectedStatusCode == http.StatusInternalServerError {
+				body := rr.Body.String()
+				assert.NotContains(t, body, "sql:")
+				assert.NotContains(t, body, "172.31")
+				assert.NotContains(t, body, "connection refused")
 			}
 
 			mockUserService.AssertExpectations(t)

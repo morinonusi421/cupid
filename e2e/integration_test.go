@@ -470,7 +470,8 @@ func TestIntegration_ValidationError(t *testing.T) {
 			var response map[string]interface{}
 			err = json.Unmarshal(rec.Body.Bytes(), &response)
 			require.NoError(t, err)
-			assert.Contains(t, response["error"], tt.expectedMsg)
+			assert.Equal(t, "validation_error", response["error"])
+			assert.Contains(t, response["message"], tt.expectedMsg)
 		})
 	}
 }
