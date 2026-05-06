@@ -68,23 +68,14 @@ func UnmatchNotificationPartner(partnerName string) string {
 }
 
 // ========================================
-// 6. エラーメッセージ
+// 6. LINE チャット用エラーメッセージ
 // ========================================
-
-// CrushRegistrationUserNotFound は未登録ユーザーが好きな人登録を試みた時のエラーメッセージを生成する
-func CrushRegistrationUserNotFound(userLiffURL string) string {
-	return fmt.Sprintf("あうぅ...先に自分の情報を登録してくださいっ💦\n\nまずは下のリンクから登録をお願いしますね✨\n\n%s", userLiffURL)
-}
-
-// MatchedUserExistsWarning はマッチング中のユーザーが情報を変更しようとした時の警告メッセージを生成する
-func MatchedUserExistsWarning(userName string) string {
-	return fmt.Sprintf("はわわっ💦 %sさんとマッチング中ですっ！\n\n変更するとマッチングが解除されちゃいますよぉ...💔\n\nそれでも変更しますか？", userName)
-}
+//
+// API レスポンス用のエラー文言はフロントエンドが所有する（static/messages.js の MESSAGES.apiErrors）。
+// BE は error コードと必要な構造化データだけを JSON で返す。
+//
+// 以下に残っているのは LINE チャットで bot が直接喋るメッセージのみ。
 
 // GeneralError は LINE チャットでエラーを返す時のメッセージ
 // （API レスポンス用ではなく、webhook が text message に対して返信する時に使う）
 const GeneralError = "ふえぇ...エラーが発生しちゃいましたっ💦\n\nもう一度試してみてくださいね✨"
-
-// LIFF API のエラー文言（duplicate_user, invalid_birthday, internal_error 等）は
-// バックエンドでは持たない。BE は error コードのみ返し、ユーザー向け文言は
-// フロントエンド (static/messages.js の MESSAGES.apiErrors) が所有する。

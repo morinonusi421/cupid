@@ -127,9 +127,10 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
             const errorData = await response.json();
 
             // user_not_foundの場合は自分の情報登録を促す（crush特有の処理）
+            // 文言はFEが所有、BEは error コードと user_liff_url のみ返す
             if (errorData.error === 'user_not_found') {
                 showLoading(false);
-                showMessage(errorData.message || MESSAGES.crush.userNotRegistered, 'error');
+                showMessage(MESSAGES.apiErrors.userNotRegistered, 'error');
                 submitButton.disabled = false;
 
                 // ユーザー登録URLがあれば、3秒後に自動的に遷移

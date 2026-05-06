@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/morinonusi421/cupid/pkg/httputil"
@@ -70,13 +69,12 @@ func (h *UserRegistrationAPIHandler) Register(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		log.Printf("Failed to register user: %v", err)
 
-		// matched_user_exists は追加データ（partner_name 等）を要するので個別処理
+		// matched_user_exists は partner_name のみ返す（文言テンプレはFEが所有）
 		var matchedErr *service.MatchedUserExistsError
 		if errors.As(err, &matchedErr) {
-			warningMsg := message.MatchedUserExistsWarning(matchedErr.MatchedUserName)
 			httputil.WriteJSONError(w, http.StatusConflict, map[string]string{
-				"error":   "matched_user_exists",
-				"message": warningMsg,
+				"error":        "matched_user_exists",
+				"partner_name": matchedErr.MatchedUserName,
 			})
 			return
 		}

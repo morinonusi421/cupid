@@ -135,8 +135,10 @@ function handleAPIError(errorData, context, onMatchedUserExists) {
     }
 
     // matched_user_exists: マッチング中のユーザーが情報変更を試みた
+    // BE は partner_name のみ返す。確認ダイアログの文言はFEが組み立てる。
     if (errorData.error === 'matched_user_exists') {
-        const confirmed = confirm(errorData.message + '\n\n本当に変更しますか？');
+        const prompt = MESSAGES.apiErrors.matchedUserExistsConfirm(errorData.partner_name);
+        const confirmed = confirm(prompt);
         if (confirmed && onMatchedUserExists) {
             onMatchedUserExists();
         }

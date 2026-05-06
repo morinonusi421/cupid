@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/middleware"
 	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/morinonusi421/cupid/pkg/httputil"
@@ -81,24 +80,21 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 		log.Printf("Failed to register crush: %v", err)
 		log.Printf("[DEBUG] Error type: %T, ErrUserNotFound: %v, errors.Is result: %v", err, service.ErrUserNotFound, errors.Is(err, service.ErrUserNotFound))
 
-		// user_not_foundエラーの場合は特別なレスポンス（ユーザー登録を促す）
+		// user_not_found: 文言はFEが所有、BEは error コードと user_liff_url のみ返す
 		if errors.Is(err, service.ErrUserNotFound) {
-			log.Printf("[DEBUG] Matched ErrUserNotFound, returning 428")
 			httputil.WriteJSONError(w, http.StatusPreconditionRequired, map[string]string{
 				"error":         "user_not_found",
-				"message":       message.CrushRegistrationUserNotFound(h.userLiffURL),
 				"user_liff_url": h.userLiffURL,
 			})
 			return
 		}
 
-		// matched_user_exists は追加データ（partner_name 等）を要するので個別処理
+		// matched_user_exists は partner_name のみ返す（文言テンプレはFEが所有）
 		var matchedErr *service.MatchedUserExistsError
 		if errors.As(err, &matchedErr) {
-			warningMsg := message.MatchedUserExistsWarning(matchedErr.MatchedUserName)
 			httputil.WriteJSONError(w, http.StatusConflict, map[string]string{
-				"error":   "matched_user_exists",
-				"message": warningMsg,
+				"error":        "matched_user_exists",
+				"partner_name": matchedErr.MatchedUserName,
 			})
 			return
 		}

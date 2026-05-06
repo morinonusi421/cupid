@@ -15,6 +15,10 @@ const MESSAGES = {
         invalidBirthday: 'あうぅ...その日付は存在しませんっ💦\n\n正しい誕生日を入力してくださいね✨',
         general: 'ふえぇ...エラーが発生しちゃいましたっ💦\n\nもう一度試してみてくださいね✨',
         registrationFailed: 'あうぅ...登録に失敗しちゃいました💦 もう一度試してくださいっ',
+        userNotRegistered: 'あうぅ...先に自分の情報を登録してくださいっ💦',
+        // matched_user_exists の確認ダイアログ用テンプレ（partner_name を埋め込み）
+        matchedUserExistsConfirm: (partnerName) =>
+            `はわわっ💦 ${partnerName}さんとマッチング中ですっ！\n\n変更するとマッチングが解除されちゃいますよぉ...💔\n\n本当に変更しますか？`,
     },
 
     // ユーザー登録（自分の情報）
