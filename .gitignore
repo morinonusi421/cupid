@@ -24,9 +24,6 @@ profile.cov
 go.work
 go.work.sum
 
-# Go version manager files (個人の環境設定)
-.go-version
-
 # env file
 .env
 
