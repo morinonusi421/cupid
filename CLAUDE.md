@@ -15,7 +15,10 @@
 - **ドメイン名**: `cupid-linebot.click`
 - **取得場所**: AWS Route 53
 - **Aレコード**: `cupid-linebot.click` → `13.115.86.124`
-- **SSL証明書**: Let's Encrypt（2026-04-12まで有効、自動更新設定済み）
+- **SSL証明書**: Let's Encrypt（2026-08-04まで有効）
+  - 自動更新: `certbot-renew.timer`（systemd）で1日2回チェック・期限30日前から更新
+  - 手動更新: `ssh cupid-bot "sudo certbot renew --no-random-sleep-on-renew"`
+  - 状態確認: `ssh cupid-bot "sudo certbot certificates"` または `openssl s_client -servername cupid-linebot.click -connect cupid-linebot.click:443 < /dev/null 2>/dev/null \| openssl x509 -noout -dates`
 
 ### AWS設定
 - **アカウントID**: 838890403187
