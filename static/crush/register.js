@@ -142,7 +142,7 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
             }
 
             // その他のエラーハンドリング
-            const errorMessage = handleAPIError(errorData, MESSAGES.crush, () => {
+            const errorMessage = handleAPIError(errorData, 'crush', () => {
                 // matched_user_existsの場合の再試行コールバック
                 showLoading(false);
                 registerCrush(name, birthday, true);
@@ -171,7 +171,7 @@ async function registerCrush(name, birthday, confirmUnmatch = false) {
 
     } catch (error) {
         console.error('Registration failed', error);
-        showMessage(error.message || MESSAGES.crush.registrationError, 'error');
+        showMessage(error.message || MESSAGES.apiErrors.registrationFailed, 'error');
         submitButton.disabled = false;
     } finally {
         showLoading(false);

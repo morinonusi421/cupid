@@ -127,7 +127,7 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
             const errorData = await response.json();
 
             // エラーハンドリング
-            const errorMessage = handleAPIError(errorData, MESSAGES.user, () => {
+            const errorMessage = handleAPIError(errorData, 'user', () => {
                 // matched_user_existsの場合の再試行コールバック
                 showLoading(false);
                 registerUser(name, birthday, true);
@@ -156,7 +156,7 @@ async function registerUser(name, birthday, confirmUnmatch = false) {
 
     } catch (error) {
         console.error('Registration failed', error);
-        showMessage(error.message || MESSAGES.user.registrationError, 'error');
+        showMessage(error.message || MESSAGES.apiErrors.registrationFailed, 'error');
         submitButton.disabled = false;
     } finally {
         showLoading(false);

@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	handlermocks "github.com/morinonusi421/cupid/internal/handler/mocks"
-	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/middleware"
+	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -94,7 +94,7 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			expectedError:      "duplicate_user",
 		},
 		{
-			name: "異常系 - バリデーションエラー",
+			name: "異常系 - バリデーションエラー（カタカナ以外）はコードのみ返す",
 			requestBody: map[string]interface{}{
 				"name":     "山田太郎",
 				"birthday": "2000-01-15",
@@ -102,15 +102,26 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			hasUserID: true,
 			userID:    "U-validation-user",
 			mockSetup: func(m *handlermocks.MockUserRegistrar) {
-				validationErr := &service.ValidationError{
-					Message: "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
-				}
 				m.EXPECT().RegisterUser(mock.Anything, "U-validation-user", "山田太郎", "2000-01-15", false).
-					Return(false, validationErr)
+					Return(false, model.ErrNameInvalidFormat)
 			},
 			expectedStatusCode: http.StatusBadRequest,
-			expectedError:      "validation_error",
-			expectedMessage:    "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
+			expectedError:      "name_invalid_format",
+		},
+		{
+			name: "異常系 - バリデーションエラー（長さ）はコードのみ返す",
+			requestBody: map[string]interface{}{
+				"name":     "ア",
+				"birthday": "2000-01-15",
+			},
+			hasUserID: true,
+			userID:    "U-validation-user",
+			mockSetup: func(m *handlermocks.MockUserRegistrar) {
+				m.EXPECT().RegisterUser(mock.Anything, "U-validation-user", "ア", "2000-01-15", false).
+					Return(false, model.ErrNameInvalidLength)
+			},
+			expectedStatusCode: http.StatusBadRequest,
+			expectedError:      "name_invalid_length",
 		},
 		{
 			name: "異常系 - 予期しない内部エラーは詳細を漏らさず500を返す",
@@ -126,7 +137,6 @@ func TestUserRegistrationAPIHandler_Register(t *testing.T) {
 			},
 			expectedStatusCode: http.StatusInternalServerError,
 			expectedError:      "internal_error",
-			expectedMessage:    message.GeneralError,
 		},
 		{
 			name: "異常系 - contextにUserIDがない",

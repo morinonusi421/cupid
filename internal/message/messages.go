@@ -81,11 +81,10 @@ func MatchedUserExistsWarning(userName string) string {
 	return fmt.Sprintf("はわわっ💦 %sさんとマッチング中ですっ！\n\n変更するとマッチングが解除されちゃいますよぉ...💔\n\nそれでも変更しますか？", userName)
 }
 
-// DuplicateUserError は同じ名前・誕生日のユーザーが既に登録されている時のエラーメッセージ
-const DuplicateUserError = "あうぅ...その名前と誕生日の組み合わせは既に登録されていますっ💦\n\n別の情報で登録してくださいね✨"
-
-// InvalidBirthdayError は無効な日付が入力された時のエラーメッセージ
-const InvalidBirthdayError = "あうぅ...その日付は存在しませんっ💦\n\n正しい誕生日を入力してくださいね✨"
-
-// GeneralError は一般的なエラーが発生した時のメッセージ
+// GeneralError は LINE チャットでエラーを返す時のメッセージ
+// （API レスポンス用ではなく、webhook が text message に対して返信する時に使う）
 const GeneralError = "ふえぇ...エラーが発生しちゃいましたっ💦\n\nもう一度試してみてくださいね✨"
+
+// LIFF API のエラー文言（duplicate_user, invalid_birthday, internal_error 等）は
+// バックエンドでは持たない。BE は error コードのみ返し、ユーザー向け文言は
+// フロントエンド (static/messages.js の MESSAGES.apiErrors) が所有する。

@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	handlermocks "github.com/morinonusi421/cupid/internal/handler/mocks"
-	"github.com/morinonusi421/cupid/internal/message"
 	"github.com/morinonusi421/cupid/internal/middleware"
+	"github.com/morinonusi421/cupid/internal/model"
 	"github.com/morinonusi421/cupid/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -98,7 +98,7 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 			expectedError:      "cannot_register_yourself",
 		},
 		{
-			name: "異常系 - バリデーションエラー（名前）",
+			name: "異常系 - バリデーションエラー（名前カタカナ以外）はコードのみ返す",
 			requestBody: map[string]interface{}{
 				"crush_name":     "山田太郎",
 				"crush_birthday": "1990-01-01",
@@ -106,15 +106,11 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 			hasUserID: true,
 			userID:    "U-validation-user",
 			mockSetup: func(m *handlermocks.MockCrushRegistrar) {
-				validationErr := &service.ValidationError{
-					Message: "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
-				}
 				m.EXPECT().RegisterCrush(mock.Anything, "U-validation-user", "山田太郎", "1990-01-01", false).
-					Return(false, false, validationErr)
+					Return(false, false, model.ErrNameInvalidFormat)
 			},
 			expectedStatusCode: http.StatusBadRequest,
-			expectedError:      "validation_error",
-			expectedMessage:    "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
+			expectedError:      "name_invalid_format",
 		},
 		{
 			name: "異常系 - 予期しない内部エラーは詳細を漏らさず500を返す",
@@ -130,7 +126,6 @@ func TestCrushRegistrationAPIHandler_RegisterCrush(t *testing.T) {
 			},
 			expectedStatusCode: http.StatusInternalServerError,
 			expectedError:      "internal_error",
-			expectedMessage:    message.GeneralError,
 		},
 		{
 			name: "異常系 - contextにUserIDがない",

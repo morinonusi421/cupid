@@ -428,9 +428,9 @@ func TestIntegration_ValidationError(t *testing.T) {
 	defer db.Close()
 
 	tests := []struct {
-		name        string
-		requestBody map[string]interface{}
-		expectedMsg string
+		name              string
+		requestBody       map[string]interface{}
+		expectedErrorCode string
 	}{
 		{
 			name: "漢字を含む名前",
@@ -438,7 +438,7 @@ func TestIntegration_ValidationError(t *testing.T) {
 				"name":     "山田太郎",
 				"birthday": "1990-01-01",
 			},
-			expectedMsg: "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
+			expectedErrorCode: "name_invalid_format",
 		},
 		{
 			name: "ひらがなを含む名前",
@@ -446,7 +446,7 @@ func TestIntegration_ValidationError(t *testing.T) {
 				"name":     "やまだたろう",
 				"birthday": "1990-01-01",
 			},
-			expectedMsg: "名前は全角カタカナ2〜20文字で入力してください（スペース不可）",
+			expectedErrorCode: "name_invalid_format",
 		},
 	}
 
@@ -470,8 +470,7 @@ func TestIntegration_ValidationError(t *testing.T) {
 			var response map[string]interface{}
 			err = json.Unmarshal(rec.Body.Bytes(), &response)
 			require.NoError(t, err)
-			assert.Equal(t, "validation_error", response["error"])
-			assert.Contains(t, response["message"], tt.expectedMsg)
+			assert.Equal(t, tt.expectedErrorCode, response["error"])
 		})
 	}
 }

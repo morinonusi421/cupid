@@ -122,17 +122,19 @@ function showMessage(text, type) {
 /**
  * API エラーハンドリング
  * @param {object} errorData - エラーレスポンスのJSONオブジェクト
- * @param {object} messages - メッセージ定数オブジェクト
+ * @param {'user'|'crush'} context - どちらの登録フォームから呼ばれたか（コンテキスト依存メッセージの分岐用）
  * @param {function} onMatchedUserExists - matched_user_existsエラー時のコールバック
  * @returns {string|null} エラーメッセージ、またはnull（matched_user_existsの場合）
  */
-function handleAPIError(errorData, messages, onMatchedUserExists) {
-    // invalid_birthdayの場合
+function handleAPIError(errorData, context, onMatchedUserExists) {
+    // 注: BEはerror codeのみ返す。ユーザー向け文言はFEが MESSAGES から選ぶ。
+
+    // invalid_birthday: 日付が存在しない
     if (errorData.error === 'invalid_birthday') {
-        return errorData.message || 'その日付は存在しません。';
+        return MESSAGES.apiErrors.invalidBirthday;
     }
 
-    // matched_user_existsの場合は確認ダイアログ
+    // matched_user_exists: マッチング中のユーザーが情報変更を試みた
     if (errorData.error === 'matched_user_exists') {
         const confirmed = confirm(errorData.message + '\n\n本当に変更しますか？');
         if (confirmed && onMatchedUserExists) {
@@ -141,28 +143,31 @@ function handleAPIError(errorData, messages, onMatchedUserExists) {
         return null; // エラーとして扱わない
     }
 
-    // duplicate_userの場合
+    // duplicate_user: 同じ名前・誕生日の他人が既に登録済み
     if (errorData.error === 'duplicate_user') {
-        return errorData.message || '同じ名前・誕生日のユーザーが既に登録されています。';
+        return MESSAGES.apiErrors.duplicateUser;
     }
 
-    // cannot_register_yourselfの場合
+    // cannot_register_yourself: 自分自身を登録しようとした（フォーム種類で文言が違う）
     if (errorData.error === 'cannot_register_yourself') {
-        return messages.cannotRegisterYourself;
+        return MESSAGES[context].cannotRegisterYourself;
     }
 
-    // validation_errorの場合（サーバー側のバリデーションメッセージをそのまま表示）
-    if (errorData.error === 'validation_error') {
-        return errorData.message || messages.registrationError;
+    // 名前のバリデーションエラー
+    if (errorData.error === 'name_invalid_length') {
+        return MESSAGES.validation.nameLengthError;
+    }
+    if (errorData.error === 'name_invalid_format') {
+        return MESSAGES.validation.nameFormatError;
     }
 
-    // internal_errorの場合（サーバーの想定外エラー、汎用メッセージを表示）
+    // internal_error: サーバーの想定外エラー
     if (errorData.error === 'internal_error') {
-        return errorData.message || messages.registrationError;
+        return MESSAGES.apiErrors.general;
     }
 
-    // 未知のエラー: errorコードはユーザーに見せず、汎用メッセージにフォールバック
-    return messages.registrationError || '登録に失敗しました。';
+    // 未知のエラー: error コードはユーザーに見せず、汎用メッセージにフォールバック
+    return MESSAGES.apiErrors.registrationFailed;
 }
 
 /**

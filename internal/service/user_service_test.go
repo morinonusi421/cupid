@@ -162,7 +162,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			},
 			expectedIsFirstReg:    false,
 			expectedError:         true,
-			expectedErrorContains: "名前は全角カタカナ",
+			expectedErrorContains: "name_invalid_format",
 		},
 		{
 			name:           "重複エラー - 他人が同じ名前・誕生日",
@@ -180,7 +180,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			},
 			expectedIsFirstReg:    false,
 			expectedError:         true,
-			expectedErrorContains: "duplicate user",
+			expectedErrorContains: "duplicate_user",
 		},
 		{
 			name:           "更新 - 正常系（マッチなし）",
@@ -233,7 +233,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			},
 			expectedIsFirstReg:    false,
 			expectedError:         true,
-			expectedErrorContains: "matched user exists",
+			expectedErrorContains: "matched_user_exists",
 		},
 	}
 
@@ -386,7 +386,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 			expectedMatched:         false,
 			expectedIsFirstCrushReg: false,
 			expectedError:           true,
-			expectedErrorContains:   "名前は全角カタカナ",
+			expectedErrorContains:   "name_invalid_format",
 		},
 		{
 			name:           "自己登録エラー",
@@ -405,7 +405,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 			expectedMatched:         false,
 			expectedIsFirstCrushReg: false,
 			expectedError:           true,
-			expectedErrorContains:   "cannot register yourself",
+			expectedErrorContains:   "cannot_register_yourself",
 		},
 		{
 			name:           "マッチング中エラー（confirmUnmatch=false）",
@@ -433,7 +433,7 @@ func TestUserService_RegisterCrush(t *testing.T) {
 			expectedMatched:         false,
 			expectedIsFirstCrushReg: false,
 			expectedError:           true,
-			expectedErrorContains:   "matched user exists",
+			expectedErrorContains:   "matched_user_exists",
 		},
 	}
 

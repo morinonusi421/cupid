@@ -84,9 +84,9 @@ func (s *UserService) ProcessTextMessage(ctx context.Context, userID string) (re
 //
 // confirmUnmatch: マッチング中の場合、trueならマッチング解除して更新、falseならエラーを返す
 func (s *UserService) RegisterUser(ctx context.Context, userID, name, birthday string, confirmUnmatch bool) (isFirstRegistration bool, err error) {
-	// 1. バリデーション
-	if ok, errMsg := model.IsValidName(name); !ok {
-		return false, &ValidationError{Message: errMsg}
+	// 1. バリデーション（modelの sentinel error をそのまま伝搬）
+	if err := model.ValidateName(name); err != nil {
+		return false, err
 	}
 
 	// 2. 重複チェック（既存ユーザーと名前・誕生日が被っていないか）
@@ -145,8 +145,8 @@ func (s *UserService) RegisterCrush(ctx context.Context, userID, crushName, crus
 	}
 
 	// 4. 名前のバリデーション
-	if valid, errMsg := model.IsValidName(crushName); !valid {
-		return false, false, &ValidationError{Message: errMsg}
+	if err := model.ValidateName(crushName); err != nil {
+		return false, false, err
 	}
 
 	// 5. 初回登録か再登録かを判定（好きな人を登録する前に）

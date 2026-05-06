@@ -64,10 +64,7 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 	const birthdayLayout = "2006-01-02"
 	if _, err := time.Parse(birthdayLayout, req.CrushBirthday); err != nil {
 		log.Printf("Invalid birthday format: %s, error: %v", req.CrushBirthday, err)
-		httputil.WriteJSONError(w, http.StatusBadRequest, map[string]string{
-			"error":   "invalid_birthday",
-			"message": message.InvalidBirthdayError,
-		})
+		httputil.WriteJSONError(w, http.StatusBadRequest, map[string]string{"error": "invalid_birthday"})
 		return
 	}
 
@@ -95,7 +92,7 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 			return
 		}
 
-		// matched_user_existsエラーの場合は特別なレスポンス
+		// matched_user_exists は追加データ（partner_name 等）を要するので個別処理
 		var matchedErr *service.MatchedUserExistsError
 		if errors.As(err, &matchedErr) {
 			warningMsg := message.MatchedUserExistsWarning(matchedErr.MatchedUserName)
@@ -106,27 +103,13 @@ func (h *CrushRegistrationAPIHandler) RegisterCrush(w http.ResponseWriter, r *ht
 			return
 		}
 
-		// 自己登録エラーの場合は400を返す
-		if errors.Is(err, service.ErrCannotRegisterYourself) {
-			httputil.WriteJSONError(w, http.StatusBadRequest, map[string]string{"error": "cannot_register_yourself"})
-			return
-		}
-
-		// バリデーションエラーは詳細メッセージをユーザーに返す
-		var validationErr *service.ValidationError
-		if errors.As(err, &validationErr) {
-			httputil.WriteJSONError(w, http.StatusBadRequest, map[string]string{
-				"error":   "validation_error",
-				"message": validationErr.Message,
-			})
+		// 単純な「コードのみ返却」系エラーはマップで一括処理
+		if tryWriteSimpleAPIError(w, err) {
 			return
 		}
 
 		// 想定外の内部エラーは詳細を伏せてログだけに残す（情報漏洩防止）
-		httputil.WriteJSONError(w, http.StatusInternalServerError, map[string]string{
-			"error":   "internal_error",
-			"message": message.GeneralError,
-		})
+		httputil.WriteJSONError(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
 
