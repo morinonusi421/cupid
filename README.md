@@ -2,7 +2,9 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.25.5-00ADD8?logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Production-success)](https://cupid-linebot.click/)
+![Status](https://img.shields.io/badge/Status-Closed-lightgrey)
+
+> 2026年11月1日に学習目的での運用を終了し、AWSのサーバー・ディスク・固定IP・DNSゾーンを削除しました。LINE側の設定は残っていますが、Botと登録画面は利用できません。詳細は[終了記録](docs/shutdown.md)を参照してください。
 
 **Cupid**は、相思相愛を見つけるためのLINE Botアプリケーション。自分と好きな人の情報を登録すると、相手も自分を登録している場合のみ、両者にマッチング通知が届く。
 
